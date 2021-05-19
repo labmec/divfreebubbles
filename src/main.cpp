@@ -15,17 +15,18 @@
 #include <pzcmesh.h> //for TPZCompMesh
 #include <TPZGmshReader.h>
 #include <TPZVTKGeoMesh.h>
-#include <TPZMatLaplacian.h> //for TPZMatLaplacian
-#include <pzbndcond.h> //for TPZBndCond
+#include "Poisson/TPZMatPoisson.h" //for TPZMatLaplacian
+#include <TPZBndCond.h> //for TPZBndCond
 #include <pzanalysis.h> //for TPZAnalysis
 #include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
 #include <pzskylstrmatrix.h> //symmetric skyline matrix storage
 #include <pzstepsolver.h> //for TPZStepSolver
 #include <TPZNullMaterial.h>
+#include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZMultiphysicsCompMesh.h"
-#include "mixedpoisson.h"
+//#include "mixedpoisson.h"
 #include "pzbuildmultiphysicsmesh.h"
-#include "TPZMixedPoissonParabolic.h"
+//#include "TPZMixedPoissonParabolic.h"
 #include "pzcompel.h"
 #include "TPZInterfaceEl.h"
 
@@ -122,26 +123,28 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 {
 
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-  TPZNullMaterial *mat = new TPZNullMaterial(matIdVec[8]);
-  mat->NStateVariables();
+  TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[8]);
+//  mat->NStateVariables();
   cmesh->InsertMaterialObject(mat);
 
   cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
+  mat->SetDimension(dim);
   //Insert boundary conditions
-  for(auto i = 0; i < 8; i++)
-    {
-      //TPZFMatrix<T> implements a full matrix of type T
-      /* val1 and val2 are used for calculating the boundary
-       * conditions. val1 goes in the matrix and val2 in the rhs.
-       * for dirichlet boundary conditions, only the value of 
-       * val2 is used.*/
-      TPZFMatrix<STATE> val1(1,1,0.), val2(2,1,0.);
-      //dirichlet=0,neumann=1,robin=2
-      constexpr int boundType{0};
-      //TPZBndCond is a material type for boundary conditions
-      TPZMaterial * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
-      cmesh->InsertMaterialObject(BCond);
-    }
+  for(auto i = 0; i < 8; i++) {
+    //TPZFMatrix<T> implements a full matrix of type T
+    /* val1 and val2 are used for calculating the boundary
+     * conditions. val1 goes in the matrix and val2 in the rhs.
+     * for dirichlet boundary conditions, only the value of
+     * val2 is used.*/
+    TPZFMatrix<STATE> val1(1,1,0.);
+    TPZManVector<STATE> val2(2,0.);
+    //dirichlet=0,neumann=1,robin=2
+    constexpr int boundType{0};
+    //TPZBndCond is a material type for boundary conditions
+//    TPZMaterial * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
+    TPZBndCond * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
+    cmesh->InsertMaterialObject(BCond);
+  }
 
   cmesh->SetDefaultOrder(pOrder);
   cmesh->AutoBuild();
@@ -160,8 +163,9 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh
   //Change if not triangular elements
   bool fTriang = true;
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-  TPZNullMaterial *mat = new TPZNullMaterial(matIdVec[8]);
-  mat->NStateVariables();
+  TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[8]);
+  mat->SetDimension(dim);
+//  mat->NStateVariables();
   cmesh->InsertMaterialObject(mat);
 
   cmesh->SetAllCreateFunctionsDiscontinuous();
@@ -202,9 +206,10 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
   cmesh->SetDefaultOrder(pOrder);
   cmesh->SetDimModel(dim);
-  auto mat = new TPZMixedPoisson(matIdVec[8], dim);
+//  auto mat = new TPZMixedPoisson(matIdVec[8], dim);
+  auto mat = new TPZMixedDarcyFlow(matIdVec[8], dim);
 
-  mat->SetPermeability(1.);
+  mat->SetPermeabilityFunction(1.);
   // mat->SetViscosity(1.);
   mat->SetForcingFunction(rhs,rhsPOrder); 
   cmesh->InsertMaterialObject(mat);
@@ -291,8 +296,8 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
   cmesh->SetAllCreateFunctionsContinuous();
 
   //Sets materials
-  TPZMatLaplacian *mat = new TPZMatLaplacian(matIdVec[8],dim);
-  mat->SetPermeability(1);
+  TPZMatPoisson<> *mat = new TPZMatPoisson<>(matIdVec[8],dim);
+//  mat->SetPermeability(1);
   mat->SetForcingFunction(rhs,rhsPOrder);
   cmesh->InsertMaterialObject(mat);
 
@@ -304,11 +309,12 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
        * conditions. val1 goes in the matrix and val2 in the rhs.
        * for dirichlet boundary conditions, only the value of 
        * val2 is used.*/
-      TPZFMatrix<STATE> val1(1,1,0.), val2(2,1,0.);
+      TPZFMatrix<STATE> val1(1,1,0.);
+      TPZManVector<STATE> val2(2,0.);
       //dirichlet=0,neumann=1,robin=2
       constexpr int boundType{0};
       //TPZBndCond is a material type for boundary conditions
-      TPZMaterial * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
+      TPZBndCond * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
       cmesh->InsertMaterialObject(BCond);
     }
 
