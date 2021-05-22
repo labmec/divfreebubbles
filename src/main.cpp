@@ -53,7 +53,14 @@ int main(int argc, char* argv[]){
   constexpr int dim{2};
   constexpr int pOrder{4};
   //Materials - See the .geo file
-  int matIdVec[]={1,2,3,4,5,6,7,8,9};
+  int matIdVec[]={1,2,3,4,5,6,7};
+  //1 = Injection Well
+  //2 = Production Well
+  //3 = Bottom Line
+  //4 = Top Line
+  //5 = Left Line
+  //6 = Right Line
+  //7 = Domain
 
   //read mesh from gmsh
   TPZGeoMesh *gmesh;
@@ -88,11 +95,15 @@ int main(int argc, char* argv[]){
   //Print results
   PrintResultsMultiphysic(dim,meshvector,an,cmesh);
   PrintResultsH1(dim,anH1);
+  
 
   //Compute approximation error - same function for both H1 or multiphysics
-  std::ofstream anPostProcessFile("postprocess.txt");
-  ComputeError(an,anPostProcessFile);
-  
+  std::ofstream anPostProcessFile("postprocessH1.txt");
+  ComputeError(anH1,anPostProcessFile);
+
+  std::ofstream anPostProcessFile2("postprocessHdiv.txt");
+  ComputeError(an,anPostProcessFile2);
+
   return 0;
 }
 
@@ -101,8 +112,7 @@ constexpr int rhsPOrder{2};
 const auto rhs = [](const TPZVec<REAL>&loc, TPZVec<STATE> &u){
       const REAL &x = loc[0];
       const REAL &y = loc[1];
-      u[0] = 2*y*y+2*x*x-4;
-      u[0] *= -1;
+      u[0] = 0.;
 };
 
 //Analytical solution
@@ -112,10 +122,11 @@ auto exactSol = [](const TPZVec<REAL> &loc,
   TPZFMatrix<STATE>&gradU){
   const auto &x=loc[0];
   const auto &y=loc[1];
-  u[0]=(x*x-1)*(y*y-1);
-  gradU(0,0) = 2*x*(y*y-1);
-  gradU(1,0) = 2*y*(x*x-1);
-  gradU(2,0) = 0;//optional
+  const auto &d = 1.; // distance betweel injection and production wells
+  u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+  gradU(0,0) = x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2));
+  gradU(1,0) = y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2));
+  // gradU(2,0) = 0;//optional
 };
 
 //Flux computational mesh
@@ -123,28 +134,43 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 {
 
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-  TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[8]);
+  TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[6]);
 //  mat->NStateVariables();
   cmesh->InsertMaterialObject(mat);
 
   cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
   mat->SetDimension(dim);
   //Insert boundary conditions
-  for(auto i = 0; i < 8; i++) {
+  // for(auto i = 0; i < 6; i++) {
     //TPZFMatrix<T> implements a full matrix of type T
     /* val1 and val2 are used for calculating the boundary
      * conditions. val1 goes in the matrix and val2 in the rhs.
      * for dirichlet boundary conditions, only the value of
      * val2 is used.*/
-    TPZFMatrix<STATE> val1(1,1,0.);
-    TPZManVector<STATE> val2(2,0.);
+    TPZFMatrix<STATE> val1(1,1,1.);
+    TPZManVector<STATE> val2(1,0.);
     //dirichlet=0,neumann=1,robin=2
-    constexpr int boundType{0};
-    //TPZBndCond is a material type for boundary conditions
-//    TPZMaterial * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
-    TPZBndCond * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
+    constexpr int boundType{1};
+    TPZBndCond * BCond = mat->CreateBC(mat, matIdVec[0], boundType, val1, val2);
     cmesh->InsertMaterialObject(BCond);
-  }
+
+    TPZFMatrix<STATE> val3(1,1,1.);
+    TPZManVector<STATE> val4(1,0.);
+    TPZBndCond * BCond1 = mat->CreateBC(mat, matIdVec[1], boundType, val3, val4);
+    cmesh->InsertMaterialObject(BCond1);
+
+    TPZFMatrix<STATE> val5(1,1,1.);
+    TPZManVector<STATE> val6(1,0.);
+    TPZBndCond * BCond2 = mat->CreateBC(mat, matIdVec[2], boundType, val3, val4);
+    TPZBndCond * BCond3 = mat->CreateBC(mat, matIdVec[3], boundType, val3, val4);
+    TPZBndCond * BCond4 = mat->CreateBC(mat, matIdVec[4], boundType, val3, val4);
+    TPZBndCond * BCond5 = mat->CreateBC(mat, matIdVec[5], boundType, val3, val4);
+    cmesh->InsertMaterialObject(BCond2);
+    cmesh->InsertMaterialObject(BCond3);
+    cmesh->InsertMaterialObject(BCond4);
+    cmesh->InsertMaterialObject(BCond5);
+
+  // }
 
   cmesh->SetDefaultOrder(pOrder);
   cmesh->AutoBuild();
@@ -163,7 +189,7 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh
   //Change if not triangular elements
   bool fTriang = true;
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-  TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[8]);
+  TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[6]);
   mat->SetDimension(dim);
 //  mat->NStateVariables();
   cmesh->InsertMaterialObject(mat);
@@ -206,13 +232,36 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
   cmesh->SetDefaultOrder(pOrder);
   cmesh->SetDimModel(dim);
-//  auto mat = new TPZMixedPoisson(matIdVec[8], dim);
-  auto mat = new TPZMixedDarcyFlow(matIdVec[8], dim);
+  // auto mat = new TPZMixedPoisson(matIdVec[6], dim);
+  auto mat = new TPZMixedDarcyFlow(matIdVec[6], dim);
 
   mat->SetPermeabilityFunction(1.);
   // mat->SetViscosity(1.);
-  mat->SetForcingFunction(rhs,rhsPOrder); 
+  // mat->SetForcingFunction(rhs,rhsPOrder); 
   cmesh->InsertMaterialObject(mat);
+    
+  //Boundary Conditions
+  TPZFMatrix<STATE> val1(1,1,1.);
+  TPZManVector<STATE> val2(1,-4.3820281971726605);
+  constexpr int boundType{1};
+  constexpr int boundType0{0};
+  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], boundType0, val1, val2);
+  TPZFMatrix<STATE> val3(1,1,1.); 
+  TPZManVector<STATE> val4(1,0.9288056258294208);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], boundType0, val3, val4);
+  cmesh->InsertMaterialObject(BCond1);
+  cmesh->InsertMaterialObject(BCond0);
+
+  TPZFMatrix<STATE> val5(1,1,1.);
+  TPZManVector<STATE> val6(1,0.);
+  TPZBndCond * BCond2 = mat->CreateBC(mat, matIdVec[2], boundType, val5, val6);
+  TPZBndCond * BCond3 = mat->CreateBC(mat, matIdVec[3], boundType, val5, val6);
+  TPZBndCond * BCond4 = mat->CreateBC(mat, matIdVec[4], boundType, val5, val6);
+  TPZBndCond * BCond5 = mat->CreateBC(mat, matIdVec[5], boundType, val5, val6);
+  cmesh->InsertMaterialObject(BCond2);
+  cmesh->InsertMaterialObject(BCond3);
+  cmesh->InsertMaterialObject(BCond4);
+  cmesh->InsertMaterialObject(BCond5);
 
   TPZManVector<int> active(2,1);
   cmesh->BuildMultiphysicsSpace(active, meshvector);
@@ -224,7 +273,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
 	TPZBuildMultiphysicsMesh::AddConnects(meshvector,cmesh);
 	TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
 
-  //Prints Multiphysics mesh
+  // Prints Multiphysics mesh
   // std::ofstream myfile("MultiPhysicsMesh.txt");
   // cmesh->Print(myfile);
 
@@ -270,6 +319,8 @@ void SolveProblem(TPZAnalysis &an, TPZCompMesh *cmesh)
 void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZAnalysis &an, TPZCompMesh *cmesh)
 {
 
+  an.SetExact(exactSol,solOrder);
+
   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
 	TPZManVector<std::string,10> scalnames(2), vecnames(2);
     
@@ -296,27 +347,31 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
   cmesh->SetAllCreateFunctionsContinuous();
 
   //Sets materials
-  TPZMatPoisson<> *mat = new TPZMatPoisson<>(matIdVec[8],dim);
+  TPZMatPoisson<> *mat = new TPZMatPoisson<>(matIdVec[6],dim);
 //  mat->SetPermeability(1);
   mat->SetForcingFunction(rhs,rhsPOrder);
   cmesh->InsertMaterialObject(mat);
 
   //Insert boundary conditions
-  for(auto i = 0; i < 8; i++)
-    {
+  // for(auto i = 0; i < 6; i++)
+  //   {
       //TPZFMatrix<T> implements a full matrix of type T
       /* val1 and val2 are used for calculating the boundary
        * conditions. val1 goes in the matrix and val2 in the rhs.
        * for dirichlet boundary conditions, only the value of 
        * val2 is used.*/
-      TPZFMatrix<STATE> val1(1,1,0.);
-      TPZManVector<STATE> val2(2,0.);
+      TPZFMatrix<STATE> val1(1,1,1.);
+      TPZManVector<STATE> val2(2,-4.3820281971726605);
       //dirichlet=0,neumann=1,robin=2
       constexpr int boundType{0};
       //TPZBndCond is a material type for boundary conditions
-      TPZBndCond * BCond = mat->CreateBC(mat, matIdVec[i], boundType, val1, val2);
+      TPZBndCond * BCond = mat->CreateBC(mat, matIdVec[0], boundType, val1, val2);
+      TPZFMatrix<STATE> val3(1,1,1.);
+      TPZManVector<STATE> val4(2,0.9288056258294208);
+      TPZBndCond * BCond1 = mat->CreateBC(mat, matIdVec[1], boundType, val3, val4);
       cmesh->InsertMaterialObject(BCond);
-    }
+      cmesh->InsertMaterialObject(BCond1);
+    // }
 
   cmesh->SetDefaultOrder(pOrder);
   cmesh->AutoBuild();
@@ -326,8 +381,10 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
 
 void PrintResultsH1(int dim, TPZAnalysis &an)
 {
-  TPZVec<std::string> scalarVars(1), vectorVars(0);
+  an.SetExact(exactSol,solOrder);
+  TPZVec<std::string> scalarVars(1), vectorVars(1);
   scalarVars[0] = "Solution";
+  vectorVars[0] = "Derivative";
   an.DefineGraphMesh(dim,scalarVars,vectorVars,"SolutionH1.vtk");
   constexpr int resolution{0};
   an.PostProcess(resolution,dim);	
