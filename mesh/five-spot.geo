@@ -60,3 +60,4 @@ Physical Curve("TopLine") = {4};            //4
 Physical Curve("LeftLine") = {1};           //5
 Physical Curve("RightLine") = {3};          //6
 Physical Surface("Surface") = {1, 2, 3, 4}; //7
+Physical Point("Point") = {10};		    //8
