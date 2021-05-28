@@ -181,8 +181,11 @@ void TPZMatDivFreeBubbles<TVar>::Errors(const TPZVec<REAL> &x,
     values.Resize(this->NEvalErrors());
     values.Fill(0.0);
     TPZManVector<TVar> sol(3,0.),dsol(3,0.);
-    TPZFNMatrix<3,TVar> gradu(3,1);
-    TPZAxesTools<TVar>::Axes2XYZ(dudx,gradu,axes);
+    TPZFNMatrix<3,TVar> gradu(3,1), gradu_(3,1);
+    TPZAxesTools<TVar>::Axes2XYZ(dudx,gradu_,axes);
+
+    gradu(0,0) =  gradu_(1,0);
+    gradu(1,0) = -gradu_(0,0);
     
     //values[0] : error in H1 norm
     //values[1] : eror in L2 norm

@@ -42,6 +42,7 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
 void PrintResultsH1(int dim, TPZLinearAnalysis &an);
 void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an);
 void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
+void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -110,7 +111,7 @@ int main(int argc, char* argv[]){
   PrintResultsH1(dim,anH1);
 
   //...........................Div Free Bubbles...........................
-    //Creates DFB problem
+  //Creates DFB problem
   TPZCompMesh * cmeshDFB = CMeshDivFreeBubbles(dim,pOrder,matIdVec,gmesh);
 
   //Solve DFB
@@ -121,15 +122,14 @@ int main(int argc, char* argv[]){
   PrintResultsDivFreeBubbles(dim,anDFB);
   
   //...........................ERROR EVALUATION...........................
-  //Compute approximation error - same function for both H1 or multiphysics
-  // std::ofstream anPostProcessFileDFB("postprocessDFB.txt");
-  // ComputeError(anDFB,anPostProcessFileDFB);
+  std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
+  ComputeErrorHdiv(an,anPostProcessFileHdiv);
 
-  // std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
-  // ComputeError(an,anPostProcessFileHdiv);
+  std::ofstream anPostProcessFileDFB("postprocessDFB.txt");
+  ComputeError(anDFB,anPostProcessFileDFB);
 
-  // std::ofstream anPostProcessFileH1("postprocessH1.txt");
-  // ComputeError(an,anPostProcessFileH1);
+  std::ofstream anPostProcessFileH1("postprocessH1.txt");
+  ComputeError(anH1,anPostProcessFileH1);
 
   return 0;
 }
@@ -325,12 +325,12 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
   an.SetExact(exactSol,solOrder);
 
   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-	TPZManVector<std::string,10> scalnames(1), vecnames(1);
+	TPZManVector<std::string,10> scalnames(2), vecnames(2);
     
 	scalnames[0] = "Pressure";
-	// scalnames[1] = "ExactPressure";
+	scalnames[1] = "ExactPressure";
 	vecnames[0]= "Flux";
-	// vecnames[1]= "ExactFlux";
+	vecnames[1]= "ExactFlux";
 
 	int div = 0;
   std::string plotfile = "solutionHdiv.vtk";
@@ -412,6 +412,22 @@ void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
   return;
 }
 
+void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
+{
+  an.SetExact(exactSol,solOrder);
+  ///Calculating approximation error  
+  TPZManVector<REAL,5> error;
+  an.PostProcess(error,anPostProcessFile);
+	
+  std::cout << "\nApproximation error:\n";
+  std::cout << "H1 Norm = " << error[0]<<'\n';
+  std::cout << "L1 Norm = " << error[1]<<'\n'; 
+  std::cout << "H1 Seminorm = " << error[2] << "\n\n";
+
+  return;
+}
+
+
 TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
 {
   //Creates cmesh object
@@ -443,8 +459,8 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
   cmesh->InsertMaterialObject(BCond4);
   cmesh->InsertMaterialObject(BCond5);
 
-  auto *mat2 = new TPZL2Projection<>(matIdVec[7],0,1,val2);
-  cmesh->InsertMaterialObject(mat2);
+  // auto *mat2 = new TPZL2Projection<>(matIdVec[7],0,1);
+  // cmesh->InsertMaterialObject(mat2);
 
   //Prints computational mesh properties
   // std::stringstream text_name;
