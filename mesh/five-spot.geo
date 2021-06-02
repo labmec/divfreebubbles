@@ -21,10 +21,10 @@ Line(3) = {4, 8};
 Line(4) = {7, 2};
 Line(5) = {2, 9};
 Line(6) = {9, 4};
-Circle(7) = {5, 1, 10};
-Circle(8) = {10, 1, 6};
-Circle(9) = {7, 3, 11};
-Circle(10) = {11, 3, 8};
+Circle(7) = {10, 1, 5};
+Circle(8) = {6, 1, 10};
+Circle(9) = {11, 3, 7};
+Circle(10) = {8, 3, 11};
 Line(11) = {10, 9};
 Line(12) = {9, 11};
 
@@ -40,13 +40,13 @@ Transfinite Curve {6} = nv Using Progression pa;
 Transfinite Curve {7, 8, 9, 10} = nv Using Progression pv;
 
 //Surfaces
-Curve Loop(1) = {-1, 8, -11, 5};
+Curve Loop(1) = {-1, -8, -11, 5};
 Plane Surface(1) = {1};
-Curve Loop(2) = {11, 6, -2, 7};
+Curve Loop(2) = {11, 6, -2, -7};
 Plane Surface(2) = {2};
-Curve Loop(3) = {-6, -3, 10, 12};
+Curve Loop(3) = {-6, -3, -10, 12};
 Plane Surface(3) = {3};
-Curve Loop(4) = {9, -12, -5, -4};
+Curve Loop(4) = {-9, -12, -5, -4};
 Plane Surface(4) = {4};
 Transfinite Surface {1, 2} Left;
 Transfinite Surface {3, 4} Right;
