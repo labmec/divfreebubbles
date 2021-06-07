@@ -30,6 +30,7 @@ add_library(pzfiles ${outsidepzset})
 target_link_libraries(pzfiles PRIVATE NeoPZ::pz)
 target_include_directories(pzfiles PRIVATE ${PZ_INCLUDE_DIRS})
 
+# creating the project
 add_subdirectory(src)
 
 #organizing pz files of this project in IDE
