@@ -311,7 +311,7 @@ TPZCompEl * CreateRefKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &
 TPZCompEl * CreateRefKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 
 
-#include "TPZCompElKernelHdiv_imp.h"
+//#include "TPZCompElKernelHdiv_imp.h"
 /** @} */
 
 #endif

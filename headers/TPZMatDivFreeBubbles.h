@@ -105,7 +105,7 @@ protected:
 
 extern template class TPZMatDivFreeBubbles<STATE>;
 extern template class TPZMatDivFreeBubbles<CSTATE>;
-#include "TPZMatDivFreeBubbles_imp.h"
+//#include "TPZMatDivFreeBubbles_imp.h"
 
 #endif
 
