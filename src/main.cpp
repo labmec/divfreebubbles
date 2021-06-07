@@ -2,8 +2,6 @@
   #include <pz_config.h>
 #endif
 
-// #include "TPZGenGrid2D.h"
-
 #include <stdio.h>
 #include <math.h>
 #include <iostream>
@@ -15,7 +13,7 @@
 #include <pzcmesh.h> //for TPZCompMesh
 #include <TPZGmshReader.h>
 #include <TPZVTKGeoMesh.h>
-#include "../material/TPZMatDivFreeBubbles.h" //THE NEW MATERIAL!
+#include "../headers/TPZMatDivFreeBubbles.h" //THE NEW MATERIAL!
 #include "Poisson/TPZMatPoisson.h" //for TPZMatLaplacian
 #include "Projection/TPZL2Projection.h" //for BC in a single point
 #include <TPZNullMaterial.h>
@@ -43,7 +41,7 @@ void PrintResultsH1(int dim, TPZLinearAnalysis &an);
 void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an);
 void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
-void CompareSolutions(int dim, int pOrder, int *matIdVec, TPZCompMesh *cmeshHdiv,TPZCompMesh *cmeshDFB,TPZGeoMesh * gmesh);
+void CompareSolution(int dim, int pOrder, int *matIdVec, TPZCompMesh *cmeshHdiv,TPZCompMesh *cmeshDFB,TPZGeoMesh * gmesh);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -132,7 +130,7 @@ int main(int argc, char* argv[]){
   // std::ofstream anPostProcessFileH1("postprocessH1.txt");
   // ComputeError(anH1,anPostProcessFileH1);
 
-  CompareSolutions(dim,pOrder,matIdVec,cmesh,cmeshDFB,gmesh);
+  CompareSolution(dim,pOrder,matIdVec,cmesh,cmeshDFB,gmesh);
 
 
   return 0;
@@ -182,9 +180,9 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 
   TPZFMatrix<STATE> val5(1,1,1.);
   TPZManVector<STATE> val6(1,0.);
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val5, val6);
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val5, val6);
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val5, val6);
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val5, val6);
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val5, val6);
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val5, val6);
   auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val5, val6);
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
@@ -273,9 +271,9 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
 
   TPZFMatrix<STATE> val5(1,1,1.);
   TPZManVector<STATE> val6(1,0.);
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val5, val6);
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val5, val6);
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val5, val6);
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val5, val6);
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val5, val6);
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val5, val6);
   auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val5, val6);
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
@@ -375,10 +373,10 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
   //Insert boundary conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(2,-4.3820281971726605);
-  auto * BCond = mat->CreateBC(mat, matIdVec[0], 1, val1, val2);
+  auto * BCond = mat->CreateBC(mat, matIdVec[0], 0, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.);
   TPZManVector<STATE> val4(2,0.9288056258294208);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val4);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val4);
   BCond->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond);
@@ -472,9 +470,9 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
   cmesh->InsertMaterialObject(BCond1);
   mat -> fBigNumber = 1.e10;
   
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val3, val5);//Bottom
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val3, val5);//Top
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val3, val5);//Left
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val3, val5);//Bottom
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val3, val5);//Top
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val3, val5);//Left
   auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val3, val5);//Right
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
@@ -610,13 +608,13 @@ void CompareSolution(int dim, int pOrder, int *matIdVec, TPZCompMesh *cmeshHdiv,
 			}
 		}
 	}
-  std::cout << "ERROR Hdiv" << std::cout.precision(15) << std::endl; 
+  std::cout << "ERROR Hdiv" << scientific << std::cout.precision(15) << std::endl; 
   // std::cout << "ERROR[0] = " << sqrt(values2[0]) << std::endl; 
   // std::cout << "ERROR[1] = " << sqrt(values2[1]) << std::endl; 
   // std::cout << "ERROR[2] = " << sqrt(values2[2]) << std::endl; 
   std::cout << "ERROR[3] = " << sqrt(values2[3]) << std::endl; 
   // std::cout << "ERROR[4] = " << sqrt(values2[4]) << std::endl; 
-  std::cout << "\nERROR DFB" << std::cout.precision(15) << std::endl; 
+  std::cout << "\nERROR DFB" << scientific << std::cout.precision(15) << std::endl; 
   // std::cout << "ERROR[0] = " << sqrt(values2DFB[0]) << std::endl; 
   // std::cout << "ERROR[1] = " << sqrt(values2DFB[1]) << std::endl; 
   std::cout << "ERROR[2] = " << sqrt(values2DFB[2]) << std::endl; 
