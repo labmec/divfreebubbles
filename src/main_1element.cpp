@@ -44,6 +44,7 @@ void SolveProblem(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an);
+void PrintResultsDivFreeBubblesNew(int dim, TPZLinearAnalysis &an);
 void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 void CompareSolution(int dim, int pOrder, int *matIdVec, TPZCompMesh *cmeshHdiv,TPZCompMesh *cmeshDFB,TPZGeoMesh * gmesh);
@@ -60,7 +61,7 @@ using namespace std;
 int main(int argc, char* argv[]){
   //dimension of the problem
   constexpr int dim{2};
-  constexpr int pOrder{2};
+  constexpr int pOrder{1};
   //Materials - See the .geo file
   int matIdVec[]={1,2,3,4,5,6,7,8};
   //1 = Injection Well
@@ -81,7 +82,7 @@ int main(int argc, char* argv[]){
   gmesh = new TPZGeoMesh();
   TPZGmshReader *reader;
   reader = new TPZGmshReader();
-  reader -> GeometricGmshMesh4("../mesh/1element.msh",gmesh);
+  reader -> GeometricGmshMesh4("../mesh/4element.msh",gmesh);
   
   //.................................Hdiv.................................
   //Flux mesh
@@ -102,6 +103,8 @@ int main(int argc, char* argv[]){
 
   //Print results
   PrintResultsMultiphysic(dim,meshvector,an,cmesh);
+  std::ofstream out3("mesh_Hdiv.txt");
+	an.Print("nothing",out3);
 
   //...........................Div Free Bubbles...........................
   //Creates DFB problem
@@ -119,19 +122,19 @@ int main(int argc, char* argv[]){
   std::ofstream out("mesh.txt");
 	anDFB.Print("nothing",out);
 
-  PrintResultsDivFreeBubbles(dim,anDFBNew);
+  PrintResultsDivFreeBubblesNew(dim,anDFBNew);
   std::ofstream out2("meshNew.txt");
-	anDFBNew.Print("nothing_new",out2);
+	anDFBNew.Print("nothing",out2);
   
   //...........................ERROR EVALUATION...........................
-  std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
-  ComputeErrorHdiv(an,anPostProcessFileHdiv);
+  // std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
+  // ComputeErrorHdiv(an,anPostProcessFileHdiv);
 
   std::ofstream anPostProcessFileDFB("postprocessDFB.txt");
   ComputeError(anDFB,anPostProcessFileDFB);
 
 
-  CompareSolution(dim,pOrder,matIdVec,cmesh,cmeshDFB,gmesh);
+  // CompareSolution(dim,pOrder,matIdVec,cmesh,cmeshDFB,gmesh);
 
 
 //   std::ofstream anPostProcessFileH1("postprocessH1.txt");
@@ -306,7 +309,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
   //sets number of threads to be used by the solver
-  constexpr int nThreads{1};
+  constexpr int nThreads{2};
   TPZSkylineStructMatrix<STATE> matskl(cmesh);
   matskl.SetNumThreads(nThreads);
   an.SetStructuralMatrix(matskl);
@@ -391,6 +394,19 @@ void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an)
   scalarVars[0] = "Solution";
   vectorVars[0] = "Derivative";
   an.DefineGraphMesh(dim,scalarVars,vectorVars,"SolutionDFB.vtk");
+  constexpr int resolution{0};
+  an.PostProcess(resolution,dim);	
+
+  return;
+}
+
+void PrintResultsDivFreeBubblesNew(int dim, TPZLinearAnalysis &an)
+{
+  // an.SetExact(exactSol,solOrder);
+  TPZVec<std::string> vectorVars(1), scalarVars(1);
+  scalarVars[0] = "Solution";
+  vectorVars[0] = "Derivative";
+  an.DefineGraphMesh(dim,scalarVars,vectorVars,"SolutionDFB_NEW.vtk");
   constexpr int resolution{0};
   an.PostProcess(resolution,dim);	
 
@@ -646,12 +662,13 @@ TPZCompMesh *CMeshDivFreeBubblesNew(int dim, int pOrder, int *matIdVec, TPZGeoMe
     int type = gel -> Type();
   
     std::cout << " elType "<< i << " " << gel -> Type() << " " << gmesh->NElements() << std::endl;
-    
+    int64_t index;
+
     if (type == 1){
-      TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,i);
+      TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
     } else {
       if (type == 3){
-        TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,i);
+        TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
       } 
     }   
     

@@ -27,10 +27,6 @@ class TPZCompElKernelHDiv : public TPZIntelGen<TSHAPE> {
     /// Data structure which defines the restraints
     std::list<TPZOneShapeRestraint> fRestraints;
 
-protected:
-    /** @brief To append vectors */
-	void Append(TPZFMatrix<REAL> &u1, TPZFMatrix<REAL> &u2, TPZFMatrix<REAL> &u12);
-
 public:
 	    
 	TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
@@ -72,9 +68,7 @@ public:
 
 	
 	virtual MElementType Type() override;
-	
-	virtual int NConnects() const override;
-	
+		
 	virtual void SetConnectIndex(int i, int64_t connectindex) override;
     
     /**
@@ -99,10 +93,6 @@ public:
 	 **/
 	virtual int SideConnectLocId(int node, int side) const override;
     
-    /** 
-     * @brief return the local index for side
-     **/
-	virtual int ConnectSideLocId(int connect) const;
 	
 	virtual int64_t ConnectIndex(int con) const override;
     
@@ -149,16 +139,7 @@ public:
      * @brief return the interpolation order of the polynomial for connect
      **/
 	virtual int ConnectOrder(int connect) const override;
-	/**
-     * @brief return the number of continuous functions 
-     **/
-	int NShapeContinuous(TPZVec<int> &order);
-    
-    /// Fill the polynomial order needed from the scalar shape functions
-    void FillOrder(TPZVec<int> &order) const ;
 	
-    /// Return the maximum order??
-    virtual int MaxOrder() override;
     
     /// the orientation of the face
     int SideOrient(int face)
@@ -190,16 +171,9 @@ public:
 	/** @brief Compute the correspondence between the normal vectors and the shape functions */
 	void ComputeShapeIndex(TPZVec<int> &sides, TPZVec<int64_t> &shapeindex);
 	
-	/** 
-	 * @brief Returns the vector index  of the first index shape associate to to each side 
-	 * Special implementation to Hdiv
-	 */
-	void FirstShapeIndex(TPZVec<int64_t> &Index) const;
-	
 	void Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi, TPZFMatrix<REAL> &dphi) override;
-    
-    /** @brief Compute the solution for a given variable */
-	virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
+
+	void CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) override;
 		
 	
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
@@ -209,15 +183,6 @@ public:
 	void Write(TPZStream &buf, int withclassid) const override;
 	
 protected:
-    //@{
-    /** @brief Compute the solution using Hdiv structure */
-	void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
-        // ComputeSolutionHDivT(data);
-    }
-    void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
-        // ComputeSolutionHDivT(data);
-    }
-    //@}
     template<class TVar>
     void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
 };
