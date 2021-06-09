@@ -69,9 +69,6 @@ public:
     /** @brief Set create function in TPZCompMesh to create elements of this type */
 	virtual void SetCreateFunctions(TPZCompMesh *mesh) override;
 	
-    /** @brief Prints the relevant data of the element to the output stream */
-	virtual void Print(std::ostream &out = std::cout) const override;
-	
 
 	
 	virtual MElementType Type() override;
@@ -79,9 +76,6 @@ public:
 	virtual int NConnects() const override;
 	
 	virtual void SetConnectIndex(int i, int64_t connectindex) override;
-	
-    /// return the first one dof restraint
-    int RestrainedFace();
     
     /**
      * @brief Number of shapefunctions of the connect associated
@@ -97,10 +91,6 @@ public:
 	virtual int NCornerConnects() const override {
 		return 0;
 	}
-	/** 
-     * @brief return the number of shape for flux(just for flux)
-	 **/
-	virtual int NFluxShapeF() const;
 	
 	virtual int NSideConnects(int side) const override;
     
@@ -133,21 +123,6 @@ public:
     {
         fRestraints.clear();
     }
-
-    /**
-     * @brief It returns the normal orientation of the reference element by the side.
-     * Only side that has dimension larger than zero and smaller than me.
-     * @param side: side of the reference elemen
-     */
-    virtual int GetSideOrient(int side) override;
-    
-    /**
-     * @brief It set the normal orientation of the element by the side.
-     * Only side that has dimension equal to my dimension minus one.
-     * @param side: side of the reference elemen
-     */
-    virtual void SetSideOrient(int side, int sideorient) override;
-    
 	
 	virtual void SetIntegrationRule(int ord) override;
 	
@@ -165,10 +140,10 @@ public:
 	virtual void SetPreferredOrder(int order) override;
 	
 	/** @brief Sets the interpolation order of side to order*/
-	virtual void SetSideOrder(int side, int order) override;
+	// virtual void SetSideOrder(int side, int order) override;
 	
 	/** @brief Returns the actual interpolation order of the polynomial along the side*/
-	virtual int EffectiveSideOrder(int side) const override;
+	// virtual int EffectiveSideOrder(int side) const override;
 	
     /**
      * @brief return the interpolation order of the polynomial for connect
@@ -220,22 +195,12 @@ public:
 	 * Special implementation to Hdiv
 	 */
 	void FirstShapeIndex(TPZVec<int64_t> &Index) const;
-    
-	/** @brief Computes the values of the shape function of the side*/
-	virtual void SideShapeFunction(int side,TPZVec<REAL> &point,TPZFMatrix<REAL> &phi,TPZFMatrix<REAL> &dphi) override;
 	
 	void Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi, TPZFMatrix<REAL> &dphi) override;
     
     /** @brief Compute the solution for a given variable */
 	virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
-	
-	void CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) override;
-	
-	
-	/** Jorge 09/06/2001
-	 * @brief Returns the transformation which transform a point from the side to the interior of the element
-	 */
-	TPZTransform<> TransformSideToElement(int side) override;
+		
 	
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
     int ClassId() const override;
@@ -243,22 +208,16 @@ public:
 	/** @brief Save the element data to a stream */
 	void Write(TPZStream &buf, int withclassid) const override;
 	
-	/** @brief Read the element data from a stream */
-	void Read(TPZStream &buf, void *context) override;
-    /** @brief Refinement along the element */
-    virtual void PRefine(int order) override;
 protected:
     //@{
     /** @brief Compute the solution using Hdiv structure */
 	void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
-        ComputeSolutionHDivT(data);
+        // ComputeSolutionHDivT(data);
     }
     void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
-        ComputeSolutionHDivT(data);
+        // ComputeSolutionHDivT(data);
     }
     //@}
-    template<class TVar>
-    void ComputeSolutionHDivT(TPZMaterialDataT<TVar> &data);
     template<class TVar>
     void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
 };
@@ -279,6 +238,8 @@ void TPZCompElKernelHDiv<TSHAPE>::SetCreateFunctions(TPZCompMesh* mesh) {
 #include "pzgeoquad.h"
 #include "tpzquadrilateral.h"
 
+/** @brief Creates computational point element for HDiv approximate space */
+TPZCompEl *CreateKernelHDivPointEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 /** @brief Creates computational linear element for HDiv approximate space */
 TPZCompEl *CreateKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 /** @brief Creates computational quadrilateral element for HDiv approximate space */
@@ -293,14 +254,6 @@ TPZCompEl *CreateKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &inde
 TPZCompEl *CreateKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 /** @brief Creates computational tetrahedral element for HDiv approximate space */
 TPZCompEl *CreateKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational point element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivBoundPointEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational linear element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivBoundLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational quadrilateral element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivBoundQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational triangular element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivBoundTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 
 TPZCompEl * CreateRefKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 TPZCompEl * CreateRefKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
@@ -310,8 +263,5 @@ TPZCompEl * CreateRefKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &
 TPZCompEl * CreateRefKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 TPZCompEl * CreateRefKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 
-
-//#include "TPZCompElKernelHdiv_imp.h"
-/** @} */
 
 #endif
