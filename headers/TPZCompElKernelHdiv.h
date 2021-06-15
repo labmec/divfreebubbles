@@ -20,9 +20,6 @@
  */
 template<class TSHAPE>
 class TPZCompElKernelHDiv : public TPZIntelGen<TSHAPE> {
-	
-    /// vector which defines whether the normal is outward or not
-    TPZManVector<int, TSHAPE::NFacets> fSideOrient;
     
     /// Data structure which defines the restraints
     std::list<TPZOneShapeRestraint> fRestraints;
@@ -119,39 +116,6 @@ public:
 	/** @brief Identifies the interpolation order on the interior of the element*/
 	virtual void GetInterpolationOrder(TPZVec<int> &ord) override;
 	
-	/** @brief Returns the preferred order of the polynomial along side iside*/
-	virtual int PreferredSideOrder(int iside) override;
-	
-	/*
-     * @brief Sets the preferred interpolation order along a side \n
-	 * This method only updates the datastructure of the element
-	 * In order to change the interpolation order of an element, use the method PRefine
-	 */
-	virtual void SetPreferredOrder(int order) override;
-	
-	/** @brief Sets the interpolation order of side to order*/
-	// virtual void SetSideOrder(int side, int order) override;
-	
-	/** @brief Returns the actual interpolation order of the polynomial along the side*/
-	// virtual int EffectiveSideOrder(int side) const override;
-	
-    /**
-     * @brief return the interpolation order of the polynomial for connect
-     **/
-	virtual int ConnectOrder(int connect) const override;
-	
-    
-    /// the orientation of the face
-    int SideOrient(int face)
-    {
-#ifdef PZDEBUG
-        if (face < 0 || face >= TSHAPE::NFacets) {
-            DebugStop();
-        }
-#endif
-        return fSideOrient[face];
-    }
-	
 	/** @brief Initialize a material data and its attributes based on element dimension, number
 	 * of state variables and material definitions */
 	virtual void InitMaterialData(TPZMaterialData &data) override;
@@ -181,11 +145,12 @@ public:
 
 	/** @brief Save the element data to a stream */
 	void Write(TPZStream &buf, int withclassid) const override;
-	
+
 protected:
     template<class TVar>
     void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
 };
+
 
 template<class TSHAPE>
 int TPZCompElKernelHDiv<TSHAPE>::ClassId() const{

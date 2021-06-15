@@ -33,7 +33,7 @@ using namespace std;
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
 TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index) {
-
+	// this->TPZInterpolationSpace::fPreferredOrder = 1;//mesh.GetDefaultOrder();
 }
 
 template<class TSHAPE>
@@ -118,18 +118,6 @@ void TPZCompElKernelHDiv<TSHAPE>::GetInterpolationOrder(TPZVec<int> &ord) {
     this->GetInterpolationOrder(ord);
 }
 
-
-template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::PreferredSideOrder(int side) {
-	if(side < TSHAPE::NCornerNodes) return 0;
-	if(side<TSHAPE::NSides) {
-		int order =this->fPreferredOrder;
-		return this->AdjustPreferredSideOrder(side,order);
-	}
-	PZError << "TPZIntelgen::PreferredSideOrder called for side = " << side << "\n";
-	return 0;
-}
-
 template<class TSHAPE>
 int64_t TPZCompElKernelHDiv<TSHAPE>::ConnectIndex(int con) const{
 #ifndef NODEBUG
@@ -142,17 +130,6 @@ int64_t TPZCompElKernelHDiv<TSHAPE>::ConnectIndex(int con) const{
 	return this->fConnectIndexes[con];
 }
 
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::SetPreferredOrder(int order)
-{
-    TPZIntelGen<TSHAPE>:: SetPreferredOrder(order);
-	//this->fPreferredOrder = order;
-}
-
-template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::ConnectOrder(int connect) const{
-	return this->Connect(connect).Order();
-}
 
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi, TPZFMatrix<REAL> &dphi)
@@ -165,8 +142,10 @@ void TPZCompElKernelHDiv<TSHAPE>::Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi,
 		id[i] = ref->NodePtr(i)->Id();
 	}
 	for(i=0; i<TSHAPE::NSides-TSHAPE::NCornerNodes; i++) {
+		//AQUI ESTÁ RETORNANDO ORD = 2 E DEVE SER IGUAL A 1.
 		ord[i] = this->Connect(i+TSHAPE::NCornerNodes).Order();
 	}
+	std::cout << "ORDE \n " << ord << std::endl; 
 	TSHAPE::Shape(pt,id,ord,phi,dphi);
 }
 
@@ -180,6 +159,21 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &d
     TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
 
+
+    for (int i = 0; i < data.dphix.Cols(); i++){
+        if (data.dphix.Rows()>1){
+            data.fDeformedDirections(0,i) =  data.dphix(1,i);
+            data.fDeformedDirections(1,i) = -data.dphix(0,i);
+        }
+    }
+
+    for (int i = 0; i < data.phi.Rows(); i++){
+		data.phi(i,0) = 1.;
+	}
+	for (int i = 0; i < data.dphix.Rows(); i++)
+        for (int j = 0; j < data.dphix.Cols(); j++)
+    	    data.dphix(i,j) = 1.;
+
 #ifdef PZ_LOG
     if (logger.isDebugEnabled()) {
         std::stringstream sout;
@@ -187,10 +181,7 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &d
         LOGPZ_DEBUG(logger, sout.str())
     }
 #endif
-
-
 }//void
-
 /** Initialize a material data and its attributes based on element dimension, number
  * of state variables and material definitions
  */
@@ -198,7 +189,28 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &d
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
+	data.fNeedsSol = true;
 	TPZIntelGen<TSHAPE>::InitMaterialData(data);
+
+	std::cout << "NCONNECTS1 = " << this->NConnects() << std::endl;
+
+	int nshape = this->NShapeF();
+    // int64_t numvec = TSHAPE::Dimension*TSHAPE::NSides;
+    data.fMasterDirections.Resize(3, nshape);
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < nshape; j++)
+			data.fMasterDirections(i,j) = 1;
+
+    data.divphi.Zero();
+    
+    data.fVecShapeIndex.Resize(nshape);
+    for (int i=0; i<nshape; i++) {
+		data.fVecShapeIndex[i] = std::make_pair(i,1);
+    }
+    data.fDeformedDirections.Resize(3,nshape);
+   
+    std::cout << "NCONNECTS2 = " << this->NConnects() << std::endl;
+
 }
 
 
