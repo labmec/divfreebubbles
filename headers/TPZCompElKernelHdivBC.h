@@ -34,6 +34,8 @@ class TPZCompElKernelHDivBC : public TPZMatCombinedSpacesBC<TVar> {
 public:
 	    
 	TPZCompElKernelHDivBC();
+    
+    TPZCompElKernelHDivBC(int id, int dim){};
 
     TPZCompElKernelHDivBC(TPZMaterial * material, int matid, int type, TPZFMatrix<TVar> &val1,TPZFMatrix<TVar> &val2);
 	
@@ -45,5 +47,8 @@ public:
     int ClassId() const override;
 	
 };
+
+template class TPZCompElKernelHDivBC<STATE>;
+template class TPZCompElKernelHDivBC<CSTATE>;
 
 #endif

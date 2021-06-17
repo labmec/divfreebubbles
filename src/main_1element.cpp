@@ -261,7 +261,8 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   cmesh->SetDefaultOrder(pOrder);
   cmesh->SetDimModel(dim);
   auto mat = new TPZMixedDarcyFlow(matIdVec[0], dim);
-  TPZCompElKernelHDivBC<STATE> *mat2;
+  // TPZCompElKernelHDivBC<STATE> *mat2;
+  // auto mat2 = new TPZCompElKernelHDivBC<STATE>(matIdVec[1], dim);
 
   mat->SetPermeabilityFunction(1.);
   cmesh->InsertMaterialObject(mat);

@@ -7,13 +7,13 @@
 
 template<class TVar>
 TPZCompElKernelHDivBC<TVar>::TPZCompElKernelHDivBC(TPZMaterial * material, int matid, int type, TPZFMatrix<TVar> &val1,TPZFMatrix<TVar> &val2) : 
-TPZRegisterClassId(&TPZCompElKernelHDivBC::ClassId), TPZBndCondT<TVar>(type){
+TPZRegisterClassId(&TPZCompElKernelHDivBC::ClassId), TPZMatCombinedSpacesBC<TVar>(type){
 
 }
 
 template<class TVar>
 TPZCompElKernelHDivBC<TVar>::~TPZCompElKernelHDivBC(){
-    this->~TPZBndCondT<TVar>();
+    this->~TPZMatCombinedSpacesBC<TVar>();
 }
 
 template<class TVar>
