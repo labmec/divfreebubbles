@@ -4,7 +4,7 @@
  */
 
 #include "TPZCompElKernelHdiv.h"
-
+#include "TPZCompElKernelHdivBC.h"
 #include "pzcmesh.h"
 #include "pzquad.h"
 #include "pzgeoel.h"
@@ -32,8 +32,8 @@ using namespace std;
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index) {
-	// this->TPZInterpolationSpace::fPreferredOrder = 1;//mesh.GetDefaultOrder();
+TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index)  {
+
 }
 
 template<class TSHAPE>
@@ -142,10 +142,8 @@ void TPZCompElKernelHDiv<TSHAPE>::Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi,
 		id[i] = ref->NodePtr(i)->Id();
 	}
 	for(i=0; i<TSHAPE::NSides-TSHAPE::NCornerNodes; i++) {
-		//AQUI ESTÁ RETORNANDO ORD = 2 E DEVE SER IGUAL A 1.
 		ord[i] = this->Connect(i+TSHAPE::NCornerNodes).Order();
 	}
-	std::cout << "ORDE \n " << ord << std::endl; 
 	TSHAPE::Shape(pt,id,ord,phi,dphi);
 }
 
@@ -170,9 +168,9 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &d
     for (int i = 0; i < data.phi.Rows(); i++){
 		data.phi(i,0) = 1.;
 	}
-	for (int i = 0; i < data.dphix.Rows(); i++)
-        for (int j = 0; j < data.dphix.Cols(); j++)
-    	    data.dphix(i,j) = 1.;
+	// for (int i = 0; i < data.dphix.Rows(); i++)
+    //     for (int j = 0; j < data.dphix.Cols(); j++)
+    // 	    data.dphix(i,j) = 1.;
 
 #ifdef PZ_LOG
     if (logger.isDebugEnabled()) {
@@ -192,8 +190,6 @@ void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 	data.fNeedsSol = true;
 	TPZIntelGen<TSHAPE>::InitMaterialData(data);
 
-	std::cout << "NCONNECTS1 = " << this->NConnects() << std::endl;
-
 	int nshape = this->NShapeF();
     // int64_t numvec = TSHAPE::Dimension*TSHAPE::NSides;
     data.fMasterDirections.Resize(3, nshape);
@@ -209,8 +205,6 @@ void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
     }
     data.fDeformedDirections.Resize(3,nshape);
    
-    std::cout << "NCONNECTS2 = " << this->NConnects() << std::endl;
-
 }
 
 

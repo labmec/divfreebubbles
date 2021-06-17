@@ -32,6 +32,7 @@
 #include "pzstrmatrixor.h"
 #include "pzlog.h"
 #include "../headers/TPZCompElKernelHdiv.h" //THE NEW MATERIAL!
+#include "../headers/TPZCompElKernelHdivBC.h" //THE NEW MATERIAL!
 #include "pzelchdiv.h"
 
 
@@ -86,7 +87,7 @@ int main(int argc, char* argv[]){
   gmesh = new TPZGeoMesh();
   TPZGmshReader *reader;
   reader = new TPZGmshReader();
-  reader -> GeometricGmshMesh4("../mesh/1element.msh",gmesh);
+  reader -> GeometricGmshMesh4("../mesh/4element.msh",gmesh);
   
   //.................................Hdiv.................................
   //Flux mesh
@@ -260,6 +261,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   cmesh->SetDefaultOrder(pOrder);
   cmesh->SetDimModel(dim);
   auto mat = new TPZMixedDarcyFlow(matIdVec[0], dim);
+  TPZCompElKernelHDivBC<STATE> *mat2;
 
   mat->SetPermeabilityFunction(1.);
   cmesh->InsertMaterialObject(mat);
@@ -273,16 +275,18 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   constexpr int boundType0{0};
   auto * BCond0 = mat->CreateBC(mat, matIdVec[1], 0, val1, val4);//Bottom 
   auto * BCond1 = mat->CreateBC(mat, matIdVec[2], 0, val1, val2);//Right
-  // BCond0->SetForcingFunctionBC(exactSol);
-  // BCond1->SetForcingFunctionBC(exactSol);
+  BCond0->SetForcingFunctionBC(exactSol);
+  BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond1);
   cmesh->InsertMaterialObject(BCond0);
   auto * BCond2 = mat->CreateBC(mat, matIdVec[3], 0, val1, val2);//Top
   auto * BCond3 = mat->CreateBC(mat, matIdVec[4], 0, val1, val4);//Left
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
-  // cmesh->InsertMaterialObject(BCond2);
-  // cmesh->InsertMaterialObject(BCond3);
+  cmesh->InsertMaterialObject(BCond2);
+  cmesh->InsertMaterialObject(BCond3);
+  // auto *mat2 = new TPZL2Projection<>(matIdVec[5],0,1);
+  // cmesh->InsertMaterialObject(mat2);
 
   TPZManVector<int> active(2,1);
   cmesh->BuildMultiphysicsSpace(active, meshvector);
@@ -458,14 +462,14 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
   constexpr int boundType{0};
   auto * BCond = mat->CreateBC(mat, matIdVec[1], 0, val1, val4);//Bottom
   auto * BCond1 = mat->CreateBC(mat, matIdVec[2], 0, val1, val2);//Right
-  // BCond->SetForcingFunctionBC(exactSol);
-  // BCond1->SetForcingFunctionBC(exactSol);
+  BCond->SetForcingFunctionBC(exactSol);
+  BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond);
   cmesh->InsertMaterialObject(BCond1);
   auto * BCond2 = mat->CreateBC(mat, matIdVec[3], 0, val1, val2);//Top
   auto * BCond3 = mat->CreateBC(mat, matIdVec[4], 0, val1, val4);//Left
-  // BCond2->SetForcingFunctionBC(exactSol);
-  // BCond3->SetForcingFunctionBC(exactSol);
+  BCond2->SetForcingFunctionBC(exactSol);
+  BCond3->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
 
@@ -615,12 +619,14 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
 {
   //Creates cmesh object
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
+  cmesh->SetDefaultOrder(pOrder);
   cmesh->SetAllCreateFunctionsContinuous();
 
   //Sets materials
   TPZMatPoisson<> *mat = new TPZMatPoisson<>(matIdVec[0],dim);
   // TPZMixedDarcyFlow *mat = new TPZMixedDarcyFlow(matIdVec[0],dim);
   // mat->SetPermeabilityFunction(1.); 
+  mat -> fBigNumber = 1.e10;
   cmesh->InsertMaterialObject(mat);
 
   //Insert boundary conditions
@@ -631,16 +637,16 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
   auto * BCond1 = mat->CreateBC(mat, matIdVec[2], 0, val1, val2);
   auto * BCond2 = mat->CreateBC(mat, matIdVec[3], 0, val1, val2);
   auto * BCond3 = mat->CreateBC(mat, matIdVec[4], 0, val1, val4);
-  // BCond->SetForcingFunctionBC(exactSol);
-  // BCond1->SetForcingFunctionBC(exactSol);
-  // BCond2->SetForcingFunctionBC(exactSol);
-  // BCond3->SetForcingFunctionBC(exactSol);
+  BCond->SetForcingFunctionBC(exactSol);
+  BCond1->SetForcingFunctionBC(exactSol);
+  BCond2->SetForcingFunctionBC(exactSol);
+  BCond3->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond);
   cmesh->InsertMaterialObject(BCond1);
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
   
-  cmesh->SetDefaultOrder(pOrder);
+  
   cmesh->AutoBuild();
 
   return cmesh;
@@ -762,6 +768,9 @@ TPZCompMesh *FluxCMeshNew(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
 
+  auto *mat2 = new TPZL2Projection<>(matIdVec[5],0,1);
+  cmesh->InsertMaterialObject(mat2);
+
 
   for (int64_t i = 0; i < gmesh->NElements(); i++)
   {
@@ -769,13 +778,17 @@ TPZCompMesh *FluxCMeshNew(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
     int type = gel -> Type();
     int64_t index;
 
-    if (type == 1){
-      TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+    if (type == 0){
+      TPZCompEl *cel = CreateKernelHDivPointEl(gel,*cmesh,index);
     } else {
-      if (type == 3){
-        TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
-      } 
-    }  
+      if (type == 1){
+        TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+      } else {
+        if (type == 3){
+          TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
+        } 
+      }  
+    }
   } 
 
   
