@@ -449,6 +449,7 @@ void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
 TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
 {
   gmesh->ResetReference();
+    
   //Creates cmesh object
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
   cmesh->SetAllCreateFunctionsContinuous();
