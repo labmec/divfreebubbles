@@ -6,14 +6,12 @@
 #ifndef TPZCOMPELKERNELHDIVBC_H
 #define TPZCOMPELKERNELHDIVBC_H
 
+#include "pzelctemp.h"
 #include "TPZBndCond.h"
-#include "TPZMatBase.h"
-#include "TPZMatSingleSpace.h"
-#include "TPZMatLoadCases.h"
-#include "TPZMatErrorSingleSpace.h"
-#include "TPZMaterialDataT.h"
-#include "TPZMatCombinedSpaces.h"
-
+#include "pzrefquad.h"
+#include "pzshapequad.h"
+#include "pzgeoquad.h"
+#include "tpzquadrilateral.h"
 
 
 /**
@@ -24,31 +22,22 @@
 /** 
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
-template<class TVar=STATE>
-class TPZCompElKernelHDivBC : public TPZMatCombinedSpacesBC<TVar> {
-    using TBase = TPZMatBase<TVar,
-                             TPZMatSingleSpaceT<TVar>,
-                             TPZMatErrorSingleSpace<TVar>,
-                             TPZMatLoadCases<TVar>>;
+template<class TSHAPE>
+class TPZCompElKernelHDivBC : public TPZIntelGen<TSHAPE>  {
 
 public:
 	    
 	TPZCompElKernelHDivBC();
     
-    TPZCompElKernelHDivBC(int id, int dim){};
-
-    TPZCompElKernelHDivBC(TPZMaterial * material, int matid, int type, TPZFMatrix<TVar> &val1,TPZFMatrix<TVar> &val2);
+    TPZCompElKernelHDivBC(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
 	
 	virtual ~TPZCompElKernelHDivBC();
 
-    void ContributeBC(TPZMaterialData &data, REAL weight, TPZFMatrix<TVar> &ek,TPZFMatrix<TVar> &ef, TPZBndCondT<TVar> &bc);
+    virtual void InitMaterialData(TPZMaterialData &data) override;
 
-    /** @brief Returns the unique identifier for reading/writing objects to streams */
-    int ClassId() const override;
+    void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;
 	
 };
 
-template class TPZCompElKernelHDivBC<STATE>;
-template class TPZCompElKernelHDivBC<CSTATE>;
 
 #endif

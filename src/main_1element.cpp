@@ -33,8 +33,11 @@
 #include "pzlog.h"
 #include "../headers/TPZCompElKernelHdiv.h" //THE NEW MATERIAL!
 #include "../headers/TPZCompElKernelHdivBC.h" //THE NEW MATERIAL!
-#include "pzelchdiv.h"
-
+#include "pzshapecube.h"
+#include "pzshapelinear.h"
+#include "pzshapequad.h"
+#include "pzshapepoint.h"
+#include "pzshapetriang.h"
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *FluxCMeshNew(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh);
@@ -87,7 +90,7 @@ int main(int argc, char* argv[]){
   gmesh = new TPZGeoMesh();
   TPZGmshReader *reader;
   reader = new TPZGmshReader();
-  reader -> GeometricGmshMesh4("../mesh/4element.msh",gmesh);
+  reader -> GeometricGmshMesh4("../mesh/1element.msh",gmesh);
   
   //.................................Hdiv.................................
   //Flux mesh
@@ -136,7 +139,7 @@ int main(int argc, char* argv[]){
   // SolveProblemDirect(anDFBNew,cmeshDFBnew);
 
   // //Print results
-  // PrintResultsDivFreeBubbles(dim,anDFB);
+  PrintResultsDivFreeBubbles(dim,anDFB);
   std::ofstream out("mesh.txt");
 	anDFB.Print("nothing",out);
 
@@ -179,6 +182,7 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 //Flux computational mesh
 TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh) 
 {
+  gmesh->ResetReference();
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
   TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[0]);
   cmesh->InsertMaterialObject(mat);
@@ -215,37 +219,38 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 // Pressure computational mesh
 TPZCompMesh *PressureCMesh(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
 {
+  gmesh->ResetReference();
   //Change if not triangular elements
-  bool fTriang = false;
+  // bool fTriang = false;
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
   TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[0]);
   mat->SetDimension(dim);
   cmesh->InsertMaterialObject(mat);
-  mat -> fBigNumber = 1.e10;
-  cmesh->SetAllCreateFunctionsDiscontinuous();
-  cmesh->SetDefaultOrder(pOrder);
-  cmesh->SetDimModel(dim);
-  cmesh->AutoBuild();
+  // mat -> fBigNumber = 1.e10;
+  // // cmesh->SetAllCreateFunctionsDiscontinuous();
+  // cmesh->SetDefaultOrder(pOrder);
+  // cmesh->SetDimModel(dim);
+  // cmesh->AutoBuild();
 
-  int ncon = cmesh->NConnects();
-  for(int i=0; i<ncon; i++)
-  {
-      TPZConnect &newnod = cmesh->ConnectVec()[i]; 
-      newnod.SetLagrangeMultiplier(1);
-  }
+  // int ncon = cmesh->NConnects();
+  // for(int i=0; i<ncon; i++)
+  // {
+  //     TPZConnect &newnod = cmesh->ConnectVec()[i]; 
+  //     newnod.SetLagrangeMultiplier(1);
+  // }
 
-  int nel = cmesh->NElements();
-  for(int i=0; i<nel; i++){
-      TPZCompEl *cel = cmesh->ElementVec()[i];
-      TPZCompElDisc *celdisc = dynamic_cast<TPZCompElDisc *>(cel);
-      celdisc->SetConstC(1.);
-      celdisc->SetTrueUseQsiEta();
-      if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
-      {
-          if(fTriang==true) celdisc->SetTotalOrderShape();
-          else celdisc->SetTensorialShape();
-      }
-  }
+  // int nel = cmesh->NElements();
+  // for(int i=0; i<nel; i++){
+  //     TPZCompEl *cel = cmesh->ElementVec()[i];
+  //     TPZCompElDisc *celdisc = dynamic_cast<TPZCompElDisc *>(cel);
+  //     celdisc->SetConstC(1.);
+  //     celdisc->SetTrueUseQsiEta();
+  //     if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
+  //     {
+  //         if(fTriang==true) celdisc->SetTotalOrderShape();
+  //         else celdisc->SetTensorialShape();
+  //     }
+  // }
   //Print pressure mesh
   // std::ofstream myfile("PressureMesh.txt");
   // cmesh->Print(myfile);
@@ -261,8 +266,6 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   cmesh->SetDefaultOrder(pOrder);
   cmesh->SetDimModel(dim);
   auto mat = new TPZMixedDarcyFlow(matIdVec[0], dim);
-  // TPZCompElKernelHDivBC<STATE> *mat2;
-  // auto mat2 = new TPZCompElKernelHDivBC<STATE>(matIdVec[1], dim);
 
   mat->SetPermeabilityFunction(1.);
   cmesh->InsertMaterialObject(mat);
@@ -315,7 +318,7 @@ void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 
   ///Setting a direct solver
   TPZStepSolver<STATE> step;
-  step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+  step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
   an.SetSolver(step);
 
   //assembles the system
@@ -704,16 +707,24 @@ TPZCompMesh *CMeshDivFreeBubblesNew(int dim, int pOrder, int *matIdVec, TPZGeoMe
   for (int64_t i = 0; i < gmesh->NElements(); i++)
   {
     auto *gel = gmesh -> Element(i);
-    int type = gel -> Type();
+    auto type = gel -> Type();
     int64_t index;
+    
 
-    if (type == 1){
-      TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+    if (type == EPoint){
+//      TPZCompEl *cel = CreateKernelHDivPointEl(gel,*cmesh,index);
+      // DebugStop();
     } else {
-      if (type == 3){
-        TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
-      } 
-    }  
+      if (type == EOned){
+//        TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+        TPZCompEl *cel = new TPZCompElKernelHDivBC<pzshape::TPZShapeLinear>(*cmesh,gel,index);
+      } else {
+        if (type == EQuadrilateral){
+//          TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
+          TPZCompEl *cel = new TPZCompElKernelHDiv<pzshape::TPZShapeQuad>(*cmesh,gel,index);
+        } 
+      }  
+    }
   } 
 
 
@@ -746,6 +757,7 @@ TPZCompMesh *CMeshDivFreeBubblesNew(int dim, int pOrder, int *matIdVec, TPZGeoMe
 //Flux computational mesh
 TPZCompMesh *FluxCMeshNew(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh) 
 {
+  gmesh->ResetReference();
   TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
   cmesh->SetDefaultOrder(pOrder);
   TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[0]);
@@ -769,35 +781,40 @@ TPZCompMesh *FluxCMeshNew(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
 
-  auto *mat2 = new TPZL2Projection<>(matIdVec[5],0,1);
-  cmesh->InsertMaterialObject(mat2);
+  // auto *mat2 = new TPZL2Projection<>(matIdVec[5],0,1);
+  // cmesh->InsertMaterialObject(mat2);
 
 
   for (int64_t i = 0; i < gmesh->NElements(); i++)
   {
     auto *gel = gmesh -> Element(i);
-    int type = gel -> Type();
+    auto type = gel -> Type();
     int64_t index;
-
-    if (type == 0){
-      TPZCompEl *cel = CreateKernelHDivPointEl(gel,*cmesh,index);
+    
+    using namespace pzgeom;
+    using namespace pzshape;
+    if (type == EPoint){
+//      TPZCompEl *cel = CreateKernelHDivPointEl(gel,*cmesh,index);
+        TPZCompEl *cel = new TPZCompElKernelHDivBC<TPZShapePoint>(*cmesh,gel,index);
+      // DebugStop();
     } else {
-      if (type == 1){
-        TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+      if (type == EOned){
+//        TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+        TPZCompEl *cel = new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,gel,index);
       } else {
-        if (type == 3){
-          TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
+        if (type == EQuadrilateral){
+//          TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
+          TPZCompEl *cel = new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
         } 
       }  
     }
   } 
 
-  
   cmesh->AutoBuild();
 
   // Print flux mesh
-  // std::ofstream myfile("FluxMesh.txt");
-  // cmesh->Print(myfile);
+  std::ofstream myfile("FluxMesh.txt");
+  cmesh->Print(myfile);
 
   return cmesh;
 }

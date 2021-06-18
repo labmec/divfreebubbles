@@ -39,7 +39,7 @@ public:
 				        std::map<int64_t,int64_t> & gl2lcConMap,
 				        std::map<int64_t,int64_t> & gl2lcElMap);
 	
-	TPZCompElKernelHDiv();
+	TPZCompElKernelHDiv(){};
 	
 	virtual ~TPZCompElKernelHDiv();
 	
@@ -47,75 +47,9 @@ public:
 		return new TPZCompElKernelHDiv<TSHAPE> (mesh, *this);
 	}
 	
-	/**
-	 * @brief Create a copy of the given element. The clone copy have the connect indexes
-	 * mapped to the local clone connects by the given map
-	 * @param mesh Patch clone mesh
-	 * @param gl2lcConMap map the connects indexes from global element (original) to the local copy.
-	 * @param gl2lcElMap map the indexes of the elements between the original element and the patch element
-	 */
-	virtual TPZCompEl *ClonePatchEl(TPZCompMesh &mesh,std::map<int64_t,int64_t> & gl2lcConMap,std::map<int64_t,int64_t>&gl2lcElMap) const override
-	{
-		return new TPZCompElKernelHDiv<TSHAPE> (mesh, *this, gl2lcConMap, gl2lcElMap);
-	}
-	
     /** @brief Set create function in TPZCompMesh to create elements of this type */
 	virtual void SetCreateFunctions(TPZCompMesh *mesh) override;
-	
-
-	
-	virtual MElementType Type() override;
 		
-	virtual void SetConnectIndex(int i, int64_t connectindex) override;
-    
-    /**
-     * @brief Number of shapefunctions of the connect associated
-     * @param connect connect number
-     * @return number of shape functions
-     */
-	virtual int NConnectShapeF(int connect, int order) const override;
-	
-	virtual int Dimension() const  override {
-		return TSHAPE::Dimension;
-	}
-	
-	virtual int NCornerConnects() const override {
-		return 0;
-	}
-	
-	virtual int NSideConnects(int side) const override;
-    
-	/** 
-     * @brief return the local index for connect
-	 **/
-	virtual int SideConnectLocId(int node, int side) const override;
-    
-	
-	virtual int64_t ConnectIndex(int con) const override;
-    
-    /// Add a shape restraint (meant to fit the pyramid to restraint
-    virtual void AddShapeRestraint(TPZOneShapeRestraint restraint) override
-    {
-        fRestraints.push_back(restraint);
-    }
-    
-    /// Return a list with the shape restraints
-    virtual std::list<TPZOneShapeRestraint> GetShapeRestraints() const override
-    {
-        return fRestraints;
-    }
-    
-    /// Return a list with the shape restraints
-    virtual void ResetShapeRestraints() override
-    {
-        fRestraints.clear();
-    }
-	
-	virtual void SetIntegrationRule(int ord) override;
-	
-	/** @brief Identifies the interpolation order on the interior of the element*/
-	virtual void GetInterpolationOrder(TPZVec<int> &ord) override;
-	
 	/** @brief Initialize a material data and its attributes based on element dimension, number
 	 * of state variables and material definitions */
 	virtual void InitMaterialData(TPZMaterialData &data) override;
@@ -131,20 +65,12 @@ public:
         ComputeRequiredDataT(data,qsi);
     }
     //@}
-
-	/** @brief Compute the correspondence between the normal vectors and the shape functions */
-	void ComputeShapeIndex(TPZVec<int> &sides, TPZVec<int64_t> &shapeindex);
 	
-	void Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi, TPZFMatrix<REAL> &dphi) override;
-
 	void CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) override;
-		
 	
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
     int ClassId() const override;
 
-	/** @brief Save the element data to a stream */
-	void Write(TPZStream &buf, int withclassid) const override;
 
 protected:
     template<class TVar>
@@ -163,6 +89,7 @@ template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::SetCreateFunctions(TPZCompMesh* mesh) {
     mesh->SetAllCreateFunctionsContinuous();
 }
+
 #include "pzrefquad.h"
 #include "pzshapequad.h"
 #include "pzgeoquad.h"

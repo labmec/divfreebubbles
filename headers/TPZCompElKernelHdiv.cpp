@@ -55,97 +55,12 @@ TPZIntelGen<TSHAPE>(mesh,copy,gl2lcConMap,gl2lcElMap){
 
 }
 
-template<class TSHAPE>
-TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv() :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>()
-{
-	this->fPreferredOrder = -1;
-	int i;
-	for(i=0;i<TSHAPE::NSides;i++) {
-		this-> fConnectIndexes[i] = -1;
-	}
-}
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::~TPZCompElKernelHDiv(){
     this->~TPZIntelGen<TSHAPE>();
 }
-
-template<class TSHAPE>
-MElementType TPZCompElKernelHDiv<TSHAPE>::Type() {
-	return TSHAPE::Type();
-}
-
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::SetConnectIndex(int i, int64_t connectindex){
-	this-> SetConnectIndex(i,connectindex);
-}
-
-template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::NConnectShapeF(int connect, int order)const
-{
-    if(connect < TSHAPE::NCornerNodes) return TSHAPE::NConnectShapeF(connect,0);
-	if(order < 0) return 0;
-    int nshape = TSHAPE::NConnectShapeF(connect, order);
-#ifdef PZDEBUG
-    if(nshape < 0 )
-    {
-        nshape = TSHAPE::NConnectShapeF(connect, order);
-        DebugStop();
-    }
-#endif
-	return nshape;
- }
-
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::SetIntegrationRule(int ord) {
-	TPZManVector<int,3> order(TSHAPE::Dimension,ord);
-	this->fIntRule.SetOrder(order);
-}
-
-template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::NSideConnects(int side) const{
-	return TSHAPE::NContainedSides(side);
-}
-
-template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::SideConnectLocId(int node,int side) const {
-    return TSHAPE::ContainedSideLocId(side,node);
-}
-
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::GetInterpolationOrder(TPZVec<int> &ord) {
-    this->GetInterpolationOrder(ord);
-}
-
-template<class TSHAPE>
-int64_t TPZCompElKernelHDiv<TSHAPE>::ConnectIndex(int con) const{
-#ifndef NODEBUG
-	if(con<0 || con>= this->NConnects()) {
-		std::cout << "TPZIntelgen::ConnectIndex wrong parameter con " << con <<
-		" NSides " << TSHAPE::NSides << " NConnects " << this->NConnects() << std::endl;
-		DebugStop();
-	}
-#endif
-	return this->fConnectIndexes[con];
-}
-
-
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::Shape(TPZVec<REAL> &pt, TPZFMatrix<REAL> &phi, TPZFMatrix<REAL> &dphi)
-{	
-    TPZManVector<int64_t,TSHAPE::NCornerNodes> id(TSHAPE::NCornerNodes,0);
-	TPZManVector<int, TSHAPE::NSides-TSHAPE::NCornerNodes+1> ord(TSHAPE::NSides-TSHAPE::NCornerNodes,0);
-	int i;
-	TPZGeoEl *ref = this->Reference();
-	for(i=0; i<TSHAPE::NCornerNodes; i++) {
-		id[i] = ref->NodePtr(i)->Id();
-	}
-	for(i=0; i<TSHAPE::NSides-TSHAPE::NCornerNodes; i++) {
-		ord[i] = this->Connect(i+TSHAPE::NCornerNodes).Order();
-	}
-	TSHAPE::Shape(pt,id,ord,phi,dphi);
-}
+ 
 
 template<class TSHAPE>
 template<class TVar>
@@ -170,19 +85,9 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &d
 	}
 	// for (int i = 0; i < data.dphix.Rows(); i++)
     //     for (int j = 0; j < data.dphix.Cols(); j++)
-    // 	    data.dphix(i,j) = 1.;
+    // 	    	data.dphix(i,j) = 1.;
 
-#ifdef PZ_LOG
-    if (logger.isDebugEnabled()) {
-        std::stringstream sout;
-        data.fDeformedDirections.Print("Normal Vectors " , sout,EMathematicaInput);
-        LOGPZ_DEBUG(logger, sout.str())
-    }
-#endif
 }//void
-/** Initialize a material data and its attributes based on element dimension, number
- * of state variables and material definitions
- */
 
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
@@ -204,16 +109,11 @@ void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 		data.fVecShapeIndex[i] = std::make_pair(i,1);
     }
     data.fDeformedDirections.Resize(3,nshape);
+
+	// std::cout << "Connect Index = " << this->SequenceNumber() << std::endl;
    
 }
 
-
-// Save the element data to a stream
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::Write(TPZStream &buf, int withclassid) const
-{
-    this->Write(buf,withclassid);
-}
 
 
 #include "pzshapecube.h"
