@@ -189,7 +189,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 
   cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
   mat->SetDimension(dim);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,1.);
@@ -269,7 +269,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
 
   mat->SetPermeabilityFunction(1.);
   cmesh->InsertMaterialObject(mat);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
     
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
@@ -457,7 +457,7 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
   //Sets materials
   auto *mat = new TPZMatDivFreeBubbles<STATE>(matIdVec[0],dim);
   cmesh->InsertMaterialObject(mat);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
 
   //Insert boundary conditions
   TPZFMatrix<STATE> val1(1,1,1.);
@@ -630,7 +630,7 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
   TPZMatPoisson<> *mat = new TPZMatPoisson<>(matIdVec[0],dim);
   // TPZMixedDarcyFlow *mat = new TPZMixedDarcyFlow(matIdVec[0],dim);
   // mat->SetPermeabilityFunction(1.); 
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
   cmesh->InsertMaterialObject(mat);
 
   //Insert boundary conditions
@@ -765,7 +765,7 @@ TPZCompMesh *FluxCMeshNew(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 
   // cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
   mat->SetDimension(dim);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,0.);

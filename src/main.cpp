@@ -165,7 +165,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 
   cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
   mat->SetDimension(dim);
-  mat -> fBigNumber = 1.e10;
+  mat ->SetBigNumber(1.e10);
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,-4.3820281971726605);
@@ -212,7 +212,7 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh
   TPZNullMaterial<> *mat = new TPZNullMaterial<>(matIdVec[6]);
   mat->SetDimension(dim);
   cmesh->InsertMaterialObject(mat);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
   cmesh->SetAllCreateFunctionsDiscontinuous();
   cmesh->SetDefaultOrder(pOrder);
   cmesh->SetDimModel(dim);
@@ -255,7 +255,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
 
   mat->SetPermeabilityFunction(1.);
   cmesh->InsertMaterialObject(mat);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
     
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
@@ -468,7 +468,7 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond);
   cmesh->InsertMaterialObject(BCond1);
-  mat -> fBigNumber = 1.e10;
+  mat -> SetBigNumber(1.e10);
   
   auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val3, val5);//Bottom
   auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val3, val5);//Top
