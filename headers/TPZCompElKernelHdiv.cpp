@@ -109,9 +109,99 @@ void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 		data.fVecShapeIndex[i] = std::make_pair(i,1);
     }
     data.fDeformedDirections.Resize(3,nshape);
-
-	// std::cout << "Connect Index = " << this->SequenceNumber() << std::endl;
    
+}
+
+template<class TSHAPE>
+void TPZCompElKernelHDiv<TSHAPE>:: Solution(TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol)
+{
+    
+    TPZMaterialDataT<STATE> data;
+    constexpr bool hasPhi{false};
+    this->ComputeSolution(qsi,data,hasPhi);
+
+    sol.Resize(3);
+    
+    // REAL Sol = data.sol[0];
+    // data.sol.resize(3);
+    // data.sol[0] = Sol;
+    sol[0] = data.sol[0][0];
+    data.sol[0].Resize(3);
+    // sol = std::move(data.sol[0]);
+}
+
+
+template<class TSHAPE>
+template<class TVar>
+void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data)
+{
+    
+    const int dim = 3; 
+    const int nstate = this->Material()->NStateVariables();
+    const int ncon = this->NConnects();
+
+    TPZFMatrix<TVar> &MeshSol = this->Mesh()->Solution();
+
+    int64_t numbersol = MeshSol.Cols();
+
+    if(numbersol != 1)
+    {
+        DebugStop();
+    }
+    data.sol.Resize(numbersol);
+    data.dsol.Resize(numbersol);
+    data.divsol.Resize(numbersol);
+
+    for (int64_t is=0; is<numbersol; is++)
+    {
+        data.sol[is].Resize(dim*nstate);
+        data.sol[is].Fill(0);
+        data.dsol[is].Redim(dim*nstate, dim);
+        data.divsol[is].Resize(nstate);
+        data.divsol[is].Fill(0.);
+    }
+    TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
+    TPZFMatrix<REAL> &dphi = data.dphix;;
+
+    TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+
+    TPZBlock &block =this->Mesh()->Block();
+    int ishape=0,ivec=0,counter=0;
+
+//     int nshapeV = data.fVecShapeIndex.NElements();
+
+    for(int in=0; in<ncon; in++)
+    {
+        TPZConnect *df = &this->Connect(in);
+        int64_t dfseq = df->SequenceNumber();
+        int dfvar = block.Size(dfseq);
+//         // pos : position of the block in the solution matrix
+        int64_t pos = block.Position(dfseq);
+
+//         /// ish loops of the number of shape functions associated with the block
+        for(int ish=0; ish<dfvar/nstate; ish++)
+        {
+            ishape  = data.fVecShapeIndex[counter].first;
+            for(int idf=0; idf<nstate; idf++)
+            {
+                TVar meshsol = MeshSol(pos+ish*nstate+idf,0);
+                REAL phival = data.phi(ishape,0);
+                //Computes sol and dsol
+                // data.sol[0][dim*idf] += phival*meshsol;
+                // data.dsol[0](dim*idf,0)+= meshsol * data.dphix(0,ishape);
+                // data.dsol[0](dim*idf,1)+= meshsol * data.dphix(1,ishape);
+
+                //Compute rotated flux
+                data.sol[0][dim*idf+0] -= meshsol * data.dphix(1,ishape);
+                data.sol[0][dim*idf+1] += meshsol * data.dphix(0,ishape);
+            }
+            counter++;
+        }
+    }
+
+    // data.sol[0][0] = -data.dsol[0](0,1);
+    // data.sol[0][1] = data.dsol[0](0,0);
+    // data.sol[0][2] = 0.;
 }
 
 
@@ -161,28 +251,6 @@ using namespace pztopology;
 
 using namespace pzgeom;
 using namespace pzshape;
-
-template<>
-void TPZCompElKernelHDiv<pzshape::TPZShapePoint>::CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) {
-	if(dimension == 0) std::cout << "A point element has no graphical representation\n";
-}
-
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) {
-	if(dimension == TSHAPE::Dimension /* && Material()->Id() > 0 */) {
-		new typename TSHAPE::GraphElType(this,&grafgrid);
-	}
-}
-
-
-// template<class TSHAPE>
-// void TPZCompElKernelHDiv<TSHAPE>::CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) {
-// 	// if(dimension == TSHAPE::Dimension && this->Material()->Id() > 0) {
-// 	// 	new typename TSHAPE::GraphElType(this,&grafgrid);
-// 	// }
-//     this->CreateGraphicalElement(grafgrid,dimension);
-// }
-
 
 
 template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapeLinear>>;

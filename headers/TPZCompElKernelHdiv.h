@@ -65,14 +65,27 @@ public:
         ComputeRequiredDataT(data,qsi);
     }
     //@}
-	
-	void CreateGraphicalElement(TPZGraphMesh &grafgrid, int dimension) override;
-	
+		
+	/** @brief Compute the solution for a given variable */
+	virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
+
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
     int ClassId() const override;
 
 
 protected:
+
+	 //@{
+    /** @brief Compute the solution using Hdiv structure */
+	void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
+        ComputeSolutionKernelHdivT(data);
+    }
+    void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
+        ComputeSolutionKernelHdivT(data);
+    }
+
+	template<class TVar>
+    void ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data);
     template<class TVar>
     void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
 };
@@ -89,6 +102,7 @@ template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::SetCreateFunctions(TPZCompMesh* mesh) {
     mesh->SetAllCreateFunctionsContinuous();
 }
+
 
 #include "pzrefquad.h"
 #include "pzshapequad.h"

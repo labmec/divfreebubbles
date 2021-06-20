@@ -39,10 +39,11 @@ void TPZCompElKernelHDivBC<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> 
     data.fNeedsSol = true;
     TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
-
-     for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = -data.dphix(0,i);
-	}
+    
+    if (data.phi.Rows()>1){
+    for (int i = 0; i < data.phi.Rows(); i++){
+		  data.phi(i,0) = -data.dphix(0,i);
+	  }}
 
 }//void
 

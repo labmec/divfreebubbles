@@ -69,7 +69,7 @@ using namespace std;
 int main(int argc, char* argv[]){
   //dimension of the problem
   constexpr int dim{2};
-  constexpr int pOrder{1};
+  constexpr int pOrder{2};
   //Materials - See the .geo file
   int matIdVec[]={1,2,3,4,5,6,7,8};
   //1 = Injection Well
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]){
   gmesh = new TPZGeoMesh();
   TPZGmshReader *reader;
   reader = new TPZGmshReader();
-  reader -> GeometricGmshMesh4("../mesh/1element.msh",gmesh);
+  reader -> GeometricGmshMesh4("../mesh/4element.msh",gmesh);
   
   //.................................Hdiv.................................
   //Flux mesh
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]){
   SolveProblemDirect(an,cmesh);
 
   //Print results
-  // PrintResultsMultiphysic(dim,meshvector,an,cmesh);
+  PrintResultsMultiphysic(dim,meshvector,an,cmesh);
   std::ofstream out3("mesh_Hdiv.txt");
 	an.Print("nothing",out3);
 
@@ -289,7 +289,9 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   BCond3->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
-  // auto *mat2 = new TPZL2Projection<>(matIdVec[5],0,1);
+  // TPZBndCond * BCond4 = mat->CreateBC(mat, matIdVec[5], 0, val1, val4);//Left
+  // cmesh->InsertMaterialObject(BCond4);
+  // auto *mat2 = new TPZMatPoisson<>(matIdVec[5],dim);
   // cmesh->InsertMaterialObject(mat2);
 
   TPZManVector<int> active(2,1);
@@ -318,7 +320,7 @@ void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 
   ///Setting a direct solver
   TPZStepSolver<STATE> step;
-  step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
+  step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
   an.SetSolver(step);
 
   //assembles the system
@@ -371,12 +373,45 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
   an.SetExact(exactSol,solOrder);
 
   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-	TPZManVector<std::string,10> scalnames(2), vecnames(2);
+	TPZManVector<std::string,10> scalnames(0), vecnames(1);
+  
+  
+  for (int64_t i = 0; i < cmesh->NElements(); i++)
+  {
+    auto *cel = cmesh -> Element(i);
+    auto type = cel -> Type();
+    int64_t index;
     
-	scalnames[0] = "Pressure";
-	scalnames[1] = "ExactPressure";
+    if (type == EQuadrilateral){
+      auto mat = cel -> Material();
+      // auto data = cel -> Data();
+    }
+
+
+//     using namespace pzgeom;
+//     using namespace pzshape;
+//     if (type == EPoint){
+// //      TPZCompEl *cel = CreateKernelHDivPointEl(gel,*cmesh,index);
+//         TPZCompEl *cel = new TPZCompElKernelHDivBC<TPZShapePoint>(*cmesh,gel,index);
+//       // DebugStop();
+//     } else {
+//       if (type == EOned){
+// //        TPZCompEl *cel = CreateKernelHDivLinearEl(gel,*cmesh,index);
+//         TPZCompEl *cel = new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,gel,index);
+//       } else {
+//         if (type == EQuadrilateral){
+// //          TPZCompEl *cel = CreateKernelHDivQuadEl(gel,*cmesh,index);
+//           TPZCompEl *cel = new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
+//         } 
+//       }  
+//     }
+  } 
+
+
+	// scalnames[0] = "Pressure";
+	// scalnames[1] = "ExactPressure";
 	vecnames[0]= "Flux";
-	vecnames[1]= "ExactFlux";
+	// vecnames[1]= "GradFluxX";
 
 	int div = 0;
   std::string plotfile = "solutionHdiv.vtk";
@@ -781,6 +816,8 @@ TPZCompMesh *FluxCMeshNew(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
 
+  TPZBndCond * BCond4 = mat->CreateBC(mat, matIdVec[5], 0, val1, val4);//Left
+  cmesh->InsertMaterialObject(BCond4);
   // auto *mat2 = new TPZL2Projection<>(matIdVec[5],0,1);
   // cmesh->InsertMaterialObject(mat2);
 
