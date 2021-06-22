@@ -198,7 +198,7 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TV
             counter++;
         }
     }
-
+    // data.sol[1][0] = 0.;
     // data.sol[0][0] = -data.dsol[0](0,1);
     // data.sol[0][1] = data.dsol[0](0,0);
     // data.sol[0][2] = 0.;
