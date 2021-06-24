@@ -40,10 +40,15 @@ void TPZCompElKernelHDivBC<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> 
     TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
     
+    TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
+    TPZFMatrix<REAL> &dphi = data.dphix;
+    TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+
     if (data.phi.Rows()>1){
-    for (int i = 0; i < data.phi.Rows(); i++){
-		  data.phi(i,0) = -data.dphix(0,i);
-	  }}
+      for (int i = 0; i < data.phi.Rows(); i++){
+		data.phi(i,0) = -dphi(0,i);
+	  }
+    }
 
 }//void
 

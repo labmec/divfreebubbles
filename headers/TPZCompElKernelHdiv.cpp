@@ -72,11 +72,16 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &d
     TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
 
+    TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
+    TPZFMatrix<REAL> &dphi = data.dphix;;
+    TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+
+
 
     for (int i = 0; i < data.dphix.Cols(); i++){
         if (data.dphix.Rows()>1){
-            data.fDeformedDirections(0,i) =  data.dphix(1,i);
-            data.fDeformedDirections(1,i) = -data.dphix(0,i);
+            data.fDeformedDirections(0,i) =  dphix(1,i);
+            data.fDeformedDirections(1,i) = -dphix(0,i);
         }
     }
 
@@ -168,6 +173,13 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TV
     TPZBlock &block =this->Mesh()->Block();
     int ishape=0,ivec=0,counter=0;
 
+
+
+    // TPZFMatrix<TVar> dsolX(3,1);
+    // // const auto &sol = data.sol[0];
+    // const auto &dsol = data.dsol[0];
+    // TPZAxesTools<TVar>::Axes2XYZ(dsol,dsolX,data.axes);
+
 //     int nshapeV = data.fVecShapeIndex.NElements();
 
     for(int in=0; in<ncon; in++)
@@ -188,12 +200,12 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TV
                 REAL phival = data.phi(ishape,0);
                 //Computes sol and dsol
                 // data.sol[0][dim*idf] += phival*meshsol;
-                // data.dsol[0](dim*idf,0)+= meshsol * data.dphix(0,ishape);
-                // data.dsol[0](dim*idf,1)+= meshsol * data.dphix(1,ishape);
+                // data.dsol[0](dim*idf,0)+= meshsol * dphix(0,ishape);
+                // data.dsol[0](dim*idf,1)+= meshsol * dphix(1,ishape);
 
                 //Compute rotated flux
-                data.sol[0][dim*idf+0] -= meshsol * data.dphix(1,ishape);
-                data.sol[0][dim*idf+1] += meshsol * data.dphix(0,ishape);
+                data.sol[0][dim*idf+0] -= meshsol * dphix(1,ishape);
+                data.sol[0][dim*idf+1] += meshsol * dphix(0,ishape);
             }
             counter++;
         }

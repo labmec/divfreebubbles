@@ -19,9 +19,10 @@ Line(6) = {2, 6};
 Line(7) = {2, 4};
 
 nh = 11; ph = 1; 
-nv = 11; pv = 1.; pa = 1;
+nv = 16; pv = 1.2; pa = 1;
 Transfinite Curve {1, 2, 7} = nh Using Progression ph;
-Transfinite Curve {3,4,5,6} = nh Using Progression 1/ph;
+Transfinite Curve {4,6} = nv Using Progression 1/pv;
+Transfinite Curve {3,5} = nv Using Progression pv;
 //+
 Curve Loop(1) = {6, 1, 3, -7};
 Plane Surface(1) = {-1};

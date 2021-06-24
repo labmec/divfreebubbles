@@ -72,15 +72,17 @@ auto exactSol = [](const TPZVec<REAL> &loc,
   const auto &y=loc[1];
 
   u[0] = x*x*x*y - y*y*y*x;
-  gradU(0,0) = 3.*x*x*y - y*y*y;
-  gradU(1,0) = x*x*x - 3.*y*y*x;
+  gradU(0,0) = -(3.*x*x*y - y*y*y);
+  gradU(1,0) = -(x*x*x - 3.*y*y*x);
 
+  // u[0]= x*x-y*y;
+  // gradU(0,0) = 2.*x;
+  // gradU(1,0) = -2.*y;
 
-  // const auto &d = 1.; // distance betweel injection and production wells
-  // u[0]= x*x-y*y;//log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
-  // gradU(0,0) = 2.*x;//x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2));
-  // gradU(1,0) = -2.*y;//y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2));
-  // gradU(2,0) = 0;//optional
+  // const auto &d = 1.5; // distance betweel injection and production wells
+  // u[0]=log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+  // gradU(0,0) = x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2));
+  // gradU(1,0) = y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2));
 };
 
 int main(int argc, char* argv[]){
@@ -133,10 +135,10 @@ int main(int argc, char* argv[]){
 
   //.........................Div Free Bubbles NEW.........................
    //Flux mesh
-  TPZCompMesh * cmeshfluxNew= FluxCMeshNew(dim,pOrder,matIdVec,gmesh);
+  TPZCompMesh * cmeshfluxNew= FluxCMeshNew(dim,pOrder+1,matIdVec,gmesh);
 
   //Pressure mesh
-  TPZCompMesh * cmeshpressureNew= PressureCMeshNew(dim,pOrder,matIdVec,gmesh);
+  TPZCompMesh * cmeshpressureNew= PressureCMeshNew(dim,pOrder+1,matIdVec,gmesh);
 
   //Multiphysics mesh
   TPZManVector< TPZCompMesh *, 4> meshvectorNew(4);
@@ -144,7 +146,7 @@ int main(int argc, char* argv[]){
   meshvectorNew[1] = cmeshpressureNew;
   meshvectorNew[2] = cmeshflux;
   meshvectorNew[3] = cmeshpressure;
-  auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder,matIdVec,meshvectorNew,gmesh);
+  auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder+1,matIdVec,meshvectorNew,gmesh);
 
   //Solve Multiphysics
   TPZLinearAnalysis anNew(cmeshNew,true);
@@ -157,10 +159,10 @@ int main(int argc, char* argv[]){
 
   //...........................Div Free Bubbles...........................
   //Creates DFB problem
-  TPZCompMesh * cmeshDFB = CMeshDivFreeBubbles(dim,pOrder,matIdVec,gmesh);
+  TPZCompMesh * cmeshDFB = CMeshDivFreeBubbles(dim,pOrder+1,matIdVec,gmesh);
 
   //Solve DFB
-  TPZLinearAnalysis anDFB(cmeshDFB,false);
+  TPZLinearAnalysis anDFB(cmeshDFB,true);
   SolveProblemDirect(anDFB,cmeshDFB);
 
   // //Print results
@@ -169,11 +171,14 @@ int main(int argc, char* argv[]){
 	anDFB.Print("nothing",out);
   
   //...........................ERROR EVALUATION...........................
+  std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+  ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
+
   std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
   ComputeErrorHdiv(an,anPostProcessFileHdiv);
 
   std::ofstream anPostProcessFileDFB("postprocessDFB.txt");
-  ComputeErrorHdiv(anNew,anPostProcessFileDFB);
+  ComputeError(anDFB,anPostProcessFileDFB);
 
   return 0;
 }
@@ -442,7 +447,7 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
   an.SetExact(exactSol,solOrder);
 
   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-	TPZManVector<std::string,10> scalnames(0), vecnames(1);
+	TPZManVector<std::string,10> scalnames(0), vecnames(2);
   
 
 	scalnames[0] = "Pressure";
@@ -467,7 +472,7 @@ void PrintResultsMultiphysicNew(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLi
   an.SetExact(exactSol,solOrder);
 
   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-	TPZManVector<std::string,10> scalnames(0), vecnames(1);
+	TPZManVector<std::string,10> scalnames(0), vecnames(2);
   
   
   for (int64_t i = 0; i < cmesh->NElements(); i++)
@@ -486,7 +491,7 @@ void PrintResultsMultiphysicNew(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLi
 	// scalnames[0] = "Pressure";
 	// scalnames[1] = "ExactPressure";
 	vecnames[0]= "Flux";
-	// vecnames[1]= "GradFluxX";
+	vecnames[1]= "ExactFlux";
 
 	int div = 0;
   std::string plotfile = "solutionMDFB.vtk";
