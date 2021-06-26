@@ -25,3 +25,4 @@ Physical Curve("3") = {2};//Right
 Physical Curve("4") = {3};//Top
 Physical Curve("5") = {4};//Left
 Physical Point("6") = {1};
+Physical Curve("7") = {3};//Top

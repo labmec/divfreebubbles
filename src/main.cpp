@@ -66,7 +66,7 @@ using namespace std;
 int main(int argc, char* argv[]){
   //dimension of the problem
   constexpr int dim{2};
-  constexpr int pOrder{1};
+  constexpr int pOrder{2};
   //Materials - See the .geo file
   int matIdVec[]={1,2,3,4,5,6,7,8};
   //1 = Injection Well
@@ -87,7 +87,7 @@ int main(int argc, char* argv[]){
   gmesh = new TPZGeoMesh();
   TPZGmshReader *reader;
   reader = new TPZGmshReader();
-  reader -> GeometricGmshMesh4("../mesh/newMesh.msh",gmesh);
+  reader -> GeometricGmshMesh4("../mesh/five-spot.msh",gmesh);
   
   //.................................Hdiv.................................
   //Flux mesh
@@ -181,14 +181,18 @@ auto exactSol = [](const TPZVec<REAL> &loc,
   const auto &y=loc[1];
   const auto &d = 1.; // distance between injection and production wells
   u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+  gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
+  gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+};
+auto exactSolError = [](const TPZVec<REAL> &loc,
+  TPZVec<STATE>&u,
+  TPZFMatrix<STATE>&gradU){
+  const auto &x=loc[0];
+  const auto &y=loc[1];
+  const auto &d = 1.; // distance between injection and production wells
+  u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
   gradU(0,0) = -(x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
   gradU(1,0) = -(y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
-
-  // u[0]= x*x-y*y;
-  // gradU(0,0) = 2.*x;
-  // gradU(1,0) = -2.*y;
-
-  // gradU(2,0) = 0;//optional
 };
 
 //Flux computational mesh
@@ -205,10 +209,10 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,0.);
-  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 0, val1, val2);
+  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 1, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.); 
   TPZManVector<STATE> val4(1,0.);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val4);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val4);
   BCond0->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond1);
@@ -216,10 +220,10 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 
   TPZFMatrix<STATE> val5(1,1,1.);
   TPZManVector<STATE> val6(1,0.);
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val5, val6);
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val5, val6);
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val5, val6);
-  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val5, val6);
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val5, val6);
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val5, val6);
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val5, val6);
+  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 1, val5, val6);
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
   BCond4->SetForcingFunctionBC(exactSol);
@@ -253,10 +257,10 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,0.);
-  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 0, val1, val2);
+  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 1, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.); 
   TPZManVector<STATE> val4(1,0.);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val4);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val4);
   BCond0->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond1);
@@ -264,21 +268,21 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,int *matIdVec, TPZGeoMesh *gmesh)
 
   TPZFMatrix<STATE> val5(1,1,1.);
   TPZManVector<STATE> val6(1,0.);
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val5, val6);
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val5, val6);
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val5, val6);
-  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val5, val6);
-  auto * BCond6 = mat->CreateBC(mat, matIdVec[7], 0, val5, val6);
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val5, val6);
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val5, val6);
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val5, val6);
+  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 1, val5, val6);
+  // auto * BCond6 = mat->CreateBC(mat, matIdVec[7], 0, val5, val6);
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
   BCond4->SetForcingFunctionBC(exactSol);
   BCond5->SetForcingFunctionBC(exactSol);
-  BCond6->SetForcingFunctionBC(exactSol);
+  // BCond6->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
   cmesh->InsertMaterialObject(BCond4);
   cmesh->InsertMaterialObject(BCond5);
-  cmesh->InsertMaterialObject(BCond6);
+  // cmesh->InsertMaterialObject(BCond6);
 
   for (int64_t i = 0; i < gmesh->NElements(); i++)
   {
@@ -385,10 +389,10 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,0.);
-  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 0, val1, val2);
+  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 1, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.); 
   TPZManVector<STATE> val4(1,0.);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val4);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val4);
   BCond0->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond1);
@@ -396,10 +400,10 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, int *matIdVec, TPZVec<TPZComp
 
   TPZFMatrix<STATE> val5(1,1,1.);
   TPZManVector<STATE> val6(1,0.);
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val5, val6);
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val5, val6);
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val5, val6);
-  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val5, val6);
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val5, val6);
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val5, val6);
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val5, val6);
+  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 1, val5, val6);
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
   BCond4->SetForcingFunctionBC(exactSol);
@@ -441,10 +445,10 @@ TPZCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, int *matIdVec, TPZVec<TPZC
   //Boundary Conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(1,0.);
-  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 0, val1, val2);
+  auto * BCond0 = mat->CreateBC(mat, matIdVec[0], 1, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.); 
   TPZManVector<STATE> val4(1,0.);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val4);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val4);
   BCond0->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond1);
@@ -452,11 +456,11 @@ TPZCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, int *matIdVec, TPZVec<TPZC
 
   TPZFMatrix<STATE> val5(1,1,1.);
   TPZManVector<STATE> val6(1,0.);
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val5, val6);
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val5, val6);
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val5, val6);
-  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val5, val6);
-  auto * BCond6 = mat->CreateBC(mat, matIdVec[7], 0, val5, val6);
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val5, val6);
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val5, val6);
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val5, val6);
+  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 1, val5, val6);
+  // auto * BCond6 = mat->CreateBC(mat, matIdVec[7], 0, val5, val6);
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
   BCond4->SetForcingFunctionBC(exactSol);
@@ -466,7 +470,7 @@ TPZCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, int *matIdVec, TPZVec<TPZC
   cmesh->InsertMaterialObject(BCond3);
   cmesh->InsertMaterialObject(BCond4);
   cmesh->InsertMaterialObject(BCond5);
-  cmesh->InsertMaterialObject(BCond6);
+  // cmesh->InsertMaterialObject(BCond6);
 
   TPZManVector<int> active(4,1);
   active[0]=1;
@@ -561,10 +565,10 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, int *matIdVec, TPZGeoMesh *gmesh)
   //Insert boundary conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(2,-4.3820281971726605);
-  auto * BCond = mat->CreateBC(mat, matIdVec[0], 0, val1, val2);
+  auto * BCond = mat->CreateBC(mat, matIdVec[0], 1, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.);
   TPZManVector<STATE> val4(2,0.9288056258294208);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val4);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val4);
   BCond->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond);
@@ -604,7 +608,7 @@ void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an)
 
 void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
 {
-  an.SetExact(exactSol,solOrder);
+  an.SetExact(exactSolError,solOrder);
   ///Calculating approximation error  
   TPZManVector<REAL,3> error;
   an.PostProcess(error,anPostProcessFile);
@@ -619,7 +623,7 @@ void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
 
 void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
 {
-  an.SetExact(exactSol,solOrder);
+  an.SetExact(exactSolError,solOrder);
   ///Calculating approximation error  
   TPZManVector<REAL,5> error;
   an.PostProcess(error,anPostProcessFile);
@@ -645,23 +649,23 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
    
   //Insert boundary conditions
   TPZFMatrix<STATE> val1(1,1,1.);
-  TPZManVector<STATE> val2(1,-4.3820281971726605);
+  TPZManVector<STATE> val2(1,0.);
   TPZManVector<STATE> val5(1,0.);
   constexpr int boundType{0};
-  auto * BCond = mat->CreateBC(mat, matIdVec[0], 0, val1, val5);//Injection
+  auto * BCond = mat->CreateBC(mat, matIdVec[0], 1, val1, val5);//Injection
   TPZFMatrix<STATE> val3(1,1,1.);
-  TPZManVector<STATE> val4(1,0.9288056258294208);
-  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 0, val3, val5);//Production
+  TPZManVector<STATE> val4(1,0.);
+  auto * BCond1 = mat->CreateBC(mat, matIdVec[1], 1, val3, val5);//Production
   BCond->SetForcingFunctionBC(exactSol);
   BCond1->SetForcingFunctionBC(exactSol);
   cmesh->InsertMaterialObject(BCond);
   cmesh->InsertMaterialObject(BCond1);
   mat -> SetBigNumber(1.e10);
   
-  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 0, val3, val5);//Bottom
-  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 0, val3, val5);//Top
-  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 0, val3, val5);//Left
-  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 0, val3, val5);//Right
+  auto * BCond2 = mat->CreateBC(mat, matIdVec[2], 1, val3, val5);//Bottom
+  auto * BCond3 = mat->CreateBC(mat, matIdVec[3], 1, val3, val5);//Top
+  auto * BCond4 = mat->CreateBC(mat, matIdVec[4], 1, val3, val5);//Left
+  auto * BCond5 = mat->CreateBC(mat, matIdVec[5], 1, val3, val5);//Right
   BCond2->SetForcingFunctionBC(exactSol);
   BCond3->SetForcingFunctionBC(exactSol);
   BCond4->SetForcingFunctionBC(exactSol);
@@ -671,8 +675,8 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, int *matIdVec, TPZGeoMesh 
   cmesh->InsertMaterialObject(BCond4);
   cmesh->InsertMaterialObject(BCond5);
 
-  auto *mat2 = new TPZL2Projection<>(matIdVec[7],0,1);
-  cmesh->InsertMaterialObject(mat2);
+  // auto *mat2 = new TPZL2Projection<>(matIdVec[7],0,1);
+  // cmesh->InsertMaterialObject(mat2);
 
   //Prints computational mesh properties
   // std::stringstream text_name;
