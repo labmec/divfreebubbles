@@ -24,20 +24,23 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZInterfaceEl.h"
 #include "TPZVTKGeoMesh.h"
+#include "pzintel.h"
+#include "TPZHybridizeHDiv.h"
 
 // ----- Functions -----
+using namespace std;
 
+void readGeoMesh(string& filename, TPZGeoMesh* gmesh);
 TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh);
 TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh);
 TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh);
+void HybridizeMiddle(TPZCompMesh* cmesh);
 
 TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh);
 void PrintResultsH1(int dim, TPZLinearAnalysis &an);
 
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinearAnalysis &an, TPZCompMesh *cmesh);
-
-using namespace std;
 
 // ----- End of Functions -----
 
@@ -60,11 +63,8 @@ int main(int argc, char* argv[]){
     
     //................. Read mesh from gmsh ................................
     TPZGeoMesh* gmesh = new TPZGeoMesh();
-    TPZGmshReader* reader = new TPZGmshReader();
-    reader->GeometricGmshMesh4("../mesh/Case2Frac.msh",gmesh);
-    gmesh->SetDimension(2);
-//    ofstream outvtk("malhajose.vtk");
-//    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, outvtk);
+    string filename = "../mesh/Case1FracSimple.msh";
+    readGeoMesh(filename,gmesh);
     
     //.................................Hdiv.................................
     //Flux mesh
@@ -85,6 +85,8 @@ int main(int argc, char* argv[]){
     TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,meshvector,gmesh);
 //    ofstream outvtkcmeshmult("cmeshmult.vtk");
 //    TPZVTKGeoMesh::PrintCMeshVTK(cmesh, outvtkcmeshmult);
+    
+    HybridizeMiddle(cmesh);
     
     //Solve Multiphysics
     TPZLinearAnalysis an(cmesh,true);
@@ -109,6 +111,10 @@ int main(int argc, char* argv[]){
     PrintResultsH1(dim,anH1);
     std::ofstream out4("meshH1.txt");
     
+//    delete gmesh;
+//    delete cmesh;
+//    delete cmeshflux;
+//    delete cmeshpressure;
     return 0;
 }
 
@@ -117,11 +123,73 @@ int main(int argc, char* argv[]){
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
 
+
+void HybridizeMiddle(TPZCompMesh* cmesh) {
+
+    TPZMultiphysicsCompMesh* mmesh = dynamic_cast<TPZMultiphysicsCompMesh*>(cmesh);
+    if (!mmesh)
+        DebugStop();
+    
+    
+    TPZCompMesh* fluxmesh = mmesh->MeshVector()[0];
+    TPZVec<TPZCompMesh *> &meshvec_Hybrid = mmesh->MeshVector();
+    TPZHybridizeHDiv hybridizer;
+    
+    // now we find the intersection and hybridize it
+    int dim = fluxmesh->Dimension();
+    int64_t nel = fluxmesh->NElements();
+    for (int64_t iel = 0; iel < nel; iel++) {
+        TPZCompEl* cel = fluxmesh->Element(iel);
+        TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
+        if (!intel || intel->Reference()->Dimension() != dim) {
+            continue;
+        }
+        
+        // loop over the side of dimension dim-1
+        TPZGeoEl *gel = intel->Reference();
+        for (int side = gel->NCornerNodes(); side < gel->NSides() - 1; side++) {
+            if (gel->SideDimension(side) != dim - 1) {
+                continue;
+            }
+            
+            TPZGeoElSide gelside(gel,side);
+            TPZGeoElSide neigh = gelside.Neighbour();
+            
+            while(neigh != gelside){
+                int neighmatid = neigh.Element()->MaterialId();
+                int neighdim = neigh.Dimension();
+                
+                if (neighmatid == 15 && neighdim == dim-1) {
+                    cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " has side number " << side << " with dim = " << neigh.Dimension() << " touching the requested matID" << endl;
+                    cout << "===> Hybridizing the interface now..." << endl;
+                    TPZCompElSide celsideleft(intel, side);
+                    hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
+//                    TPZCompElSide neighcomp = RightElement(intel, side);
+//                    if (neighcomp) {
+//                        // SplitConnects returns the geometric element index and interpolation order
+//                        pressures.push_back(SplitConnects(celside, neighcomp, meshvec_Hybrid));
+//                    }
+                }
+                neigh = neigh.Neighbour();
+            } // while
+            
+            
+        }
+        
+    }
+    
+    
+    
+}
+
+// ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+
 TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
 {
     gmesh->ResetReference();
     TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-    TPZNullMaterial<> *mat = new TPZNullMaterial<>(76);
+    TPZNullMaterial<> *mat = new TPZNullMaterial<>(1);
     cmesh->InsertMaterialObject(mat);
 
     //    mat -> fBigNumber = 1.e10;
@@ -129,9 +197,9 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
     TPZManVector<STATE> val4(1,4.);
-    auto * BCond0 = mat->CreateBC(mat, 77, 1, val1, val2);//Bottom
-    auto * BCond1 = mat->CreateBC(mat, 78, 0, val1, val2);//Bottom
-    auto * BCond2 = mat->CreateBC(mat, 79, 0, val1, val4);//Bottom
+    auto * BCond0 = mat->CreateBC(mat, -3, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond0);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond2);
@@ -161,7 +229,7 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
     //Change if not triangular elements
     bool fTriang = false;
     TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-    TPZNullMaterial<> *mat = new TPZNullMaterial<>(76);
+    TPZNullMaterial<> *mat = new TPZNullMaterial<>(1);
     mat->SetDimension(dim);
     cmesh->InsertMaterialObject(mat);
     // mat -> fBigNumber = 1.e10;
@@ -176,9 +244,9 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
     TPZManVector<STATE> val4(1,4.);
     constexpr int boundType{1};
     constexpr int boundType0{0};
-    auto * BCond0 = mat->CreateBC(mat, 77, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, 78, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, 79, 0, val1, val4);
+    auto * BCond0 = mat->CreateBC(mat, -3, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
     cmesh->InsertMaterialObject(BCond2);
@@ -190,20 +258,8 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
         TPZConnect &newnod = cmesh->ConnectVec()[i];
         newnod.SetLagrangeMultiplier(1);
     }
-
-//    int nel = cmesh->NElements();
-//    for(int i=0; i<nel; i++){
-//        TPZCompEl *cel = cmesh->ElementVec()[i];
-//        TPZCompElDisc *celdisc = dynamic_cast<TPZCompElDisc *>(cel);
-//        celdisc->SetConstC(1.);
-//        celdisc->SetTrueUseQsiEta();
-//        if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
-//          {
-//            if(fTriang==true) celdisc->SetTotalOrderShape();
-//            else celdisc->SetTensorialShape();
-//          }
-//    }
-    //    Print pressure mesh
+    
+    
     std::ofstream myfile("PressureMesh.txt");
     cmesh->Print(myfile);
     
@@ -219,7 +275,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvec
     auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
     cmesh->SetDefaultOrder(pOrder);
     cmesh->SetDimModel(dim);
-    auto mat = new TPZMixedDarcyFlow(76, dim);
+    auto mat = new TPZMixedDarcyFlow(1, dim);
     
     mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
@@ -228,10 +284,10 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvec
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
-    TPZManVector<STATE> val4(1,6.);
-    auto * BCond0 = mat->CreateBC(mat, 77, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, 78, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, 79, 0, val1, val4);
+    TPZManVector<STATE> val4(1,4.);
+    auto * BCond0 = mat->CreateBC(mat, -3, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
     cmesh->InsertMaterialObject(BCond2);
@@ -317,19 +373,19 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh)
     cmesh->SetDimModel(dim);
     
     
-    TPZMatPoisson<> *mat = new TPZMatPoisson<>(76,dim);
+    TPZMatPoisson<> *mat = new TPZMatPoisson<>(1,dim);
     // TPZMixedDarcyFlow *mat = new TPZMixedDarcyFlow(matIdVec[0],dim);
     // mat->SetPermeabilityFunction(1.);
-    mat->fBigNumber = 1.e12;
+//    mat->fBigNumber = 1.e12;
     cmesh->InsertMaterialObject(mat);
     
     //Insert boundary conditions
     TPZFMatrix<STATE> val1(1,1,0.);
     TPZManVector<STATE> val2(1,0.);
-    TPZManVector<STATE> val4(1,6.);
-    auto * BCond = mat->CreateBC(mat, 77, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, 78, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, 79, 0, val1, val4);
+    TPZManVector<STATE> val4(1,4.);
+    auto * BCond = mat->CreateBC(mat, -3, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond2);
@@ -353,6 +409,25 @@ void PrintResultsH1(int dim, TPZLinearAnalysis &an)
     an.PostProcess(resolution,dim);
     
     return;
+}
+
+// ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+
+void readGeoMesh(string& filename, TPZGeoMesh* gmesh) {
+    
+    TPZGmshReader reader;
+    TPZManVector<std::map<std::string,int>,4> dim_name_and_physical_tagFine(4);
+    dim_name_and_physical_tagFine[2]["frac"] = 1;
+    dim_name_and_physical_tagFine[1]["inlet"] = -1;
+    dim_name_and_physical_tagFine[1]["outlet"] = -2;
+    dim_name_and_physical_tagFine[1]["noflux"] = -3;
+    dim_name_and_physical_tagFine[1]["intersection"] = 15;
+    reader.SetDimNamePhysical(dim_name_and_physical_tagFine);
+    reader.GeometricGmshMesh4(filename,gmesh);
+    gmesh->SetDimension(2);
+    ofstream outvtk("geoMesh.vtk");
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, outvtk);
 }
 
 // ---------------------------------------------------------------------
