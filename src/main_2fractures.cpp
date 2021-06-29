@@ -26,6 +26,7 @@
 #include "TPZVTKGeoMesh.h"
 #include "pzintel.h"
 #include "TPZHybridizeHDiv.h"
+#include "pzlog.h"
 
 // ----- Functions -----
 using namespace std;
@@ -55,7 +56,7 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
 int main(int argc, char* argv[]){
 
 #ifdef PZ_LOG
-    TPZLogger::InitializePZLOG();
+TPZLogger::InitializePZLOG();
 #endif
     
     int dim = 2;
@@ -163,7 +164,7 @@ void HybridizeMiddle(TPZCompMesh* cmesh) {
                     cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " has side number " << side << " with dim = " << neigh.Dimension() << " touching the requested matID" << endl;
                     cout << "===> Hybridizing the interface now..." << endl;
                     TPZCompElSide celsideleft(intel, side);
-                    hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
+                    // hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
 //                    TPZCompElSide neighcomp = RightElement(intel, side);
 //                    if (neighcomp) {
 //                        // SplitConnects returns the geometric element index and interpolation order
