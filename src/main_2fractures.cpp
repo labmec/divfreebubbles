@@ -12,14 +12,14 @@
 #include <cstdio>
 
 // PZ includes
-#include <pzcmesh.h> //for TPZCompMesh
+#include <pzcmesh.h>
 #include <TPZGmshReader.h>
-#include "Poisson/TPZMatPoisson.h" //for TPZMatLaplacian
+#include "Poisson/TPZMatPoisson.h"
 #include <TPZNullMaterial.h>
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZLinearAnalysis.h"
-#include <pzskylstrmatrix.h> //symmetric skyline matrix storage
-#include <pzstepsolver.h> //for TPZStepSolver
+#include <pzskylstrmatrix.h>
+#include <pzstepsolver.h>
 #include "TPZMultiphysicsCompMesh.h"
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZInterfaceEl.h"
@@ -56,7 +56,7 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
 int main(int argc, char* argv[]){
 
 #ifdef PZ_LOG
-TPZLogger::InitializePZLOG();
+    TPZLogger::InitializePZLOG();
 #endif
     
     int dim = 2;
@@ -164,12 +164,8 @@ void HybridizeMiddle(TPZCompMesh* cmesh) {
                     cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " has side number " << side << " with dim = " << neigh.Dimension() << " touching the requested matID" << endl;
                     cout << "===> Hybridizing the interface now..." << endl;
                     TPZCompElSide celsideleft(intel, side);
-                    // hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
-//                    TPZCompElSide neighcomp = RightElement(intel, side);
-//                    if (neighcomp) {
-//                        // SplitConnects returns the geometric element index and interpolation order
-//                        pressures.push_back(SplitConnects(celside, neighcomp, meshvec_Hybrid));
-//                    }
+                    hybridizer.HybridizeInterface(celsideleft,intel,side,mmesh);
+
                 }
                 neigh = neigh.Neighbour();
             } // while
