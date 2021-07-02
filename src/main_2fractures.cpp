@@ -134,7 +134,10 @@ void HybridizeMiddle(TPZCompMesh* cmesh) {
     
     TPZCompMesh* fluxmesh = mmesh->MeshVector()[0];
     TPZVec<TPZCompMesh *> &meshvec_Hybrid = mmesh->MeshVector();
-    TPZHybridizeHDiv hybridizer;
+    TPZHybridizeHDiv hybridizer(meshvec_Hybrid);
+    hybridizer.InsertPeriferalMaterialObjects(meshvec_Hybrid);
+    hybridizer.InsertPeriferalMaterialObjects(mmesh);
+    
     
     // now we find the intersection and hybridize it
     int dim = fluxmesh->Dimension();
@@ -164,7 +167,20 @@ void HybridizeMiddle(TPZCompMesh* cmesh) {
                     cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " has side number " << side << " with dim = " << neigh.Dimension() << " touching the requested matID" << endl;
                     cout << "===> Hybridizing the interface now..." << endl;
                     TPZCompElSide celsideleft(intel, side);
-                    hybridizer.HybridizeInterface(celsideleft,intel,side,mmesh);
+                    TPZCompElSide celsideright;
+                    bool isNewInterface = hybridizer.HybridizeInterface(celsideleft,intel,side,mmesh,celsideright);
+                    if (!isNewInterface) {
+                        break;
+                    }
+                    
+                    mmesh->Reference()->ResetReference();
+                    mmesh->LoadReferences();
+                    int matidinterface = hybridizer.interfaceMatID();
+                    TPZGeoElBC gbc(gelside, matidinterface);
+                    
+                    int64_t index;
+                    TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*mmesh, gbc.CreatedElement(), index, celsideright, celsideleft);
+                    break;
 
                 }
                 neigh = neigh.Neighbour();
