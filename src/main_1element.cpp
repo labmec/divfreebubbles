@@ -111,6 +111,7 @@ auto exactSol2 = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2));
 };
 
+// com este enum eh mais facil entender do que se trata
 enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface};
 //1 = Domain
 //2 = Bottom
@@ -138,6 +139,8 @@ TPZLogger::InitializePZLOG();
     gmesh = new TPZGeoMesh();
     {
         TPZGmshReader reader;
+        // essa interface permite voce mapear os nomes dos physical groups para
+        // o matid que voce mesmo escolher
         TPZManVector<std::map<std::string,int>,4> stringtoint(4);
         stringtoint[2]["Surface"] = 1;
         stringtoint[1]["Bottom"] = 2;
@@ -155,6 +158,8 @@ TPZLogger::InitializePZLOG();
     TPZCompMesh * cmeshflux = 0;
     TPZCompMesh * cmeshpressure = 0;
     {
+        // para a primeira simulacao a malha de fluxo contem todos os materiais
+        // nao ha material EWrap nesta configuracao
         TPZManVector<int64_t, 6> matIdVec={EDomain,EBottom,ETop,ELeft,EPont,ERight};
         TPZManVector<int64_t, 2> matIdNeumann;
 
@@ -162,7 +167,9 @@ TPZLogger::InitializePZLOG();
         cmeshflux = FluxCMesh(dim,pOrder,matIdVec,gmesh);
 
         //Pressure mesh
-        cmeshpressure = PressureCMesh(dim,pOrder,matIdNeumann,gmesh);
+        // a malha pressao sera vazio neste caso
+        // a dimensao dos elementos de pressao eh um a menos que a dimensao do problema
+        cmeshpressure = PressureCMesh(dim-1,pOrder,matIdNeumann,gmesh);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvector(2,0);
@@ -181,13 +188,16 @@ TPZLogger::InitializePZLOG();
     }
     //.........................Div Free Bubbles NEW.........................
     {
+        // nesta configuracao o material ERight eh substituido por EWrap
         TPZManVector<int64_t, 6> matIdVec={EDomain,EBottom,ETop,ELeft,EPont,EWrap};
+        // criamos elementos tipo ERight para a pressao
         TPZManVector<int64_t, 2> matIdNeumann = {ERight};
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder,matIdVec,gmesh);
 
         //Pressure mesh
+        // Eh preciso especificar a ordem menor para os elementos de pressao
         TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,pOrder-1,matIdNeumann,gmesh);
 
         //Multiphysics mesh
@@ -273,12 +283,15 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZVec<int64_t> &matIdVec, TPZGe
     mat->SetDimension(dim);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
+    // distincao de ordem zero
     if(pOrder == 0)
     {
+        // os elementos H1 nao tem opcao de funcao constante
         cmesh->SetAllCreateFunctionsDiscontinuous();
     }
     else
     {
+        // Disconnected = true faz com que os espaços sao descontinuos
         cmesh->SetAllCreateFunctionsContinuous();
         cmesh->ApproxSpace().CreateDisconnectedElements(true);
     }
@@ -297,8 +310,10 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZVec<int64_t> &matIdVec, TPZGe
     for(int i=0; i<nel; i++){
         TPZCompEl *cel = cmesh->ElementVec()[i];
         TPZCompElDisc *celdisc = dynamic_cast<TPZCompElDisc *>(cel);
+        if(!celdisc) continue;
         celdisc->SetConstC(1.);
         celdisc->SetTrueUseQsiEta();
+        // espera-se elemento de pressao apenas para o contorno
         if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
         {
             DebugStop();
@@ -385,6 +400,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, TPZVec<int64_t
 //    enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, Einterface};
 
 
+    // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlow(EDomain, dim);
     mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
@@ -411,6 +427,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, TPZVec<int64_t
     cmesh->InsertMaterialObject(BCond2);
     cmesh->InsertMaterialObject(BCond3);
     // cmesh->InsertMaterialObject(BCond4);
+    // the wrap material is a null material (does nothing)
     auto * nullmat = new TPZNullMaterialCS<>(EWrap,1,1);
     cmesh->InsertMaterialObject(nullmat);
     
@@ -435,6 +452,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, TPZVec<int64_t
         }
         auto nsides = gel->NSides();
         TPZGeoElSide gelside(gel,nsides-1);
+        // here I generalized - an interface is created whenever a wrap element exists
         std::set<int> neighmat = {ELeft,EBottom,ERight,ETop};
         auto gelsidepr = gelside.HasNeighbour(neighmat);
         if (!gelsidepr)
