@@ -35,7 +35,7 @@ void readGeoMesh(string& filename, TPZGeoMesh* gmesh);
 TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh);
 TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh);
 TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh, TPZHybridizeHDiv& hybridizer);
-void HybridizeMiddle(TPZHybridizeHDiv& hybridizer, TPZVec<TPZCompMesh*>& cmesh);
+void HybridizeIntersection(TPZHybridizeHDiv& hybridizer, TPZVec<TPZCompMesh*>& cmesh);
 
 TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh);
 void PrintResultsH1(int dim, TPZLinearAnalysis &an);
@@ -83,22 +83,25 @@ int main(int argc, char* argv[]){
     meshvector[0] = cmeshflux;
     meshvector[1] = cmeshpressure;
     
+//    ofstream out1("cmeshpressure1.txt");
+//    cmeshpressure->Print(out1);
+    
     TPZHybridizeHDiv hybridizer(meshvector);
-    HybridizeMiddle(hybridizer, meshvector);
+    HybridizeIntersection(hybridizer, meshvector);
+    
+//    ofstream out2("cmeshpressure2.txt");
+//    cmeshpressure->Print(out2);
     
     TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,meshvector,gmesh,hybridizer);
 //    ofstream outvtkcmeshmult("cmeshmult.vtk");
 //    TPZVTKGeoMesh::PrintCMeshVTK(cmesh, outvtkcmeshmult);
     
     
-    
     //Solve Multiphysics
     TPZLinearAnalysis an(cmesh,true);
     SolveProblemDirect(an,cmesh);
-    cmesh->UpdatePreviousState(-1.);
+//    cmesh->UpdatePreviousState(-1.);
     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-//    ofstream outmult("outmult.txt");
-//    cmesh->Print(outmult);
     
     //Print results
     PrintResultsMultiphysic(dim,meshvector,an,cmesh);
@@ -128,7 +131,7 @@ int main(int argc, char* argv[]){
 // ---------------------------------------------------------------------
 
 
-void HybridizeMiddle(TPZHybridizeHDiv& hybridizer, TPZVec<TPZCompMesh*>& meshvec_Hybrid) {
+void HybridizeIntersection(TPZHybridizeHDiv& hybridizer, TPZVec<TPZCompMesh*>& meshvec_Hybrid) {
 
        
     TPZCompMesh* fluxmesh = meshvec_Hybrid[0];
@@ -162,22 +165,12 @@ void HybridizeMiddle(TPZHybridizeHDiv& hybridizer, TPZVec<TPZCompMesh*>& meshvec
                 
                 if (neighmatid == 15 && neighdim == dim-1) {
                     cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " has side number " << side << " with dim = " << neigh.Dimension() << " touching the requested matID" << endl;
-                    cout << "===> Hybridizing the interface now..." << endl;
+                    cout << "===> Trying to hybridizing the interface now..." << endl;
                     TPZCompElSide celsideleft(intel, side);
-                    TPZCompElSide celsideright;
-                    bool isNewInterface = hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid,celsideright);
+                    bool isNewInterface = hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
                     if (!isNewInterface) {
                         break;
                     }
-                    
-//                    mmesh->Reference()->ResetReference();
-//                    mmesh->LoadReferences();
-//                    int matidinterface = hybridizer.interfaceMatID();
-//                    TPZGeoElBC gbc(gelside, matidinterface);
-//
-//                    int64_t index;
-//                    TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*mmesh, gbc.CreatedElement(), index, celsideright, celsideleft);
-//                    break;
 
                 }
                 neigh = neigh.Neighbour();
@@ -222,10 +215,6 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
     
     cmesh->AutoBuild();
     cmesh->InitializeBlock();
-    
-    // Print flux mesh
-    // std::ofstream myfile("FluxMesh.txt");
-    // cmesh->Print(myfile);
     
     return cmesh;
 }
@@ -314,10 +303,17 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvec
     cmesh->CleanUpUnconnectedNodes();
     
     // Creating interface elements
-    for (auto gel : gmesh->ElementVec()) {
-        if (!gel || gel->MaterialId() != 15) {
+    TPZCompMesh* cmeshpressure = cmesh->MeshVector()[1];
+    cmesh->Reference()->ResetReference();
+    cmeshpressure->LoadReferences();
+    const int lagrangematid = hybridizer.lagrangeInterfaceMatId();
+    for (auto cel : cmeshpressure->ElementVec()) {
+        const int celmatid = cel->Material()->Id();
+        if (!cel || celmatid != lagrangematid ) {
             continue;
         }
+        TPZGeoEl* gel = cel->Reference();
+        
         hybridizer.CreateInterfaceElementsForGeoEl(cmesh, meshvector, gel);
         
     }
@@ -372,9 +368,6 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
     std::string plotfile = "solutionHdiv.vtk";
     an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
     an.PostProcess(div,dim);
-    // Print mesh properties
-    // std::ofstream out("mesh.txt");
-    // an.Print("nothing",out);
     
     return;
 }
@@ -392,9 +385,6 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh)
     
     
     TPZMatPoisson<> *mat = new TPZMatPoisson<>(1,dim);
-    // TPZMixedDarcyFlow *mat = new TPZMixedDarcyFlow(matIdVec[0],dim);
-    // mat->SetPermeabilityFunction(1.);
-//    mat->fBigNumber = 1.e12;
     cmesh->InsertMaterialObject(mat);
     
     //Insert boundary conditions
