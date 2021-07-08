@@ -43,6 +43,7 @@ void PrintResultsH1(int dim, TPZLinearAnalysis &an);
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 
+enum EMatid  {ENone, EDomain, EInlet, EOutlet, ENoflux, EIntersection};
 // ----- End of Functions -----
 
 //-------------------------------------------------------------------------------------------------
@@ -64,43 +65,42 @@ int main(int argc, char* argv[]){
     
     //................. Read mesh from gmsh ................................
     TPZGeoMesh* gmesh = new TPZGeoMesh();
-    string filename = "../mesh/Case1FracSimple.msh";
+    string filename;
+    bool is2fracCase = 0;
+    if (is2fracCase) {
+        // This case has two rectangular intersection fractures
+        // And hybridize the intersection
+        filename = "../mesh/Case2FracSimple.msh";
+    }
+    else{
+        // This case has just two elements and we only
+        // hybridize the interface between them
+        filename = "../mesh/Case1FracSimple.msh";
+    }
     readGeoMesh(filename,gmesh);
     
     //.................................Hdiv.................................
     //Flux mesh
     TPZCompMesh * cmeshflux = FluxCMesh(dim,pOrder,gmesh);
-//    ofstream outvtkcmeshflux("cmeshflux.vtk");
-//    TPZVTKGeoMesh::PrintCMeshVTK(cmeshflux, outvtkcmeshflux);
     
     //Pressure mesh
     TPZCompMesh * cmeshpressure= PressureCMesh(dim,pOrder,gmesh);
-//    ofstream outvtkcmeshp("cmeshpressure.vtk");
-//    TPZVTKGeoMesh::PrintCMeshVTK(cmeshpressure, outvtkcmeshp);
         
     //Multiphysics mesh
     TPZManVector< TPZCompMesh *, 2> meshvector(2);
     meshvector[0] = cmeshflux;
     meshvector[1] = cmeshpressure;
     
-//    ofstream out1("cmeshpressure1.txt");
-//    cmeshpressure->Print(out1);
-    
     TPZHybridizeHDiv hybridizer(meshvector);
     HybridizeIntersection(hybridizer, meshvector);
     
-//    ofstream out2("cmeshpressure2.txt");
-//    cmeshpressure->Print(out2);
-    
+    // Multiphysics mesh AND create interface elements at the requested intersection
     TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,meshvector,gmesh,hybridizer);
-//    ofstream outvtkcmeshmult("cmeshmult.vtk");
-//    TPZVTKGeoMesh::PrintCMeshVTK(cmesh, outvtkcmeshmult);
-    
     
     //Solve Multiphysics
     TPZLinearAnalysis an(cmesh,true);
     SolveProblemDirect(an,cmesh);
-//    cmesh->UpdatePreviousState(-1.);
+//    cmesh->UpdatePreviousState(-1.); NS: When do I need this??????
     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
     
     //Print results
@@ -118,10 +118,6 @@ int main(int argc, char* argv[]){
     PrintResultsH1(dim,anH1);
     std::ofstream out4("meshH1.txt");
     
-//    delete gmesh;
-//    delete cmesh;
-//    delete cmeshflux;
-//    delete cmeshpressure;
     return 0;
 }
 
@@ -135,54 +131,51 @@ void HybridizeIntersection(TPZHybridizeHDiv& hybridizer, TPZVec<TPZCompMesh*>& m
 
        
     TPZCompMesh* fluxmesh = meshvec_Hybrid[0];
+    TPZGeoMesh* gmesh = fluxmesh->Reference();
+    fluxmesh->LoadReferences();
     hybridizer.InsertPeriferalMaterialObjects(meshvec_Hybrid);
-//    hybridizer.InsertPeriferalMaterialObjects(mmesh);
-    
-    
-    // now we find the intersection and hybridize it
+        
     int dim = fluxmesh->Dimension();
-    int64_t nel = fluxmesh->NElements();
-    for (int64_t iel = 0; iel < nel; iel++) {
-        TPZCompEl* cel = fluxmesh->Element(iel);
-        TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
-        if (!intel || intel->Reference()->Dimension() != dim) {
+    for (auto gel : gmesh->ElementVec()) {
+        if (gel->MaterialId() != EIntersection) {
             continue;
         }
-        
-        // loop over the side of dimension dim-1
-        TPZGeoEl *gel = intel->Reference();
-        for (int side = gel->NCornerNodes(); side < gel->NSides() - 1; side++) {
-            if (gel->SideDimension(side) != dim - 1) {
-                continue;
-            }
-            
-            TPZGeoElSide gelside(gel,side);
-            TPZGeoElSide neigh = gelside.Neighbour();
-            
-            while(neigh != gelside){
-                int neighmatid = neigh.Element()->MaterialId();
-                int neighdim = neigh.Dimension();
-                
-                if (neighmatid == 15 && neighdim == dim-1) {
-                    cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " has side number " << side << " with dim = " << neigh.Dimension() << " touching the requested matID" << endl;
-                    cout << "===> Trying to hybridizing the interface now..." << endl;
-                    TPZCompElSide celsideleft(intel, side);
-                    bool isNewInterface = hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
-                    if (!isNewInterface) {
-                        break;
-                    }
-
-                }
-                neigh = neigh.Neighbour();
-            } // while
-            
-            
+        if (gel->Dimension() != dim - 1) {
+            DebugStop();
         }
         
+        // Search for first neighbor that that is domain
+        TPZGeoElSide gelside(gel,gel->NSides()-1);
+        TPZGeoElSide neigh = gelside.Neighbour();
+        
+        while(neigh != gelside){
+            TPZGeoEl* gelneigh = neigh.Element();
+            int neighmatid = gelneigh->MaterialId();
+            int neighdim = gelneigh->Dimension();
+            
+            if (neighmatid == EDomain && neighdim == dim) {
+                cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " is an intersection element" << endl;
+                cout << "===> Trying to split the connects of the flux mesh and create pressure element..." << endl;
+                TPZCompEl* celneigh = gelneigh->Reference();
+                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (celneigh);
+                if (!intel)
+                    DebugStop();
+                
+                const int side = neigh.Side();
+                TPZCompElSide celsideleft(intel, side);
+                bool isNewInterface = hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
+                if (isNewInterface) {
+                    break;
+                }
+                else{
+                    DebugStop();
+                }
+
+            }
+            neigh = neigh.Neighbour();
+        } // while
+        
     }
-    
-    
-    
 }
 
 // ---------------------------------------------------------------------
@@ -195,14 +188,13 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
     TPZNullMaterial<> *mat = new TPZNullMaterial<>(1);
     cmesh->InsertMaterialObject(mat);
 
-    //    mat -> fBigNumber = 1.e10;
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
     TPZManVector<STATE> val4(1,4.);
-    auto * BCond0 = mat->CreateBC(mat, -3, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
+    auto * BCond0 = mat->CreateBC(mat, ENoflux, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond0);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond2);
@@ -225,27 +217,25 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
 TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
 {
     gmesh->ResetReference();
-    //Change if not triangular elements
-    bool fTriang = false;
     TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
     TPZNullMaterial<> *mat = new TPZNullMaterial<>(1);
     mat->SetDimension(dim);
     cmesh->InsertMaterialObject(mat);
-    // mat -> fBigNumber = 1.e10;
     cmesh->SetAllCreateFunctionsDiscontinuous();
 //    cmesh->SetAllCreateFunctionsContinuous();
 //    cmesh->ApproxSpace().CreateDisconnectedElements(true);
     cmesh->SetDefaultOrder(pOrder);
     cmesh->SetDimModel(dim);
 
+    // NS: Do I need to create boundary cond in the pressure mesh?????
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
     TPZManVector<STATE> val4(1,4.);
     constexpr int boundType{1};
     constexpr int boundType0{0};
-    auto * BCond0 = mat->CreateBC(mat, -3, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
+    auto * BCond0 = mat->CreateBC(mat, ENoflux, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
     cmesh->InsertMaterialObject(BCond2);
@@ -257,7 +247,6 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
         TPZConnect &newnod = cmesh->ConnectVec()[i];
         newnod.SetLagrangeMultiplier(1);
     }
-    
     
     std::ofstream myfile("PressureMesh.txt");
     cmesh->Print(myfile);
@@ -278,21 +267,19 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvec
     
     mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
-    //    mat -> fBigNumber = 1.e10;
     
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
     TPZManVector<STATE> val4(1,4.);
-    auto * BCond0 = mat->CreateBC(mat, -3, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
+    auto * BCond0 = mat->CreateBC(mat, ENoflux, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
     cmesh->InsertMaterialObject(BCond2);
     
     hybridizer.InsertPeriferalMaterialObjects(cmesh);
-    
     
     TPZManVector<int> active(2,1);
     cmesh->SetDimModel(dim);
@@ -383,7 +370,6 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh)
     cmesh->SetAllCreateFunctionsContinuous();
     cmesh->SetDimModel(dim);
     
-    
     TPZMatPoisson<> *mat = new TPZMatPoisson<>(1,dim);
     cmesh->InsertMaterialObject(mat);
     
@@ -391,9 +377,9 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh)
     TPZFMatrix<STATE> val1(1,1,0.);
     TPZManVector<STATE> val2(1,0.);
     TPZManVector<STATE> val4(1,4.);
-    auto * BCond = mat->CreateBC(mat, -3, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, -2, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, -1, 0, val1, val4);
+    auto * BCond = mat->CreateBC(mat, ENoflux, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
+    auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
     cmesh->InsertMaterialObject(BCond);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond2);
@@ -426,11 +412,11 @@ void readGeoMesh(string& filename, TPZGeoMesh* gmesh) {
     
     TPZGmshReader reader;
     TPZManVector<std::map<std::string,int>,4> dim_name_and_physical_tagFine(4);
-    dim_name_and_physical_tagFine[2]["frac"] = 1;
-    dim_name_and_physical_tagFine[1]["inlet"] = -1;
-    dim_name_and_physical_tagFine[1]["outlet"] = -2;
-    dim_name_and_physical_tagFine[1]["noflux"] = -3;
-    dim_name_and_physical_tagFine[1]["intersection"] = 15;
+    dim_name_and_physical_tagFine[2]["frac"] = EDomain;
+    dim_name_and_physical_tagFine[1]["inlet"] = EInlet;
+    dim_name_and_physical_tagFine[1]["outlet"] = EOutlet;
+    dim_name_and_physical_tagFine[1]["noflux"] = ENoflux;
+    dim_name_and_physical_tagFine[1]["intersection"] = EIntersection;
     reader.SetDimNamePhysical(dim_name_and_physical_tagFine);
     reader.GeometricGmshMesh4(filename,gmesh);
     gmesh->SetDimension(2);
@@ -440,3 +426,4 @@ void readGeoMesh(string& filename, TPZGeoMesh* gmesh) {
 
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
+
