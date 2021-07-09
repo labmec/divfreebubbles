@@ -57,7 +57,7 @@ enum EMatid  {ENone, EDomain, EInlet, EOutlet, ENoflux, EIntersection};
 int main(int argc, char* argv[]){
 
 #ifdef PZ_LOG
-    TPZLogger::InitializePZLOG();
+    TPZLogger::InitializePZLOG("log4cxx.cfg");
 #endif
     
     int dim = 2;
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
     //................. Read mesh from gmsh ................................
     TPZGeoMesh* gmesh = new TPZGeoMesh();
     string filename;
-    bool is2fracCase = 0;
+    bool is2fracCase = 1;
     if (is2fracCase) {
         // This case has two rectangular intersection fractures
         // And hybridize the intersection
@@ -97,9 +97,13 @@ int main(int argc, char* argv[]){
     // Multiphysics mesh AND create interface elements at the requested intersection
     TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,meshvector,gmesh,hybridizer);
     
+//    ofstream outmult("multimesh.txt");
+//    cmesh->Print(outmult);
+    
     //Solve Multiphysics
     TPZLinearAnalysis an(cmesh,true);
     SolveProblemDirect(an,cmesh);
+    
 //    cmesh->UpdatePreviousState(-1.); NS: When do I need this??????
     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
     
@@ -221,24 +225,14 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh)
     TPZNullMaterial<> *mat = new TPZNullMaterial<>(1);
     mat->SetDimension(dim);
     cmesh->InsertMaterialObject(mat);
-    cmesh->SetAllCreateFunctionsDiscontinuous();
-//    cmesh->SetAllCreateFunctionsContinuous();
-//    cmesh->ApproxSpace().CreateDisconnectedElements(true);
+//    cmesh->SetAllCreateFunctionsDiscontinuous();
+    cmesh->SetAllCreateFunctionsContinuous();
+    cmesh->ApproxSpace().CreateDisconnectedElements(true);
     cmesh->SetDefaultOrder(pOrder);
     cmesh->SetDimModel(dim);
 
     // NS: Do I need to create boundary cond in the pressure mesh?????
-    TPZFMatrix<STATE> val1(1,1,1.);
-    TPZManVector<STATE> val2(1,0.);
-    TPZManVector<STATE> val4(1,4.);
-    constexpr int boundType{1};
-    constexpr int boundType0{0};
-    auto * BCond0 = mat->CreateBC(mat, ENoflux, 1, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
-    auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
-    cmesh->InsertMaterialObject(BCond1);
-    cmesh->InsertMaterialObject(BCond0);
-    cmesh->InsertMaterialObject(BCond2);
+    // NO WE DONT!!!!!
 
     cmesh->AutoBuild();
 
