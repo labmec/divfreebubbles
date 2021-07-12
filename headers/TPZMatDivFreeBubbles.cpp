@@ -89,7 +89,7 @@ void TPZMatDivFreeBubbles<TVar>::ContributeBC(const TPZMaterialDataT<TVar> &data
         // Dirichlet condition
     case 0 : {      
         for(auto in = 0 ; in < phr; in++) {
-            ef(in,0) += v2[0] * dphi.GetVal(0,in) * (TVar)weight;
+            ef(in,0) += v2[0] * (TVar)dphi.GetVal(0,in) * (TVar)weight;
         }//in
         break;
     }

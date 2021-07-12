@@ -31,18 +31,21 @@ Plane Surface(2) = {-2};
 Transfinite Surface {1, 2} ;
 Recombine Surface{1,2};
 //+
-Physical Curve("InjectionWell") = {1};
+Physical Surface("Surface") = {1, 2};//1
+
+Physical Curve("InjectionWell") = {1};//2
 //+
-Physical Curve("ProductionWell") = {2};
+Physical Curve("ProductionWell") = {2};//3
 //+
-Physical Curve("Bottom") = {3};
+Physical Curve("BottomLine") = {3};//4
 //+
-Physical Curve("Top") = {5};
+Physical Curve("TopLine") = {5};//5
 //+
-Physical Curve("Left") = {6};
+Physical Curve("LeftLine") = {6};//6
 //+
-Physical Curve("Right") = {4};
+Physical Curve("RightLine") = {4};//7
 //+
-Physical Surface("Surface") = {1, 2};
-//+
-Physical Point("Point") = {6};
+Physical Point("Point") = {6};//8
+
+Physical Curve("BottomLine2") = {3};//9
+
