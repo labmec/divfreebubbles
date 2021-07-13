@@ -77,13 +77,13 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &x=loc[0];
     const auto &y=loc[1];
 
-    // u[0] = x*x*x*y - y*y*y*x;
-    // gradU(0,0) = (3.*x*x*y - y*y*y);
-    // gradU(1,0) = (x*x*x - 3.*y*y*x);
+    u[0] = x*x*x*y - y*y*y*x;
+    gradU(0,0) = (3.*x*x*y - y*y*y);
+    gradU(1,0) = (x*x*x - 3.*y*y*x);
 
-    u[0]= x*x-y*y;
-    gradU(0,0) = 2.*x;
-    gradU(1,0) = -2.*y;
+    // u[0]= x*x-y*y;
+    // gradU(0,0) = 2.*x;
+    // gradU(1,0) = -2.*y;
 
     // const auto &d = 1.5; // distance betweel injection and production wells
     // u[0]=log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
@@ -97,13 +97,13 @@ auto exactSol2 = [](const TPZVec<REAL> &loc,
     const auto &x=loc[0];
     const auto &y=loc[1];
 
-    // u[0] = x*x*x*y - y*y*y*x;
-    // gradU(0,0) = -(3.*x*x*y - y*y*y);
-    // gradU(1,0) = -(x*x*x - 3.*y*y*x);
+    u[0] = x*x*x*y - y*y*y*x;
+    gradU(0,0) = -(3.*x*x*y - y*y*y);
+    gradU(1,0) = -(x*x*x - 3.*y*y*x);
 
-    u[0]= x*x-y*y;
-    gradU(0,0) = -2.*x;
-    gradU(1,0) = 2.*y;
+    // u[0]= x*x-y*y;
+    // gradU(0,0) = -2.*x;
+    // gradU(1,0) = 2.*y;
 
     // const auto &d = 1.5; // distance betweel injection and production wells
     // u[0]=log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
@@ -118,17 +118,7 @@ int main(int argc, char* argv[])
     //dimension of the problem
     constexpr int dim{2};
     constexpr int pOrder{2};
-    //Materials - See the .geo file
-    TPZManVector<int64_t, 6> matIdVec={1,2,3,4,5,6};
-    //1 = Domain
-    //2 = Bottom
-    //3 = Right
-    //4 = Top 
-    //5 = Left
-    //6 = Point
-    // std::set<int> 
-    TPZManVector<int64_t, 2> matIdNeumann = {7};
-    
+      
 
 #ifdef PZ_LOG
 TPZLogger::InitializePZLOG();
@@ -148,7 +138,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[1]["Top"] = 4;
         stringtoint[1]["Left"] = 5;
         stringtoint[0]["Point"] = 6;
-        stringtoint[1]["Right2"] = 7;
+        stringtoint[1]["Top2"] = 7;
         reader.SetDimNamePhysical(stringtoint);
         reader.GeometricGmshMesh4("../mesh/1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
@@ -156,36 +146,36 @@ TPZLogger::InitializePZLOG();
     }
     
     //.................................Hdiv.................................
-    // TPZCompMesh * cmeshflux = 0;
-    // TPZCompMesh * cmeshpressure = 0;
+    TPZCompMesh * cmeshflux = 0;
+    TPZCompMesh * cmeshpressure = 0;
     // {
     //     // para a primeira simulacao a malha de fluxo contem todos os materiais
     //     // nao ha material EWrap nesta configuracao
-    //     TPZManVector<int64_t, 6> matIdVec={EDomain,EBottom,ETop,ELeft,EPont,ERight};
-    //     TPZManVector<int64_t, 2> matIdNeumann;
+    //     TPZManVector<int64_t, 6> matIdVecHdiv={EDomain,EBottom,ETop,ELeft,EPont,ERight};
+    //     TPZManVector<int64_t, 2> matIdNeumannHdiv;
 
     //     //Flux mesh
-    //     cmeshflux = FluxCMesh(dim,pOrder,matIdVec,gmesh);
+    //     cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
 
     //     //Pressure mesh
     //     // a malha pressao sera vazio neste caso
     //     // a dimensao dos elementos de pressao eh um a menos que a dimensao do problema
-    //     cmeshpressure = PressureCMesh(dim-1,pOrder,matIdVec,gmesh);
+    //     cmeshpressure = PressureCMesh(dim-1,pOrder,matIdVecHdiv,gmesh);
 
     //     //Multiphysics mesh
     //     TPZManVector< TPZCompMesh *, 2> meshvector(2,0);
     //     meshvector[0] = cmeshflux;
     //     meshvector[1] = cmeshpressure;
-    //     auto * cmesh = MultiphysicCMesh(dim,pOrder,matIdVec,meshvector,gmesh);
+    //     auto * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
 
     //     //Solve Multiphysics
     //     TPZLinearAnalysis an(cmesh,true);
     //     SolveProblemDirect(an,cmesh);
 
-    //     //Print results
-    //     PrintResultsMultiphysic(dim,meshvector,an,cmesh);
-    //     std::ofstream out3("mesh_Hdiv.txt");
-    //     an.Print("nothing",out3);
+    //     // //Print results
+    //     // PrintResultsMultiphysic(dim,meshvector,an,cmesh);
+    //     // std::ofstream out3("mesh_Hdiv.txt");
+    //     // an.Print("nothing",out3);
 
     //     std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
     //     ComputeErrorHdiv(an,anPostProcessFileHdiv);
@@ -193,31 +183,29 @@ TPZLogger::InitializePZLOG();
     // }
 
     //.........................Div Free Bubbles NEW.........................
-    {
-        // nesta configuracao o material ERight eh substituido por EWrap
-        TPZManVector<int64_t, 6> matIdVec={EDomain,EBottom,ETop,ELeft,EPont,EWrap};
-        // criamos elementos tipo ERight para a pressao
-        TPZManVector<int64_t, 2> matIdNeumann = {ERight};
+    // {
+        // nesta configuracao o material ETop eh substituido por EWrap
+        TPZManVector<int64_t, 6> matIdVecNew={EDomain,EPont,EWrap};
+        // criamos elementos tipo ETop para a pressao
+        TPZManVector<int64_t, 4> matIdNeumannNew = {ETop,ERight,EBottom,ELeft};
         
         //Flux mesh
-        TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder,matIdVec,gmesh);
+        TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder+1,matIdVecNew,gmesh);
 
         //Pressure mesh
-        TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,pOrder-1,matIdNeumann,gmesh);
+        TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,pOrder,matIdNeumannNew,gmesh);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
         meshvectorNew[0] = cmeshfluxNew;
         meshvectorNew[1] = cmeshpressureNew;
-        // meshvectorNew[2] = cmeshflux;
-        // meshvectorNew[3] = cmeshpressure;
-        auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder,matIdVec,meshvectorNew,gmesh);
+        auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder+1,matIdVecNew,meshvectorNew,gmesh);
 
         //Solve Multiphysics
         TPZLinearAnalysis anNew(cmeshNew,false);
         SolveProblemDirect(anNew,cmeshNew);
 
-        anNew.Solution().Print("Sol");
+        // anNew.Solution().Print("Sol");
         
         //Print results
         PrintResultsMultiphysicNew(dim,meshvectorNew,anNew,cmeshNew);
@@ -226,7 +214,7 @@ TPZLogger::InitializePZLOG();
 
         std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
-    }
+    // }
 
     //...........................Div Free Bubbles...........................
     //Creates DFB problem
@@ -240,13 +228,6 @@ TPZLogger::InitializePZLOG();
     // PrintResultsDivFreeBubbles(dim,anDFB);
     // std::ofstream out("mesh.txt");
     // anDFB.Print("nothing",out);
-    
-    //...........................ERROR EVALUATION...........................
-    
-
-    
-    // std::ofstream anPostProcessFileDFB("postprocessDFB.txt");
-    // ComputeError(anDFB,anPostProcessFileDFB);
 
     return 0;
 }
@@ -411,14 +392,14 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, TPZVec<int64_t
     TPZManVector<STATE> val4(1,0.);
     constexpr int boundType{1};
     constexpr int boundType0{0};
-    auto * BCond0 = mat->CreateBC(mat, EBottom, 0, val1, val4);//Bottom
-    auto * BCond1 = mat->CreateBC(mat, ERight, 1, val1, val2);//Right
+    auto * BCond0 = mat->CreateBC(mat, EBottom, 1, val1, val4);
+    auto * BCond1 = mat->CreateBC(mat, ERight, 1, val1, val2);
     BCond0->SetForcingFunctionBC(exactSol);
     BCond1->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
-    auto * BCond2 = mat->CreateBC(mat, ETop, 0, val1, val2);//Top
-    auto * BCond3 = mat->CreateBC(mat, ELeft, 0, val1, val4);//Left
+    auto * BCond2 = mat->CreateBC(mat, ETop, 1, val1, val2);
+    auto * BCond3 = mat->CreateBC(mat, ELeft, 1, val1, val4);
     // auto * BCond4 = mat->CreateBC(mat, matIdVec[5], 0, val1, val4);//Point
     BCond2->SetForcingFunctionBC(exactSol);
     BCond3->SetForcingFunctionBC(exactSol);
@@ -436,8 +417,6 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, TPZVec<int64_t
     TPZManVector<int> active(2,1);
     active[0]=1;
     active[1]=1;
-    // active[2]=0;
-    // active[3]=0;
     cmesh->BuildMultiphysicsSpace(active, meshvector);
     cmesh->LoadReferences();
     cmesh->CleanUpUnconnectedNodes(); 
@@ -484,7 +463,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, TPZVec<int64_t
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{1};
     TPZSkylineStructMatrix<STATE> matskl(cmesh);
     matskl.SetNumThreads(nThreads);
     an.SetStructuralMatrix(matskl);

@@ -53,11 +53,12 @@ Transfinite Surface {3, 4} Right;
 Recombine Surface{1,2,3,4};
 
 //Physical Groups
-Physical Curve("InjectionWell") = {8, 7};   //1
-Physical Curve("ProductionWell") = {9, 10}; //2
-Physical Curve("BottomLine") = {2};         //3
-Physical Curve("TopLine") = {4};            //4
-Physical Curve("LeftLine") = {1};           //5
-Physical Curve("RightLine") = {3};          //6
-Physical Surface("Surface") = {1, 2, 3, 4}; //7
-Physical Point("Point") = {10};		    //8
+Physical Surface("Surface") = {1, 2, 3, 4}; //1
+Physical Curve("InjectionWell") = {8, 7};   //2
+Physical Curve("ProductionWell") = {9, 10}; //3
+Physical Curve("BottomLine") = {2};         //4
+Physical Curve("TopLine") = {4};            //5
+Physical Curve("LeftLine") = {1};           //6
+Physical Curve("RightLine") = {3};          //7
+Physical Point("Point") = {10};	      //8
+Physical Curve("TopLine2") = {8,7,9,10,2,4,1,3};            //9

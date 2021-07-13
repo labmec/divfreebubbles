@@ -25,5 +25,5 @@ Physical Curve("Right") = {2};
 Physical Curve("Top") = {3};
 Physical Curve("Left") = {4};
 Physical Point("Point") = {1};
-Physical Curve("Right2") = {2};
+Physical Curve("Top2") = {1,2,3,4};
 
