@@ -1,3 +1,4 @@
+
 // Gmsh project created on Mon May 24 18:40:06 2021
 //+
 Point(1) = {0, 0, 0, 1.0};
@@ -13,7 +14,7 @@ Curve Loop(1) = {1, 2, 3, 4};
 Plane Surface(1) = {1};
 
 Transfinite Curve {1,3} = 2 Using Progression 1;
-Transfinite Curve {2,4} = 2 Using Progression 1;
+Transfinite Curve {2,4} = 3 Using Progression 1;
 Transfinite Surface {1};
 Recombine Surface{1};
 
