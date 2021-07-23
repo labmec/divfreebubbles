@@ -18,6 +18,7 @@
 #include "../headers/TPZMatDivFreeBubbles.h" //THE NEW MATERIAL!
 #include "Poisson/TPZMatPoisson.h" //for TPZMatLaplacian
 #include "Projection/TPZL2Projection.h" //for BC in a single point
+#include "pzmultiphysicscompel.h"
 #include <TPZNullMaterial.h>
 #include <TPZNullMaterialCS.h>
 #include "DarcyFlow/TPZMixedDarcyFlow.h"// for Hdiv problem
@@ -121,7 +122,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{1};
+    constexpr int pOrder{2};
       
 
 #ifdef PZ_LOG
@@ -211,6 +212,7 @@ TPZLogger::InitializePZLOG();
 
         //Solve Multiphysics
         TPZLinearAnalysis anNew(cmeshNew,false);
+
         SolveProblemDirect(anNew,cmeshNew);
 
         // anNew.Solution().Print("Sol");
@@ -409,38 +411,74 @@ void HybridizeBC(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh * gmesh){
 
 void HybridizeDomain(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh * gmesh){
 
-    gmesh->ResetReference();
-    cmesh->LoadReferences();
-    int64_t nel = cmesh->NElements();
-    for (int64_t el = 0; el < nel; el++) {
-        TPZCompEl *cel = cmesh->Element(el);
-        if(!cel) continue;
-        TPZGeoEl *gel = cel->Reference();
-        int matid = gel->MaterialId();
-
-        if(matid == EWrap)
-        {
-            TPZCompEl *fluxel = FindFluxElement(cel);
-            TPZGeoEl *fluxgel = fluxel->Reference();
-            TPZGeoElSide gelside(gel);
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            int neighmat = neighbour.Element()->MaterialId();
-            if(neighmat != EIntfaceLeft && neighmat != EIntfaceRight)
-            {
-                DebugStop();
-            }
-            // determine if the interface should be positive or negative...
-            int interfacematid = neighmat;
-            int64_t index;
-            TPZCompElSide celwrap(cel,gel->NSides()-1);
-            TPZGeoElSide fluxgelside(fluxgel);
-            TPZCompElSide fluxside = fluxgelside.Reference();
-//            std::cout << "Creating interface from wrap element " << gel->Index() << " using neighbour " << neighbour.Element()->Index() <<
-//             " and flux element " << fluxgel->Index() << std::endl;
-            if(neighbour.Element()->Reference()) DebugStop();
-            new TPZMultiphysicsInterfaceElement(*cmesh,neighbour.Element(),index,celwrap,fluxside);
-
+      // Creating interface elements
+    TPZCompMesh* pressuremesh = cmesh->MeshVector()[1];
+    cmesh->Reference()->ResetReference();
+    pressuremesh->LoadReferences();
+    const int lagrangematid = EIntfaceLeft;
+    for (auto cel : pressuremesh->ElementVec()) {
+        const int celmatid = cel->Material()->Id();
+        if (!cel || celmatid != lagrangematid ) {
+            continue;
         }
+        TPZGeoEl* gel = cel->Reference();
+        
+        int dim = gel->Dimension()+1;
+        
+        cmesh->Reference()->ResetReference();
+        cmesh->LoadReferences();
+        
+        TPZStack<TPZCompElSide> celstack;
+    //    TPZGeoEl *gel = cel->Reference();
+        TPZCompEl *mphysics = gel->Reference();
+        TPZGeoElSide gelside(gel, gel->NSides() - 1);
+        TPZCompElSide celside = gelside.Reference();
+        gelside.EqualLevelCompElementList(celstack, 0, 0);
+        int count = 0;
+        for (auto &celstackside : celstack) {
+            if (celstackside.Reference().Element()->Dimension() == dim - 1) {
+                int matid = EIntfaceRight;
+                if(count == 1) matid = EIntfaceRight;
+                TPZGeoElBC gbc(gelside, matid);
+                // check if the right side has a dependency
+                TPZCompEl *celneigh = celstackside.Element();
+                // std::cout << "COnn = " << celneigh->NConnects() << " " << std::endl;
+                // if (celneigh->NConnects() != 1) {
+                //     DebugStop();
+                // }
+                int64_t index;
+                TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*cmesh, gbc.CreatedElement(), index, celside, celstackside);
+                count++;
+            }
+        }
+        if (count == 1)
+        {
+            TPZCompElSide clarge = gelside.LowerLevelCompElementList2(false);
+            if(!clarge) DebugStop();
+            TPZGeoElSide glarge = clarge.Reference();
+            if (glarge.Element()->Dimension() == dim) {
+                TPZGeoElSide neighbour = glarge.Neighbour();
+                while(neighbour != glarge)
+                {
+                    if (neighbour.Element()->Dimension() < dim) {
+                        break;
+                    }
+                    neighbour = neighbour.Neighbour();
+                }
+                if(neighbour == glarge) DebugStop();
+                glarge = neighbour;
+            }
+            clarge = glarge.Reference();
+            if(!clarge) DebugStop();
+            TPZGeoElBC gbc(gelside, EIntfaceRight);
+
+            int64_t index;
+            TPZMultiphysicsInterfaceElement *intface = new TPZMultiphysicsInterfaceElement(*cmesh, gbc.CreatedElement(), index, celside, clarge);
+            count++;
+        }
+        
+        pressuremesh->InitializeBlock();
+        
     }
 }
 
@@ -515,7 +553,15 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     cmesh->CleanUpUnconnectedNodes(); 
 
     HybridizeBC(cmesh,gmesh);
-    // HybridizeDomain(cmesh,gmesh);
+    HybridizeDomain(cmesh,gmesh);
+
+    // std::cout << "Nequations before = " << cmesh->NEquations() << std::endl;
+    // for (auto cel:cmesh->ElementVec()) {
+    //     if (!cel && cel->Dimension() != cmesh->Dimension()) continue;
+    //     TPZCondensedCompEl *condense = new TPZCondensedCompEl(cel, false);
+    // }
+    // cmesh->CleanUpUnconnectedNodes();
+    // std::cout << "Nequations after = " << cmesh->NEquations() << std::endl;
 
     // Prints Multiphysics mesh
     std::ofstream myfile("MultiPhysicsMeshNew.txt");
