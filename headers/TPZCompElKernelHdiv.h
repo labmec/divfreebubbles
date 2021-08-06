@@ -20,6 +20,9 @@
  */
 template<class TSHAPE>
 class TPZCompElKernelHDiv : public TPZIntelGen<TSHAPE> {
+
+    /// vector which defines whether the normal is outward or not
+    TPZManVector<int, TSHAPE::NFacets> fSideOrient;
     
     /// Data structure which defines the restraints
     std::list<TPZOneShapeRestraint> fRestraints;
@@ -71,6 +74,32 @@ public:
 
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
     int ClassId() const override;
+
+    /**
+     * @brief It returns the normal orientation of the reference element by the side.
+     * Only side that has dimension larger than zero and smaller than me.
+     * @param side: side of the reference elemen
+     */
+    virtual int GetSideOrient(int side) override;
+    
+    /**
+     * @brief It set the normal orientation of the element by the side.
+     * Only side that has dimension equal to my dimension minus one.
+     * @param side: side of the reference elemen
+     */
+    virtual void SetSideOrient(int side, int sideorient) override;
+
+    /// the orientation of the face
+    int SideOrient(int face)
+    {
+#ifdef PZDEBUG
+        if (face < 0 || face >= TSHAPE::NFacets) {
+            DebugStop();
+        }
+#endif
+        return fSideOrient[face];
+    }
+	
 
 
 protected:

@@ -32,7 +32,7 @@ using namespace std;
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index)  {
+TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1) {
 
 }
 
@@ -115,6 +115,36 @@ void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
     }
     data.fDeformedDirections.Resize(3,nshape);
    
+}
+
+/**
+ * @brief It returns the normal orientation of the reference element by the side.
+ * Only side that has dimension larger than zero and smaller than me.
+ * @param side: side of the reference elemen
+ */
+template<class TSHAPE>
+int TPZCompElKernelHDiv<TSHAPE>::GetSideOrient(int side){
+
+    int firstside = TSHAPE::NSides-TSHAPE::NFacets-1;
+    if (side < firstside || side >= TSHAPE::NSides - 1) {
+        DebugStop();
+    }
+    return fSideOrient[side-firstside];
+}
+
+/**
+ * @brief It set the normal orientation of the element by the side.
+ * Only side that has dimension equal to my dimension minus one.
+ * @param side: side of the reference elemen
+ */
+template<class TSHAPE>
+void TPZCompElKernelHDiv<TSHAPE>::SetSideOrient(int side, int sideorient){
+
+    int firstside = TSHAPE::NSides-TSHAPE::NFacets-1;
+    if (side < firstside || side >= TSHAPE::NSides - 1) {
+        DebugStop();
+    }
+    fSideOrient[side-firstside] = sideorient;
 }
 
 template<class TSHAPE>

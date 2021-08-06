@@ -13,8 +13,8 @@ Line(4) = {4, 1};
 Curve Loop(1) = {1, 2, 3, 4};
 Plane Surface(1) = {1};
 
-Transfinite Curve {1,3} = 11 Using Progression 1;
-Transfinite Curve {2,4} = 11 Using Progression 1;
+Transfinite Curve {1,3} = 2 Using Progression 1;
+Transfinite Curve {2,4} = 3 Using Progression 1;
 Transfinite Surface {1};
 Recombine Surface{1};
 
@@ -25,6 +25,6 @@ Physical Curve("Bottom") = {1};
 Physical Curve("Right") = {2};
 Physical Curve("Top") = {3};
 Physical Curve("Left") = {4};
-Physical Point("Point") = {1};
-Physical Curve("Top2") = {1,2,3,4};
+//Physical Point("Point") = {1};
+//Physical Curve("Top2") = {1,2,3,4};
 
