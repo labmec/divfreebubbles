@@ -117,13 +117,13 @@ auto exactSol2 = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2));
 };
 
-enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntfaceLeft, EIntfaceRight, EPressureHyb};
+enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface, EPressureHyb};
 
 int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{3};
+    constexpr int pOrder{1};
       
 
 #ifdef PZ_LOG
@@ -355,10 +355,6 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> mat
     BCond3->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond2);
     cmesh->InsertMaterialObject(BCond3);
-    // TPZBndCond * BCond4 = mat->CreateBC(mat, EPont, 0, val1, val4);//Left
-    // cmesh->InsertMaterialObject(BCond4);
-    // auto *mat2 = new TPZMatPoisson<>(EPont,dim);
-    // cmesh->InsertMaterialObject(mat2);
 
     TPZManVector<int> active(2,1);
     cmesh->BuildMultiphysicsSpace(active, meshvector);
@@ -404,8 +400,12 @@ void CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoM
             DebugStop();
         }
 
+        TPZGeoEl *gelIntface = gel->Neighbour(2).Element();
+        if (gelIntface->MaterialId() != EIntface) DebugStop();
+        
+        // Creates Multiphysics Interface element
         int64_t index;
-        TPZMultiphysicsInterfaceElement *intf = new TPZMultiphysicsInterfaceElement(*cmesh,gel->Neighbour(2).Element(),index,celneigh,celside); // E AQUI O COMPUTACIONAL
+        TPZMultiphysicsInterfaceElement *intf = new TPZMultiphysicsInterfaceElement(*cmesh,gelIntface,index,celneigh,celside);
     }
 
 }
@@ -460,12 +460,9 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     cmesh->LoadReferences();
     cmesh->CleanUpUnconnectedNodes(); 
 
-    auto mat3 = new TPZLagrangeMultiplierCS<STATE>(EIntfaceLeft, dim-1);
+    auto mat3 = new TPZLagrangeMultiplierCS<STATE>(EIntface, dim-1);
     cmesh->InsertMaterialObject(mat3);
 
-    auto mat4 = new TPZLagrangeMultiplierCS<STATE>(EIntfaceRight, dim-1);
-    cmesh->InsertMaterialObject(mat4);
-    
     CreateMultiphysicsInterfaceElements(cmesh,gmesh,meshvector,matIdNeumann);
     
 
@@ -723,14 +720,7 @@ TPZCompMesh *FluxCMeshNew(int dim,int pOrder,std::set<int> matIdVec,TPZGeoMesh *
         mat->SetBigNumber(1.e10);
     }
 
-    // allmat.insert(EPont);
-    // TPZL2Projection<> *mat = new TPZL2Projection<>(EPont,0,1);
-    // cmesh->InsertMaterialObject(mat);
-    // mat->SetDimension(dim);
-    // mat->SetBigNumber(1.e10);
-
-    //Disconnect elements
-    // bool flag = false;
+    //Creates computational elements
     int64_t nel = gmesh->NElements();
     for (int64_t el = 0; el < nel; el++) {
         TPZGeoEl *gel = gmesh->Element(el);
@@ -739,8 +729,6 @@ TPZCompMesh *FluxCMeshNew(int dim,int pOrder,std::set<int> matIdVec,TPZGeoMesh *
         int64_t index;
         auto matid = gel->MaterialId();
         if(allmat.find(matid) == allmat.end()) continue;
-        // if (gel->Dimension() == 2) flag=true;
-        // if (flag==false) continue;
 
         using namespace pzgeom;
         using namespace pzshape;
@@ -784,9 +772,7 @@ TPZCompMesh *FluxCMeshNew(int dim,int pOrder,std::set<int> matIdVec,TPZGeoMesh *
                     nullmat->SetDimension(1);
                     neighbour.Element()->ResetReference();
                 } else {
-                    if (allmat.find(neighbour.Element()->MaterialId()) == allmat.end()){
-
-                    } else {
+                    if (allmat.find(neighbour.Element()->MaterialId()) != allmat.end()){
                         new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
                         TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
                         TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
@@ -812,14 +798,7 @@ TPZCompMesh *FluxCMeshNew(int dim,int pOrder,std::set<int> matIdVec,TPZGeoMesh *
         }
     }    
 
-    //  cmesh->Reference()->ResetReference();
-    // cmesh->LoadReferences();
-    // cmesh->CleanUpUnconnectedNodes();
-
-    // cmesh->ApproxSpace().CreateDisconnectedElements(true);
     cmesh->ExpandSolution();
-
-    // cmesh->AutoBuild();
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
 
@@ -853,54 +832,6 @@ TPZCompMesh *PressureCMeshNew(int dim, int pOrder, std::set<int> matIdVec, TPZGe
         mat->SetBigNumber(1.e10);
         matIdNeumann.insert(*it); 
     }
-
-    
-    // create internal geometric elements to the hybridization
-    // int64_t nel = gmesh->NElements();
-    // for (int64_t el = 0; el < nel; el++) {
-    //     TPZGeoEl *gel = gmesh->Element(el);
-    //     if(!gel) DebugStop();
-    //     int matid = gel->MaterialId();
-    //     // loop only over volumetric elements
-    //     if(matid != EDomain) continue;
-    //     if (gel->Dimension() != dim) {
-    //         DebugStop();
-    //     }
-    //     int nsides = gel->NSides();
-    //     int ncorner = gel->NCornerNodes();
-    //     for (int side = ncorner; side < nsides; side++) {
-    //         if(gel->SideDimension(side) != dim-1) continue;
-    //         TPZGeoElSide gelside(gel,side);
-    //         TPZGeoElSide neighbour = gelside.Neighbour();
-            
-    //         if (neighbour.Element()->MaterialId() != EWrap) continue;
-    //         TPZCompElSide celside = gelside.Reference();
-    //         int dir = gel->NormalOrientation(celside);
-    //         if (side == 6) {
-    //             TPZGeoElBC gbc(gelside, EPressureHyb);
-    //         }
-    //         // gel->Reference()->LoadElementReference();
-
-    //     }
-    // }
-
-    // TPZNullMaterial<> *mat1 = new TPZNullMaterial<>(EPressureHyb);
-    // mat1->SetDimension(1);
-    // mat1->SetBigNumber(1.e10);
-    // cmesh->InsertMaterialObject(mat1);
-    // matIdNeumann.insert(EPressureHyb);
-
-    // TPZNullMaterial<> *mat2 = new TPZNullMaterial<>(EIntfaceRight);
-    // mat2->SetDimension(1);
-    // mat2->SetBigNumber(1.e10);
-    // cmesh->InsertMaterialObject(mat2);
-    // matIdNeumann.insert(EIntfaceRight);
-    
-    // TPZNullMaterial<> *mat3 = new TPZNullMaterial<>(EWrap);
-    // mat3->SetDimension(1);
-    // mat3->SetBigNumber(1.e10);
-    // cmesh->InsertMaterialObject(mat3);
-    // matIdNeumann.insert(EWrap);
 
     cmesh->InitializeBlock();
 
@@ -938,6 +869,8 @@ TPZCompMesh *PressureCMeshNew(int dim, int pOrder, std::set<int> matIdVec, TPZGe
 
 void HybridizerGeoMesh(TPZGeoMesh * gmesh, std::set<int> &matIdBC){
 
+    int dim = gmesh->Dimension();
+
     //Disconnect elements
     int64_t nel = gmesh->NElements();
     for (int64_t el = 0; el < nel; el++) {
@@ -950,79 +883,55 @@ void HybridizerGeoMesh(TPZGeoMesh * gmesh, std::set<int> &matIdBC){
         using namespace pzgeom;
         using namespace pzshape;
 
-        if (gel->Dimension() != 2) continue;
+        if (gel->Dimension() != dim) continue;
         
         int nsides = gel->NSides();
         // gel->ResetReference();
         for (int side = 0; side < nsides; side++) {
 
-            if(gel->SideDimension(side) != 1) continue;
+            if(gel->SideDimension(side) != dim-1) continue;
             TPZGeoElSide geoside(gel,side);
             TPZGeoElSide neighbour = geoside.Neighbour();
 
             if (neighbour.Element()->MaterialId() == EDomain){
+                //Creates Wrap geometric element
                 TPZGeoElBC gelbcWrap(geoside, EWrap);
-           
-                // int dir = gel->NormalOrientation(side);
-                
+
+                //Creates interface geometric element           
                 TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),2);
-                // CRIA OS ELEMENTOS GEOMÉTRICOS WRAP E INTERFACE
-                if (dir == 1){
-                    TPZGeoElBC gelbc(gelWrapSide, EIntfaceLeft); // AQUI CRIA O ELEMENTO DE INTERFACE GEOMÉTRICO
-                    
-                    bool flag = false;
-                    TPZGeoElSide sidePresHyb;
-                    for (int k = 4; k < 8; k++)
-                    {
-                        TPZGeoElSide geosideNeig(neighbour.Element(),k);
-                        if (geosideNeig.Element()->Neighbour(k).Element()->MaterialId()==EWrap) {
-                            flag = true;
-                            sidePresHyb = geosideNeig.Element()->Neighbour(2).Element()->Neighbour(2).Element()->Neighbour(2);
-                        }
-                    }
-                    if (flag==false){
-                        TPZGeoElSide gelPresHSide(gelbc.CreatedElement(),2);
-                        TPZGeoElBC gelPHyb(gelPresHSide, EPressureHyb);
-                    }
-                    
-                }else if (dir == -1) {
-                    TPZGeoElBC gelbc(gelWrapSide, EIntfaceRight); // AQUI CRIA O ELEMENTO DE INTERFACE GEOMÉTRICO
-                    
-                    bool flag = false;
-                    TPZGeoElSide sidePresHyb;
-                    for (int k = 4; k < 8; k++)
-                    {
-                        TPZGeoElSide geosideNeig(neighbour.Element(),k);
-                        if (geosideNeig.Element()->Neighbour(k).Element()->MaterialId()==EWrap) {
-                            flag = true;
-                            sidePresHyb = geosideNeig.Element()->Neighbour(2).Element()->Neighbour(2).Element()->Neighbour(2);
-                        }
-                    }
-                    if (flag==false){
-                        TPZGeoElSide gelPresHSide(gelbc.CreatedElement(),2);
-                        TPZGeoElBC gelPHyb(gelPresHSide, EPressureHyb);
+                TPZGeoElBC gelbc(gelWrapSide, EIntface); 
+
+                //Checks if hybrid pressure geometric element exists, otherwise creates it.
+                bool flag = false;
+                TPZGeoElSide sidePresHyb;
+                int neigSides = gelbc.CreatedElement()->NSides();
+                for (int k = 0; k < nsides; k++)
+                {
+                    if(gel->SideDimension(k) != dim-1) continue;
+                    TPZGeoElSide geosideNeig(neighbour.Element(),k);
+                    if (geosideNeig.Element()->Neighbour(k).Element()->MaterialId()==EWrap) {
+                        flag = true;
+                        sidePresHyb = geosideNeig.Element()->Neighbour(2).Element()->Neighbour(2).Element()->Neighbour(2);
                     }
                 }
+                if (flag==false){
+                    TPZGeoElSide gelPresHSide(gelbc.CreatedElement(),2);
+                    TPZGeoElBC gelPHyb(gelPresHSide, EPressureHyb);
+                } 
             } 
+            //Creates interface and wrap geometric elements for hybridized BC
             if (matIdBC.find(neighbour.Element()->MaterialId()) != matIdBC.end()){
                 TPZGeoElBC gelbcWrap(geoside, EWrap);
                 TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),2);
-                TPZGeoElBC gelbc(gelWrapSide, EIntfaceLeft);
+                TPZGeoElBC gelbc(gelWrapSide, EIntface);
             }
         }
 
-        //Creates point
+        //Creates a point for each hybrizides volumetric finite element
         TPZGeoElSide geosidePoint(gel,0);
         TPZGeoElBC gelbcPoint(geosidePoint, EPont);
 
         gel->ResetReference();
-        for (int side = 0; side < nsides; side++) {
-            TPZGeoElSide gelside(gel,side);
-            gelside.Element()->ResetReference();
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            neighbour.Element()->ResetReference();
-        }   
-    
     }
 
 }
