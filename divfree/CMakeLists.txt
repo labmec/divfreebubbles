@@ -4,12 +4,14 @@ target_include_directories(divfree PUBLIC
 set(MATERIAL_HEADERS
   TPZMatDivFreeBubbles.h
   TPZL2ProjectionCS.h
-  TPZCompElKernelHdivBC.h)
+  TPZCompElKernelHdivBC.h
+  TPZMatCurlDotCurl.h)
 
 set(MATERIAL_SRCS
   TPZMatDivFreeBubbles.cpp
   TPZL2ProjectionCS.cpp
-  TPZCompElKernelHdivBC.cpp)
+  TPZCompElKernelHdivBC.cpp
+  TPZMatCurlDotCurl.cpp)
 
 
 set(MESH_HEADERS
