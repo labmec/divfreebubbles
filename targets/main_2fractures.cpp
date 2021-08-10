@@ -1,36 +1,31 @@
-#ifdef HAVE_CONFIG_H
-#include <pz_config.h>
-#endif
-
-// C++ includes
-#include <stdio.h>
-#include <math.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <cstdio>
-
-// PZ includes
-#include <pzcmesh.h>
+#include <pzgmesh.h> //for TPZGeoMesh
+#include <pzcmesh.h> //for TPZCompMesh
+#include <TPZMultiphysicsCompMesh.h>
+#include <TPZLinearAnalysis.h>
 #include <TPZGmshReader.h>
-#include "Poisson/TPZMatPoisson.h"
+#include <TPZVTKGeoMesh.h>
+#include <TPZCompElDisc.h>
 #include <TPZNullMaterial.h>
-#include "DarcyFlow/TPZMixedDarcyFlow.h"
-#include "TPZLinearAnalysis.h"
-#include <pzskylstrmatrix.h>
-#include <pzstepsolver.h>
-#include "TPZMultiphysicsCompMesh.h"
-#include "pzbuildmultiphysicsmesh.h"
-#include "TPZInterfaceEl.h"
-#include "TPZVTKGeoMesh.h"
-#include "pzintel.h"
-#include "TPZHybridizeHDiv.h"
-#include "pzlog.h"
+#include <DarcyFlow/TPZMixedDarcyFlow.h>// for Hdiv problem
+#include <Poisson/TPZMatPoisson.h>
+#include <pzbuildmultiphysicsmesh.h>
+#include <TPZNullMaterialCS.h>
+#include <pzlog.h>
+#include <pzskylstrmatrix.h> //symmetric skyline matrix storage
+#include <pzstepsolver.h> //for TPZStepSolver
+#include <TPZLagrangeMultiplierCS.h>
+#include <pzshapelinear.h>
+#include <pzshapepoint.h>
+#include <pzshapetriang.h>
+#include <TPZHybridizeHDiv.h>
 
-// ----- Functions -----
+#include "TPZMatDivFreeBubbles.h"
+#include "TPZL2ProjectionCS.h"
+#include "TPZCompElKernelHdiv.h"
+#include "TPZCompElKernelHdivBC.h"
+
 using namespace std;
-
+// ----- Functions -----
 void readGeoMesh(string& filename, TPZGeoMesh* gmesh);
 TPZCompMesh *FluxCMesh(int dim, int pOrder, TPZGeoMesh *gmesh);
 TPZCompMesh *PressureCMesh(int dim, int pOrder, TPZGeoMesh *gmesh);

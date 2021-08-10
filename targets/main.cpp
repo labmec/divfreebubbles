@@ -1,44 +1,28 @@
-#ifdef HAVE_CONFIG_H
-  #include <pz_config.h>
-#endif
-
-#include <stdio.h>
-#include <math.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <cstdio>
 #include <pzgmesh.h> //for TPZGeoMesh
 #include <pzcmesh.h> //for TPZCompMesh
+#include <TPZMultiphysicsCompMesh.h>
+#include <TPZLinearAnalysis.h>
 #include <TPZGmshReader.h>
 #include <TPZVTKGeoMesh.h>
-#include "../headers/TPZMatDivFreeBubbles.h" //THE NEW MATERIAL!
-#include "Poisson/TPZMatPoisson.h" //for TPZMatLaplacian
-#include "Projection/TPZL2Projection.h" //for BC in a single point
-#include "../headers/TPZL2ProjectionCS.h" //THE NEW MATERIAL!
+#include <TPZCompElDisc.h>
 #include <TPZNullMaterial.h>
+#include <DarcyFlow/TPZMixedDarcyFlow.h>// for Hdiv problem
+#include <Poisson/TPZMatPoisson.h>
+#include <pzbuildmultiphysicsmesh.h>
 #include <TPZNullMaterialCS.h>
-#include <TPZLagrangeMultiplierCS.h>
-#include "DarcyFlow/TPZMixedDarcyFlow.h"// for Hdiv problem
-#include <TPZBndCond.h> //for TPZBndCond
-#include "TPZLinearAnalysis.h"
-#include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
+#include <pzlog.h>
 #include <pzskylstrmatrix.h> //symmetric skyline matrix storage
 #include <pzstepsolver.h> //for TPZStepSolver
-#include "TPZMultiphysicsCompMesh.h"
-#include "pzbuildmultiphysicsmesh.h"
-#include "pzcompel.h"
-#include "TPZInterfaceEl.h"
-#include "pzstrmatrixor.h"
-#include "../headers/TPZCompElKernelHdiv.h" //THE NEW MATERIAL!
-#include "../headers/TPZCompElKernelHdivBC.h" //THE NEW MATERIAL!
-#include "pzshapecube.h"
-#include "pzshapelinear.h"
-#include "pzshapequad.h"
-#include "pzshapepoint.h"
-#include "pzshapetriang.h"
-// #include "pzlog.h"
+#include <TPZLagrangeMultiplierCS.h>
+#include <pzshapelinear.h>
+#include <pzshapepoint.h>
+#include <pzshapequad.h>
+#include <pzshapetriang.h>
+
+#include "TPZMatDivFreeBubbles.h"
+#include "TPZL2ProjectionCS.h"
+#include "TPZCompElKernelHdiv.h"
+#include "TPZCompElKernelHdivBC.h"
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *FluxCMeshDFB(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
@@ -295,7 +279,6 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMes
         auto matid = gel->MaterialId();
         if(allmat.find(matid) == allmat.end()) continue;
 
-        using namespace pzgeom;
         using namespace pzshape;
 
         if (type == EPoint){
