@@ -18,6 +18,16 @@ set(MESH_HEADERS
 set(MESH_SRCS
   TPZCompElKernelHdiv.cpp)
 
+# let us create a config file with the directory containing the meshes
+# create folder with meshes
+set(MESHESDIR ${PROJECT_SOURCE_DIR}/meshes)
+set (CONFIG_H "${CMAKE_CURRENT_SOURCE_DIR}/divfree_config.h")
+configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/divfree_config.h.in" ${CONFIG_H})
+
+set(UTIL_HEADERS
+  divfree_config.h)
+
 target_sources(divfree PRIVATE
   ${MATERIAL_HEADERS} ${MATERIAL_SRCS}
-  ${MESH_HEADERS} ${MESH_SRCS})
+  ${MESH_HEADERS} ${MESH_SRCS}
+  ${UTIL_HEADERS})

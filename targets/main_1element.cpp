@@ -17,6 +17,7 @@
 #include <pzshapepoint.h>
 #include <pzshapetriang.h>
 
+#include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
 #include "TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHdiv.h"
@@ -120,7 +121,8 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 6;
         stringtoint[1]["Top2"] = 7;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/1element.msh",gmesh);
+        string filename = string(MESHDIR) + "1element.msh";
+        reader.GeometricGmshMesh4(filename,gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }

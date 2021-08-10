@@ -19,6 +19,7 @@
 #include <pzshapetriang.h>
 #include <TPZHybridizeHDiv.h>
 
+#include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
 #include "TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHdiv.h"
@@ -60,17 +61,17 @@ int main(int argc, char* argv[]){
     
     //................. Read mesh from gmsh ................................
     TPZGeoMesh* gmesh = new TPZGeoMesh();
-    string filename;
+    string filename = MESHDIR;
     bool is2fracCase = 1;
     if (is2fracCase) {
         // This case has two rectangular intersection fractures
         // And hybridize the intersection
-        filename = "../mesh/Case2FracSimple.msh";
+        filename + "Case2FracSimple.msh";
     }
     else{
         // This case has just two elements and we only
         // hybridize the interface between them
-        filename = "../mesh/Case1FracSimple.msh";
+        filename = "Case1FracSimple.msh";
     }
     readGeoMesh(filename,gmesh);
     
