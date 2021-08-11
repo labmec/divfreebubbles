@@ -190,11 +190,11 @@ TPZLogger::InitializePZLOG();
 
     //.........................Div Free Bubbles NEW.........................
     // {
-        std::set<int> matBC={ERight};
+        std::set<int> matBC={};
         HybridizerGeoMesh(gmesh,matBC);
 
         // nesta configuracao o material ETop eh substituido por EWrap
-        std::set<int> matIdVecNew={EDomain,ETop,EBottom,ELeft,EWrap,EPont};
+        std::set<int> matIdVecNew={EDomain,ERight,ETop,EBottom,ELeft,EWrap,EPont};
         // criamos elementos tipo ETop para a pressao
         std::set<int> matIdNeumannNew = matBC;
         matIdNeumannNew.insert(EPressureHyb);
@@ -202,6 +202,50 @@ TPZLogger::InitializePZLOG();
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder+1,matIdVecNew,gmesh);        
 
+        for (int i = 0; i < cmeshfluxNew->NElements(); i++)
+        {
+
+            TPZCompEl *cel = cmeshfluxNew->Element(i);
+            cel->LoadElementReference();
+            int matid = cel->Reference()->MaterialId();
+            auto nconnects = cel->NConnects();
+            std::cout << "ElFlux = " << i << ", dim= " << cel->Dimension() << ",mat = " << cel->Reference()->MaterialId() << ", nconnects= " << nconnects << ": ";
+            for (int j = 0; j < nconnects; j++)
+            {
+                std::cout << cel->ConnectIndex(j) << ", ";
+            }
+            std::cout << std::endl;
+        
+            // std::cout << cel->Connect() << std::endl;
+
+            // loop only over volumetric elements
+            if(matid != EDomain) continue;
+            if (cel->Reference()->Dimension() != dim) {
+                DebugStop();
+            }
+
+            int nsides = cel->Reference()->NSides();
+            int ncorner = cel->Reference()->NCornerNodes();
+            for (int side = 0; side < nsides; side++) {
+                if(cel->Reference()->SideDimension(side) != dim-1) continue;
+                TPZGeoElSide gelside(cel->Reference(),side);
+                TPZGeoElSide neighbour = gelside.Neighbour();
+                
+                // std::cout << "Element = " << i << ", side = " << side  
+                //         << ", NEl = " << neighbour.Element()->Index()
+                //         << ", Nmatid = " << neighbour.Element()->MaterialId()
+                //         << ", NNEl = " << neighbour.Neighbour().Element()->Index()
+                //         << ", NNmatid = " << neighbour.Neighbour().Element() -> MaterialId() << std::endl;
+                // std::cout << "Neigh connect : " ;
+                // nconnects = neighbour.Element()->Reference()->NConnects();
+                // for (int j = 0; j < nconnects; j++)
+                // {
+                //     std::cout << neighbour.Element()->Reference()->ConnectIndex(j) << ", ";
+                // }
+                // std::cout << std::endl;
+            }
+        }
+        
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,pOrder,matIdNeumannNew,gmesh);
 
@@ -432,7 +476,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     constexpr int boundType{1};
     constexpr int boundType0{0};
     auto * BCond0 = mat->CreateBC(mat, EBottom, 0, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, ERight, 1, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, ERight, 0, val1, val2);
     BCond0->SetForcingFunctionBC(exactSol);
     BCond1->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond1);

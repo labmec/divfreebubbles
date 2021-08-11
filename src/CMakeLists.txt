@@ -14,3 +14,6 @@ target_link_libraries(dFreeBubbles1el PRIVATE pzfiles NeoPZ::pz)
 
 add_executable(2frac main_2fractures.cpp)
 target_link_libraries(2frac PRIVATE pzfiles NeoPZ::pz)
+
+add_executable(semiHybrid semiHybrid.cpp)
+target_link_libraries(semiHybrid PRIVATE pzfiles NeoPZ::pz)
