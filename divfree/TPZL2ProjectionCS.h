@@ -10,18 +10,13 @@
 #include "TPZMatCombinedSpaces.h"
 #include "TPZMatErrorCombinedSpaces.h"
 #include "Projection/TPZL2Projection.h"
-
 /**
- * @brief Implements an L2 projection of a given solution on a scalar approximation space.
- * This material uses a scalar approximation space in a geometric domain of
- * dimension defined by the user (1, 2 or 3D).
- * It can project several solutions at once, but for calculating the error,
- * it will only consider one solution at a time.
- * The solutions to be projected are given by the Forcing Function of the 
- * TPZMaterialT.  It is expected to be a TPZVec<TVar> of size `nsol`.
- * For the error analysis, the solution is set through the ExactSol of
- * TPZMatErrorSingleSpace.
+ * @file TPZL2ProjectionCS.h
+ * @brief Contains the TPZL2ProjectionCS class 
+ * which implements an L2 projection of a given solution on a scalar approximation space 
+ * to be used in FEM formulations with combined spaces.
  */
+
 template<class TVar=STATE>
 class TPZL2ProjectionCS :
     public TPZMatBase<TVar,TPZMatCombinedSpacesT<TVar>,TPZMatErrorCombinedSpaces<TVar>>{

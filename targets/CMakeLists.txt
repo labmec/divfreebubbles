@@ -9,3 +9,6 @@ target_link_libraries(2frac PRIVATE divfree)
 
 add_executable(tetra_test tetra_test.cpp)
 target_link_libraries(tetra_test PRIVATE divfree)
+
+add_executable(semiHybrid semiHybrid.cpp)
+target_link_libraries(semiHybrid PRIVATE divfree)
