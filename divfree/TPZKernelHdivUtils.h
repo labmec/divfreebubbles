@@ -16,6 +16,7 @@ template<class T>
 class TPZVec;
 
 class TPZCompMesh;
+class TPZGeoMesh;
 class TPZMaterial;
 class TPZCompElSide;
 class TPZInterpolatedElement;
@@ -35,6 +36,7 @@ struct TPZKernelHdivUtils {
 
     void PrintCMeshConnects(TPZCompMesh *cmesh);
 
+    void PrintGeoMesh(TPZGeoMesh *geomesh);
 
 
 

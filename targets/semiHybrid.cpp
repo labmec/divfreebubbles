@@ -199,7 +199,7 @@ TPZLogger::InitializePZLOG();
         std::set<int> matBC={};
         hybridizer.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntfaceLeft,EPont,EDomain);
         hybridizer.CreateWrapElements(gmesh,matBC,true);
-        hybridizer.PrintGeoMesh(gmesh);
+        // util.PrintGeoMesh(gmesh);
 
         // nesta configuracao o material ETop eh substituido por EWrap
         std::set<int> matIdVecNew={EDomain,ERight,ETop,EBottom,ELeft,EWrap,EPont};
@@ -209,11 +209,11 @@ TPZLogger::InitializePZLOG();
         
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder+1,matIdVecNew,matBC,gmesh);
-        hybridizer.SemiHybridizeFlux(cmeshfluxNew,matBC);
-        util.PrintCMeshConnects(cmeshfluxNew);
+        // hybridizer.SemiHybridizeFlux(cmeshfluxNew,matBC);
+        // util.PrintCMeshConnects(cmeshfluxNew);
 
         //Pressure mesh
-        TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,0,matIdNeumannNew,gmesh);
+        TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,pOrder,matIdNeumannNew,gmesh);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
@@ -222,9 +222,20 @@ TPZLogger::InitializePZLOG();
 
         auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder+1,matIdVecNew,matIdNeumannNew,meshvectorNew,gmesh);
         hybridizer.CreateMultiphysicsInterfaceElements(cmeshNew,gmesh,meshvectorNew,matIdNeumannNew);
-        util.PrintCMeshConnects(cmeshNew);
+        // util.PrintCMeshConnects(cmeshNew);
 
-        // hybridizer.GroupAndCondenseElements(cmeshNew);
+        hybridizer.GroupAndCondenseElements(cmeshNew);
+
+        // Prints Multiphysics mesh
+        std::ofstream myfile("MultiPhysicsMeshNew.txt");
+        cmeshNew->Print(myfile);
+
+        //Prints computational mesh properties
+        std::stringstream vtk_name;
+        vtk_name    << "MultiPhysicsNew" << ".vtk";
+        std::ofstream vtkfile(vtk_name.str().c_str());
+        TPZVTKGeoMesh::PrintCMeshVTK(cmeshNew, vtkfile, true);
+
 
         //Solve Multiphysics
         TPZLinearAnalysis anNew(cmeshNew,false);
@@ -238,8 +249,8 @@ TPZLogger::InitializePZLOG();
         std::ofstream out4("mesh_MDFB.txt");
         anNew.Print("nothing",out4);
 
-        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
-        ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
+        // std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+        // ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
     // }
 
     //...........................Div Free Bubbles...........................
@@ -448,15 +459,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     auto mat4 = new TPZLagrangeMultiplierCS<STATE>(EIntfaceRight, dim-1);
     cmesh->InsertMaterialObject(mat4);
 
-    // Prints Multiphysics mesh
-    std::ofstream myfile("MultiPhysicsMeshNew.txt");
-    cmesh->Print(myfile);
-
-    //Prints computational mesh properties
-    std::stringstream vtk_name;
-    vtk_name    << "MultiPhysicsNew" << ".vtk";
-    std::ofstream vtkfile(vtk_name.str().c_str());
-    TPZVTKGeoMesh::PrintCMeshVTK(cmesh, vtkfile, true);
+    
 
     return cmesh;
 }

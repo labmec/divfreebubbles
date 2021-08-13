@@ -100,32 +100,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
 }
 
 
-void TPZKernelHdivHybridizer::PrintGeoMesh(TPZGeoMesh *gmesh){
-    
-    for (int i = 0; i < gmesh->NElements(); i++)
-    {
 
-        auto *gel = gmesh->Element(i);
-        int matid = gel->MaterialId();
-        auto nsides = gel->NSides();
-        // auto nconnects = gel->Reference()->NConnects();
-        std::cout << "ELGeometric = " << i << ", dim= " << gel->Dimension() << ",mat = " << gel->MaterialId() << std::endl;
-  
-        nsides = gel->NSides();
-        int ncorner = gel->NCornerNodes();
-        for (int side = 0; side < nsides; side++) {
-            // if(gel->SideDimension(side) != 1) continue;
-            TPZGeoElSide gelside(gel,side);
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            
-            std::cout << "Element = " << i << ", side = " << side  
-                    << ", NEL = " << neighbour.Element()->Index() 
-                    << ", Nmatid = " << neighbour.Element()->MaterialId()
-                    << ", NNEL = " << neighbour.Neighbour().Element()->Index() 
-                    << ", NNmatid = " << neighbour.Neighbour().Element() -> MaterialId() << std::endl;
-        }
-    }
-}
 
 void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int> &matBCId)
 {
@@ -152,6 +127,8 @@ void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int
                 TPZCompEl * neighcel = neighbour.Element()->Reference();
                 if (neighcel)
                 {
+                    // TPZGeoElBC gelbc(gelWrapSide, fEInterface);
+                    // cel->SetConnectIndex(neighbour.Side(),cIndex);
                     neighcel->SetConnectIndex(neighbour.Side(),cIndex);
                 }
                 neighbour=neighbour.Neighbour();
@@ -197,97 +174,101 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
 
 }
 
-// void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup)
-// {
-//     int64_t nel = cmesh->NElements();
-//     elementgroup.Resize(nel, -1);
-//     elementgroup.Fill(-1);
-//     int64_t nconnects = cmesh->NConnects();
-//     TPZVec<int64_t> groupindex(nconnects, -1);
-//     int dim = cmesh->Dimension();
-//     for (TPZCompEl *cel : cmesh->ElementVec()) {
-//         if (!cel || !cel->Reference() || cel->Reference()->Dimension() != dim) {
-//             continue;
-//         }
-//         elementgroup[cel->Index()] = cel->Index();
-//         TPZStack<int64_t> connectlist;
-//         cel->BuildConnectList(connectlist);
-//         for (auto cindex : connectlist) {
-// #ifdef PZDEBUG
-//             if (groupindex[cindex] != -1) {
-//                 DebugStop();
-//             }
-// #endif
-//             groupindex[cindex] = cel->Index();
-//         }
-//     }
-//     //    std::cout << "Groups of connects " << groupindex << std::endl;
-//     for (TPZCompEl *cel : cmesh->ElementVec()) {
-//         if (!cel || !cel->Reference()) {
-//             continue;
-//         }
-//         TPZStack<int64_t> connectlist;
-//         cel->BuildConnectList(connectlist);
-// //        std::cout << "Analysing element " << cel->Index();
-//         int64_t groupfound = -1;
-//         for (auto cindex : connectlist) {
-//             if (groupindex[cindex] != -1) {
-//                 // assign the element to the group
-//                 elementgroup[cel->Index()] = groupindex[cindex];
-//                 if(groupfound != -1 && groupfound != groupindex[cindex])
-//                 {
-//                     DebugStop();
-//                 }
-// //                if(groupfound == -1)
-// //                {
-// //                    std::cout << " added to " << groupindex[cindex];
-// //                }
+void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, TPZVec<int64_t> &elementgroup2)
+{
+    int64_t nel = cmesh->NElements();
+    elementgroup.Resize(nel, -1);
+    elementgroup.Fill(-1);
+    elementgroup2.Resize(nel, -1);
+    elementgroup2.Fill(-1);
+    int64_t nconnects = cmesh->NConnects();
+    TPZVec<int64_t> groupindex(nconnects, -1);
+    TPZVec<int64_t> groupindex2(nconnects, -1);
+    int dim = cmesh->Dimension();
+    for (TPZCompEl *cel : cmesh->ElementVec()) {
+        if (!cel || !cel->Reference() || cel->Reference()->Dimension() != dim) {
+            continue;
+        }
+        elementgroup[cel->Index()] = cel->Index();
+        TPZStack<int64_t> connectlist;
+        cel->BuildConnectList(connectlist);
 
-//                 groupfound = groupindex[cindex];
-//             }
-//         }
-// //        std::cout << std::endl;
-//     }
-// }
+        // std::cout << "Connect List = " << connectlist << std::endl;
+        for (auto cindex : connectlist) {
+            if (groupindex[cindex] != -1) {
+                groupindex2[cindex] = cel->Index();
+            } else {
+                groupindex[cindex] = cel->Index();
+            }
+        }
+    }
+    //    std::cout << "Groups of connects " << groupindex << std::endl;
+    for (TPZCompEl *cel : cmesh->ElementVec()) {
+        if (!cel || !cel->Reference()) {
+            continue;
+        }
+        TPZStack<int64_t> connectlist;
+        cel->BuildConnectList(connectlist);
+//        std::cout << "Analysing element " << cel->Index();
+        int64_t groupfound = -1;
+        for (auto cindex : connectlist) {
+            if (groupindex[cindex] != -1) {
+                // assign the element to the group
+                if(groupfound != -1 && groupfound != groupindex[cindex])
+                {
+                    elementgroup2[cel->Index()] = groupindex[cindex];
+                    groupfound = groupindex2[cindex];
+                }else{
+                    elementgroup[cel->Index()] = groupindex[cindex];
+                    groupfound = groupindex[cindex];
+                }
+            }
+        }
+//        std::cout << std::endl;
+    }
+}
 
-// void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh){
+void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh){
 
-//     int64_t nel = cmesh->NElements();
-//     TPZVec<int64_t> groupnumber(nel,-1);
-//     /// compute a groupnumber associated with each element
-//     AssociateElements(cmesh, groupnumber);
-//     std::map<int64_t, TPZElementGroup *> groupmap;
-//     //    std::cout << "Groups of connects " << groupindex << std::endl;
-//     for (int64_t el = 0; el<nel; el++) {
-//         int64_t groupnum = groupnumber[el];
-//         if(groupnum == -1) continue;
-//         auto iter = groupmap.find(groupnum);
-//         if (groupmap.find(groupnum) == groupmap.end()) {
-//             int64_t index;
-//             TPZElementGroup *elgr = new TPZElementGroup(*cmesh,index);
-//             groupmap[groupnum] = elgr;
-//             elgr->AddElement(cmesh->Element(el));
-//         }
-//         else
-//         {
-//             iter->second->AddElement(cmesh->Element(el));
-//         }
-// //        std::cout << std::endl;
-//     }
-//     cmesh->ComputeNodElCon();
-//     nel = cmesh->NElements();
-//     for (int64_t el = 0; el < nel; el++) {
-//         TPZCompEl *cel = cmesh->Element(el);
-//         TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);
-//         if (elgr) {
-//             TPZCondensedCompEl *cond = new TPZCondensedCompEl(elgr);
-//             cond->SetKeepMatrix(false);
-//         }
-//     }
+    int64_t nel = cmesh->NElements();
+    TPZVec<int64_t> groupnumber(nel,-1);
+    TPZVec<int64_t> groupnumber2(nel,-1);
+    /// compute a groupnumber associated with each element
+    AssociateElements(cmesh, groupnumber, groupnumber2);
 
-//     // cmesh->InitializeBlock();
-//     // cmesh->ComputeNodElCon();
-//     // cmesh->CleanUpUnconnectedNodes();
-//     // cmesh->LoadReferences();
-// }
+    std::map<int64_t, TPZElementGroup *> groupmap;
+    //    std::cout << "Groups of connects " << groupindex << std::endl;
+    for (int64_t el = 0; el<nel; el++) {
+        int64_t groupnum = groupnumber[el];
+
+        if(groupnum == -1) continue;
+        auto iter = groupmap.find(groupnum);
+        if (groupmap.find(groupnum) == groupmap.end()) {
+            int64_t index;
+            TPZElementGroup *elgr = new TPZElementGroup(*cmesh,index);
+            groupmap[groupnum] = elgr;
+            elgr->AddElement(cmesh->Element(el));
+        }
+        else
+        {
+            iter->second->AddElement(cmesh->Element(el));
+        }
+    }
+
+    cmesh->ComputeNodElCon();
+    nel = cmesh->NElements();
+    for (int64_t el = 0; el < nel; el++) {
+        TPZCompEl *cel = cmesh->Element(el);
+        TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);
+        if (elgr) {
+            TPZCondensedCompEl *cond = new TPZCondensedCompEl(elgr);
+            cond->SetKeepMatrix(false);
+        }
+    }
+
+    cmesh->InitializeBlock();
+    cmesh->ComputeNodElCon();
+    // cmesh->CleanUpUnconnectedNodes();
+    // cmesh->LoadReferences();
+}
 

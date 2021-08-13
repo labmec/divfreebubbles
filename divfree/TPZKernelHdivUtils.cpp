@@ -5,7 +5,7 @@
 #include "TPZKernelHdivUtils.h"
 
 #include "pzcmesh.h"
-
+#include "pzgmesh.h"
 
 void TPZKernelHdivUtils::PrintCMeshConnects(TPZCompMesh *cmesh){
     
@@ -51,6 +51,31 @@ void TPZKernelHdivUtils::PrintCMeshConnects(TPZCompMesh *cmesh){
         //     std::cout << std::endl;
         // }
     }
+}
 
+void TPZKernelHdivUtils::PrintGeoMesh(TPZGeoMesh *gmesh){
+    
+    for (int i = 0; i < gmesh->NElements(); i++)
+    {
 
+        auto *gel = gmesh->Element(i);
+        int matid = gel->MaterialId();
+        auto nsides = gel->NSides();
+        // auto nconnects = gel->Reference()->NConnects();
+        std::cout << "ELGeometric = " << i << ", dim= " << gel->Dimension() << ",mat = " << gel->MaterialId() << std::endl;
+  
+        nsides = gel->NSides();
+        int ncorner = gel->NCornerNodes();
+        for (int side = 0; side < nsides; side++) {
+            // if(gel->SideDimension(side) != 1) continue;
+            TPZGeoElSide gelside(gel,side);
+            TPZGeoElSide neighbour = gelside.Neighbour();
+            
+            std::cout << "Element = " << i << ", side = " << side  
+                    << ", NEL = " << neighbour.Element()->Index() 
+                    << ", Nmatid = " << neighbour.Element()->MaterialId()
+                    << ", NNEL = " << neighbour.Neighbour().Element()->Index() 
+                    << ", NNmatid = " << neighbour.Neighbour().Element() -> MaterialId() << std::endl;
+        }
+    }
 }

@@ -54,8 +54,6 @@ struct TPZKernelHdivHybridizer {
     //boundary material id's to be hybridized
     void CreateWrapElements(TPZGeoMesh *geomesh, std::set<int> &matIdBC, bool domainHyb);
 
-    void PrintGeoMesh(TPZGeoMesh *geomesh);
-
     void SetPeriferalMaterialIds(int Wrap, int Lagrange, int Interface, int Point, int Domain)
     {
         fEWrap = Wrap;
@@ -72,7 +70,7 @@ struct TPZKernelHdivHybridizer {
 
     void GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh);
 
-    void AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup);
+    void AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, TPZVec<int64_t> &elementgroup2);
 
 };
 
