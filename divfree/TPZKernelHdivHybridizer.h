@@ -68,9 +68,9 @@ struct TPZKernelHdivHybridizer {
 
     void CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh *gmesh, TPZVec<TPZCompMesh *> &meshvector, std::set<int> &matIdNeumann);
 
-    void GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh);
+    void GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC);
 
-    void AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, TPZVec<int64_t> &elementgroup2);
+    void AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC);
 
 };
 

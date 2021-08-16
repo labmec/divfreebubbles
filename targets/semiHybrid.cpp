@@ -202,18 +202,18 @@ TPZLogger::InitializePZLOG();
         // util.PrintGeoMesh(gmesh);
 
         // nesta configuracao o material ETop eh substituido por EWrap
-        std::set<int> matIdVecNew={EDomain,ERight,ETop,EBottom,ELeft,EWrap,EPont};
+        std::set<int> matIdVecNew={EDomain,ETop,ERight,EBottom,ELeft,EWrap,EPont};
         // criamos elementos tipo ETop para a pressao
         std::set<int> matIdNeumannNew = matBC;
         matIdNeumannNew.insert(EPressureHyb);
         
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder+1,matIdVecNew,matBC,gmesh);
-        // hybridizer.SemiHybridizeFlux(cmeshfluxNew,matBC);
-        // util.PrintCMeshConnects(cmeshfluxNew);
+        hybridizer.SemiHybridizeFlux(cmeshfluxNew,matBC);
+        util.PrintCMeshConnects(cmeshfluxNew);
 
         //Pressure mesh
-        TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,pOrder,matIdNeumannNew,gmesh);
+        TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,0,matIdNeumannNew,gmesh);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
@@ -222,10 +222,10 @@ TPZLogger::InitializePZLOG();
 
         auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder+1,matIdVecNew,matIdNeumannNew,meshvectorNew,gmesh);
         hybridizer.CreateMultiphysicsInterfaceElements(cmeshNew,gmesh,meshvectorNew,matIdNeumannNew);
-        // util.PrintCMeshConnects(cmeshNew);
+        util.PrintCMeshConnects(cmeshNew);
 
-        hybridizer.GroupAndCondenseElements(cmeshNew);
-
+        hybridizer.GroupAndCondenseElements(cmeshNew,matBC);
+        // cmeshNew->LoadReferences();
         // Prints Multiphysics mesh
         std::ofstream myfile("MultiPhysicsMeshNew.txt");
         cmeshNew->Print(myfile);
@@ -248,6 +248,7 @@ TPZLogger::InitializePZLOG();
         PrintResultsMultiphysicNew(dim,meshvectorNew,anNew,cmeshNew);
         std::ofstream out4("mesh_MDFB.txt");
         anNew.Print("nothing",out4);
+        
 
         // std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         // ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
@@ -369,7 +370,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> mat
     TPZManVector<STATE> val4(1,0.);
     
     auto * BCond0 = mat->CreateBC(mat, EBottom, 0, val1, val4);//Bottom
-    auto * BCond1 = mat->CreateBC(mat, ERight, 0, val1, val2);//Right
+    auto * BCond1 = mat->CreateBC(mat, ERight, 1, val1, val2);//Right
     BCond0->SetForcingFunctionBC(exactSol);
     BCond1->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond1);
@@ -413,7 +414,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     cmesh->ApproxSpace().SetAllCreateFunctionsMultiphysicElem();
 
     // eh preciso criar materiais para todos os valores referenciados no enum
-    auto mat = new TPZMixedDarcyFlow(EDomain, dim);
+    auto mat = new TPZMixedDarcyFlowHybrid(EDomain, dim);
     mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
@@ -425,7 +426,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     constexpr int boundType{1};
     constexpr int boundType0{0};
     auto * BCond0 = mat->CreateBC(mat, EBottom, 0, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, ERight, 0, val1, val2);
+    auto * BCond1 = mat->CreateBC(mat, ERight, 1, val1, val2);
     BCond0->SetForcingFunctionBC(exactSol);
     BCond1->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond1);
