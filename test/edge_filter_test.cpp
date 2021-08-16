@@ -12,11 +12,13 @@
 #include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
 #include <pzcmesh.h>
-#include <pzlog.h>
+#include <pzshapetriang.h>
+#include <pzshapetetra.h>
 #include <pzfstrmatrix.h>
 #include <TPZLinearAnalysis.h>
 #include <pzstepsolver.h>
 #include "TPZMatCurlDotCurl.h"
+#include "TPZCompElHCurlNoGrads.h"
 
 /**
    @brief Creates a geometric mesh with elements of a given type on a unit cube.
@@ -117,7 +119,7 @@ void TestEdgeFiltering(const MMeshType meshType,
   constexpr STATE tol = 1e-8;
   const auto rank = CalcRank(*mat, tol);
   CAPTURE(neqs,rank,neqs-rank);
-  CHECK(2*rank == neqs);
+  CHECK(rank == neqs);
 }
 
 
@@ -165,7 +167,31 @@ CreateCompMesh(TPZAutoPointer<TPZGeoMesh> gmesh, const int pOrder,
   auto bcMat = volMat->CreateBC(volMat, bcId, bcType, val1, val2);
   cmesh->InsertMaterialObject(bcMat);
   
-  //TODO: change to the correct approx space
+  //Creates computational elements
+  int64_t nel = gmesh->NElements();
+  for (int64_t el = 0; el < nel; el++) {
+    TPZGeoEl *gel = gmesh->Element(el);
+    if(!gel) DebugStop();
+    gel->ResetReference();   
+    const MElementType type = gel->Type();
+    const auto matid = gel->MaterialId();
+    int64_t index;
+    switch(type){
+    case ETriangle:
+      new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel,index);
+      break;
+    case ETetraedro:
+      new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel,index);
+      break;
+    default:
+      const auto elName =  MElementType_Name(type);
+      CAPTURE(elName);
+      CHECK(false);
+      PZError<<__PRETTY_FUNCTION__
+             <<"\n type not yet supported. Aborting..."<<std::endl;
+      DebugStop();
+    }
+  }
   cmesh->SetAllCreateFunctionsHCurl();
   cmesh->AutoBuild();
   cmesh->CleanUpUnconnectedNodes();
