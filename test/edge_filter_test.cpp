@@ -1,5 +1,5 @@
 /*
-  This target verifies that for a given tetrahedral mesh, upon filtering,
+  This unit test verifies that for a given mesh, upon filtering,
   we are able to generate a HCurl approximation space such that the curl
   of our basis functions are linearly independent.
 
@@ -9,7 +9,7 @@
   Some of the edge functions, however, need to be globally filtered.
   
 */
-
+#include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
 #include <pzcmesh.h>
 #include <pzlog.h>
@@ -19,14 +19,15 @@
 #include "TPZMatCurlDotCurl.h"
 
 /**
-   @brief Creates a geometric mesh with tetrahedral elements
-   on a unit cube.
+   @brief Creates a geometric mesh with elements of a given type on a unit cube.
+   @param[in] meshType element type to be created.
    @param[in] nDivs Number of divisions (rows of elements) in x, y and z.
    @param[in] volId Material identifier for the volumetric region.
    @param[in] bcId Material identifier for the boundary.
 */
 TPZAutoPointer<TPZGeoMesh>
-CreateGeoMesh(const TPZVec<int> &nDivs, const int volId, const int bcId);
+CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
+              const int volId, const int bcId);
 
 /**
    @brief Creates the computational mesh.
@@ -54,19 +55,28 @@ FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
 
 int CalcRank(TPZFMatrix<STATE> & S, const STATE tol);
 
-int main()
+void TestEdgeFiltering(const MMeshType meshtype,
+                       const int xdiv, const int ydiv, const int zdiv);
+
+TEST_CASE("Edge filtering", "hcurl_els")
 {
-#ifdef PZ_LOG
-  TPZLogger::InitializePZLOG();
-#endif
+  const int xdiv = GENERATE(1,2,3);
+  const int ydiv = GENERATE(1,2,3);
+  const int zdiv = GENERATE(1,2,3);
+  const MMeshType meshType = MMeshType::ETetrahedral;
+  TestEdgeFiltering(meshType,xdiv,ydiv,zdiv);
+}
+
+void TestEdgeFiltering(const MMeshType meshType,
+                       const int xdiv, const int ydiv, const int zdiv)
+{
   constexpr int volId{1};
   constexpr int bcId{-1};
 
   //for now this should suffice
-  const TPZManVector<int,3> nDivs = {1,1,1};
+  const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
   
-  
-  auto gmesh = CreateGeoMesh(nDivs, volId, bcId);
+  auto gmesh = CreateGeoMesh(meshType, nDivs, volId, bcId);
 
   constexpr int pOrder{1};
 
@@ -85,7 +95,7 @@ int main()
   TPZVec<int64_t> activeEqs;
   
   if(FilterEdgeEquations(cmesh, activeEqs)){
-    return 1;
+    return;
   }
 
   const int neqs = activeEqs.size();
@@ -104,22 +114,21 @@ int main()
   auto mat =
     TPZAutoPointerDynamicCast<TPZFMatrix<STATE>>(an.MatrixSolver<STATE>().Matrix());
 
-  STATE tol = 1e-5;
+  constexpr STATE tol = 1e-8;
   const auto rank = CalcRank(*mat, tol);
-
-  std::cout<<"neq: "<<neqs<<" rank: "<<rank<<" diff: "<<neqs - rank<<std::endl;
-  return 0;
+  CAPTURE(neqs,rank,neqs-rank);
+  CHECK(2*rank == neqs);
 }
 
 
 
 TPZAutoPointer<TPZGeoMesh>
-CreateGeoMesh(const TPZVec<int> &nDivs, const int volId, const int bcId)
+CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
+              const int volId, const int bcId)
 {
   constexpr int dim{3};
   const TPZManVector<REAL,3> minX = {0,0,0};
   const TPZManVector<REAL,3> maxX = {1,1,1};
-  constexpr MMeshType meshType{MMeshType::ETetrahedral};
   constexpr bool createBoundEls{true};
 
   //all bcs share the same id
@@ -196,6 +205,13 @@ FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
      The i-th is true if the i-th node has already been dealt with.
   */
   TPZVec<bool> done_vertices(nnodes, false);
+
+
+  /*
+   we need to keep ONE edge, globally speaking*/
+  done_vertices[0] = true;
+
+  
   /**
      Contains all the connects marked for removal. It is expected
      that all the connects are associated with edges.
@@ -219,31 +235,42 @@ FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
       
       const auto v1 = edge.SideNodeIndex(0);
       const auto v2 = edge.SideNodeIndex(1);
-
+      
       vertex_edge_connects[v1].insert(con);
       vertex_edge_connects[v2].insert(con);
-      if(!done_vertices[v1] || !done_vertices[v2]){
-        removed_connects.insert(edge.Reference().ConnectIndex());
-        done_vertices[v1] = true;
-        done_vertices[v2] = true;
+      //both vertices have been treated
+      if(done_vertices[v1] && done_vertices[v2]){
+        continue;
       }
+      else {
+        /*either one or none vertex has been treated,
+          so we need to remove the edge*/
+        removed_connects.insert(edge.Reference().ConnectIndex());
+        if(!done_vertices[v1] && !done_vertices[v2]){
+          /*if no vertex has been treated we
+            mark ONE OF THEM as treated*/
+          done_vertices[v1] = true;
+        }
+        else {
+          /*one of them had been treated already,
+            instead of checking which, we mark both as true*/
+          done_vertices[v1] = true;
+          done_vertices[v2] = true;
+        }
+      }
+      
     }
   }
-  bool check{true};
+  bool check_all_vertices{true};
   for(auto v : done_vertices){
-    check = check && v;
+    check_all_vertices = check_all_vertices && v;
     if(!v){
       break;
     }
   }
-
-  if(!check){
-    std::cout<<__PRETTY_FUNCTION__
-             <<"\nError: could not treat all vertices"<<std::endl;
-    return 1;
-  }
-
-  check = true;
+  REQUIRE(check_all_vertices);
+  
+  bool check_edges_left{true};
   for(auto iv = 0; iv < nnodes; iv++){
     const auto all_edges = vertex_edge_connects[iv];
     bool local_check{false};
@@ -253,14 +280,9 @@ FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
         break;
       }
     }
-    check = local_check && check;
+    check_edges_left = local_check && check_edges_left;
   }
-  
-  if(!check){
-    std::cout<<__PRETTY_FUNCTION__
-             <<"\nError: a vertex had all the edges removed"<<std::endl;
-    return 2;
-  }
+  REQUIRE(check_edges_left);
   
   activeEquations.Resize(0);
   for (int iCon = 0; iCon < cmesh->NConnects(); iCon++) {

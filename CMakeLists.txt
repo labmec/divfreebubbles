@@ -23,7 +23,15 @@ get_target_property(lib_files divfree SOURCES)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${lib_files})  
 
+
 # creating the projects
 add_subdirectory(targets)
 
-
+#To enable unit test using Catch2 UnitTest framework
+option(BUILD_TESTS "Whether the Catch2 UnitTests will be linked in" OFF)
+if(BUILD_TESTS)
+  include(cmake/add_unit_test.cmake)
+  include(cmake/EnableCatch2.cmake)
+  enable_catch2()
+  add_subdirectory(test)
+endif()
