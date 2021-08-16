@@ -174,18 +174,19 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
 
 }
 
-void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, TPZVec<int64_t> &elementgroup2)
+void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC)
 {
     int64_t nel = cmesh->NElements();
     elementgroup.Resize(nel, -1);
     elementgroup.Fill(-1);
-    elementgroup2.Resize(nel, -1);
-    elementgroup2.Fill(-1);
+    // elementgroup2.Resize(nel, -1);
+    // elementgroup2.Fill(-1);
     int64_t nconnects = cmesh->NConnects();
     TPZVec<int64_t> groupindex(nconnects, -1);
     TPZVec<int64_t> groupindex2(nconnects, -1);
     int dim = cmesh->Dimension();
     for (TPZCompEl *cel : cmesh->ElementVec()) {
+        cel->LoadElementReference();
         if (!cel || !cel->Reference() || cel->Reference()->Dimension() != dim) {
             continue;
         }
@@ -194,7 +195,20 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
         cel->BuildConnectList(connectlist);
 
         // std::cout << "Connect List = " << connectlist << std::endl;
+        int k = -1;
         for (auto cindex : connectlist) {
+            // k++;
+            // auto gel = cel->Reference();
+            // TPZGeoElSide geoside(gel,k);
+            // if (geoside.Dimension() == dim-1){
+            //     TPZGeoElSide neighbour = geoside.Neighbour();
+            //     auto Nneighbour = neighbour.Element()->Neighbour(2);
+            //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
+            //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
+            //         continue;
+            //     }
+            // }
+
             if (groupindex[cindex] != -1) {
                 groupindex2[cindex] = cel->Index();
             } else {
@@ -211,12 +225,25 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
         cel->BuildConnectList(connectlist);
 //        std::cout << "Analysing element " << cel->Index();
         int64_t groupfound = -1;
+        int k = -1;
         for (auto cindex : connectlist) {
+            // k++;
+            // auto gel = cel->Reference();
+            // TPZGeoElSide geoside(gel,k);
+            // if (geoside.Dimension() == dim-1){
+            //     TPZGeoElSide neighbour = geoside.Neighbour();
+            //     auto Nneighbour = neighbour.Element()->Neighbour(2);
+            //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
+            //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
+            //         continue;
+            //     }
+            // }
             if (groupindex[cindex] != -1) {
                 // assign the element to the group
                 if(groupfound != -1 && groupfound != groupindex[cindex])
                 {
-                    elementgroup2[cel->Index()] = groupindex[cindex];
+                    //Do nothing
+                    // elementgroup2[cel->Index()] = groupindex[cindex];
                     groupfound = groupindex2[cindex];
                 }else{
                     elementgroup[cel->Index()] = groupindex[cindex];
@@ -228,13 +255,12 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
     }
 }
 
-void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh){
+void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC){
 
     int64_t nel = cmesh->NElements();
     TPZVec<int64_t> groupnumber(nel,-1);
-    TPZVec<int64_t> groupnumber2(nel,-1);
     /// compute a groupnumber associated with each element
-    AssociateElements(cmesh, groupnumber, groupnumber2);
+    AssociateElements(cmesh,groupnumber,matIdBC);
 
     std::map<int64_t, TPZElementGroup *> groupmap;
     //    std::cout << "Groups of connects " << groupindex << std::endl;
