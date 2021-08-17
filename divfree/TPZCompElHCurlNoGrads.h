@@ -59,6 +59,19 @@ protected:
   //! Fills data.sol and data.curlsol.
   template<class TVar>
   void ReallyComputeSolutionT(TPZMaterialDataT<TVar> &data);
+  /**
+     @brief Given the original indices of functions of a a HCurl element,
+     calculates the subset corresponding to
+     the filtered higher-order (face, interior) functions.
+     @param[in] firstHCurlFunc index of first Hurl function corresponding to a given connect.
+     @param[in] conOrders connect orders.
+     @param[in] filteredFuncs indices of desired of Hcurl functions.
+   */
+  static void HighOrderFunctionsFilter(
+    const TPZVec<int> &firstHCurlFunc,
+    const TPZVec<int> &conOrders,
+    TPZVec<int> &filteredHCurlFuncs);
+    
   
 };
 #endif /* _TPZCOMPELHCURLNOGRADS_H_ */

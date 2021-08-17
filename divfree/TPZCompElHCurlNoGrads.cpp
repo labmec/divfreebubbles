@@ -260,8 +260,9 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeShape(TPZMaterialData &data,
   
   //unfiltered shape functions count for each connect
   TPZManVector<int,nConnects> firstHCurlFunc(nConnects,0);
+  TPZManVector<int,nConnects> conOrders(nConnects,0);
   for(auto icon = 1; icon < nConnects; icon++){
-    const auto conorder = this->ConnectOrder(icon);
+    const auto conorder = conOrders[icon] = this->ConnectOrder(icon);
     firstHCurlFunc[icon] = firstHCurlFunc[icon-1] +
       TPZCompElHCurlFull<TSHAPE>::NConnectShapeF(icon,conorder);
   }
@@ -297,14 +298,23 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeShape(TPZMaterialData &data,
     fcount++;
   }
   if constexpr (dim < 2) return;
-  /*
-    face connects: 
-  */
-  if constexpr (dim < 3) return;
-  /*
-    interior connects:
-  */
-    
+
+  TPZVec<int> filtVecShape;
+  this->HighOrderFunctionsFilter(firstHCurlFunc, conOrders,
+                                 filtVecShape);
+  
+  const auto newfuncs = filtVecShape.size();
+
+  for(int ifunc = 0; ifunc < newfuncs; ifunc++){
+    const auto vs = filtVecShape[ifunc];
+    const auto vi = vecShapeIndex[vs].first;
+    const auto si = vecShapeIndex[vs].second;
+    for(auto x = 0; x < dim; x++){
+      phiHCurl(fcount,x) = phiH1.GetVal(si,0) *
+        deformedDirs.GetVal(x,vi);
+    }
+    fcount++;
+  } 
 }
 
 template<class TSHAPE>
@@ -329,8 +339,9 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeCurl(TPZMaterialData &data)
   const int nshape = this->NShapeF();
   //unfiltered shape functions count for each connect
   TPZManVector<int,nConnects> firstHCurlFunc(nConnects,0);
+  TPZManVector<int,nConnects> conOrders(nConnects,0);
   for(auto icon = 1; icon < nConnects; icon++){
-    const auto conorder = this->ConnectOrder(icon);
+    const auto conorder = conOrders[icon] = this->ConnectOrder(icon);
     firstHCurlFunc[icon] = firstHCurlFunc[icon-1] +
       TPZCompElHCurlFull<TSHAPE>::NConnectShapeF(icon,conorder);
   }
@@ -351,9 +362,103 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeCurl(TPZMaterialData &data)
     fcount++;
   }
   if constexpr (dim < 2) return;
-  //face
+
+  TPZVec<int> filtVecShape;
+  this->HighOrderFunctionsFilter(firstHCurlFunc, conOrders,
+                                 filtVecShape);
+  
+  const auto newfuncs = filtVecShape.size();
+
+  for(int ifunc = 0; ifunc < newfuncs; ifunc++){
+    const auto fi = filtVecShape[ifunc];
+    for(auto x = 0; x < curlDim; x++){
+      curlPhi(x,fcount) += unfiltCurl(x,fi);
+    }
+    fcount++;
+  } 
+}
+
+template<class TSHAPE>
+void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
+    const TPZVec<int> &firstHCurlFunc,
+    const TPZVec<int> &conOrders,
+    TPZVec<int> &filteredFuncs)
+{
+  constexpr auto dim = TSHAPE::Dimension;
+  constexpr auto nNodes = TSHAPE::NCornerNodes;
+  constexpr auto nConnects = TSHAPE::NSides - nNodes;
+  const auto nFaces = TSHAPE::NumSides(2);
+  const auto nEdges = TSHAPE::NumSides(1);
+
+  filteredFuncs.Resize(0);
+  /*
+    face connects: 
+  */
+  for(auto iface = 0; iface < nFaces; iface++){
+    const auto icon = nEdges + iface;
+    const auto side = icon + nNodes;
+    const auto firstSideShape = firstHCurlFunc[icon];
+    const auto order = conOrders[icon];
+
+    switch(TSHAPE::Type(side)){
+    case ETriangle:{
+      //there are no face functions for k < 2
+      if(order < 2) break;
+      /**
+         we remove one internal function for each h1 face function of order k+1
+         since there are (k-1)(k-2)/2 functions per face in a face with order k,
+         we remove k(k-1)/2.
+         so:
+         (k-1)*(k+1)-k*(k-1)/2 = (k-1)(k+2)/2.
+
+         as a first test, we only remove from phi_fe hcurl functions
+      */
+      const auto nfacefuncs =  (order - 1) * (order+2) / 2;
+
+      auto fcount = filteredFuncs.size();
+      filteredFuncs.Resize(fcount+nfacefuncs);
+
+      /**
+         we will iterate over the phi_fe hcurl functions. there are 3(k-1) vfe funcs.
+         that means that, at each k, there are 3 new vfe functions. we can remove 
+         one of them for each polynomial order.
+       */
+      auto firstVfeK = firstSideShape;
+      for(auto ik = 2; ik <= order; ik++){
+        for(auto ifunc = 0; ifunc < 2; ifunc++){
+          filteredFuncs[fcount] = firstVfeK+ifunc;
+          fcount++;
+        }
+        //we skip to the higher order ones
+        firstVfeK += 3;
+      }
+      /**
+         there are already 2(k-1) filtered functions. we discarded (k-1).
+         so that means we need more (k-1)(k-2)/2 functions, because
+         2(k-1) + (k-1)(k-2)/2 = (k-1)(k+2)/2. 
+         That means we can take exactly half of the phi_fi functions. 
+         for each k, there are 2(k-2) phi_fi func. so...
+      **/
+      auto firstVfiK = firstSideShape + 3*(order-1);
+      for(auto ik = 3; ik < order; ik++){
+        const auto nPhiFi = 2*(ik-1);
+        for(auto ifunc = 0; ifunc < nPhiFi; ifunc+=2){
+          //we always skip one of them
+          filteredFuncs[fcount] = firstVfiK+ifunc;
+          fcount++;
+        }
+        //we skip to the higher order ones
+        firstVfeK += nPhiFi;
+      }
+      break;
+    }
+    default:
+      PZError<<__PRETTY_FUNCTION__<<" error. Not yet implemented"<<std::endl;
+      DebugStop();
+    }
+  }
+  
   if constexpr (dim < 3) return;
-  //interior
 }
 
 #include <pzshapetriang.h>
