@@ -170,17 +170,21 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
       return 1;
     }
     else if(side < TSHAPE::NCornerNodes + nEdges + nFaces){//face connect
-      return 0;
-      // switch(TSHAPE::Type(side)){
-      // case ETriangle://triangular face
-      //   return (order - 1) * (order+1);
-      // case EQuadrilateral://quadrilateral face
-      //   return 2 * order * (order+1);
-      // default:
-      //   PZError<<__PRETTY_FUNCTION__<<" error."<<std::endl;
-      //   DebugStop();
-      //   return 0;
-      // }
+      switch(TSHAPE::Type(side)){
+      case ETriangle://triangular face
+        /**
+           we remove one internal function for each h1 face function of order k+1
+           since there are (k-1)(k-2)/2 functions per face in a face with order k,
+           we remove k(k-1)/2.
+           so:
+           (k-1)*(k+1)-k*(k-1)/2
+        */
+        return (order - 1) * (order+2) / 2;
+      default:
+        PZError<<__PRETTY_FUNCTION__<<" error. Not yet implemented"<<std::endl;
+        DebugStop();
+        return 0;
+      }
     }
     else{//internal connect (3D element only)
       return 0;
