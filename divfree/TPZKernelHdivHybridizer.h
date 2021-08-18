@@ -66,6 +66,8 @@ struct TPZKernelHdivHybridizer {
 
     void SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int> &matBCId);
 
+    void SemiHybridizePressure(TPZCompMesh *cmesh, int pOrder, std::set<int> &matBCId);
+
     void CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh *gmesh, TPZVec<TPZCompMesh *> &meshvector, std::set<int> &matIdNeumann);
 
     void GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC);

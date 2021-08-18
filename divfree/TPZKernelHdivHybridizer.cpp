@@ -298,3 +298,35 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
     // cmesh->LoadReferences();
 }
 
+
+void TPZKernelHdivHybridizer::SemiHybridizePressure(TPZCompMesh *cmesh, int pOrder, std::set<int> &matBCId)
+{
+    //Here we just check if a boundary condition is hybridized. If yes, then correct the polynomial order
+    //as the domain semi-hybridization creates elements with zero-order.
+    for (auto cel : cmesh->ElementVec())
+    {
+        cel->LoadElementReference();
+        auto gel = cel->Reference();
+        int matid = gel->MaterialId();
+        // std::cout << "Element " << cel->Index() <<", dim = " << cel->Dimension() << " " << cel->NConnects() << " " << cel->GetgOrder()<<std::endl;
+        if (matBCId.find(matid) != matBCId.end()){
+            auto nconnects = cel->NConnects();
+            // cel->SetgOrder(pOrder);
+            // std::cout << "cel conn " 
+            for (int i = 0; i < nconnects; i++)
+            {
+                auto conn = cel->Connect(i);
+                int64_t index;
+                // conn.SetOrder(pOrder,index);
+                cel->Connect(i).SetOrder(pOrder,index);
+                // std::cout << "El " << cel->Connect(i) <<", " <<std::endl;
+
+            }
+            
+        }
+        // std::cout << "El " << cel->Index() <<", dim = " << cel->Dimension() << " " << cel->NConnects() << " " << cel->GetgOrder()<<std::endl;
+
+    }
+    // cmesh->LoadReferences();
+    // cmesh->AutoBuild();
+}

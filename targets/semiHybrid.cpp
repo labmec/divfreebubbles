@@ -196,13 +196,13 @@ TPZLogger::InitializePZLOG();
         TPZKernelHdivHybridizer hybridizer;
 
         //Insert here the boundaries where the BC are hybridized
-        std::set<int> matBC={};
+        std::set<int> matBC={ERight};
         hybridizer.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntfaceLeft,EPont,EDomain);
         hybridizer.CreateWrapElements(gmesh,matBC,true);
         // util.PrintGeoMesh(gmesh);
 
         // nesta configuracao o material ETop eh substituido por EWrap
-        std::set<int> matIdVecNew={EDomain,ETop,ERight,EBottom,ELeft,EWrap,EPont};
+        std::set<int> matIdVecNew={EDomain,ETop,EBottom,ELeft,EWrap,EPont};
         // criamos elementos tipo ETop para a pressao
         std::set<int> matIdNeumannNew = matBC;
         matIdNeumannNew.insert(EPressureHyb);
@@ -210,10 +210,14 @@ TPZLogger::InitializePZLOG();
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = FluxCMeshNew(dim,pOrder+1,matIdVecNew,matBC,gmesh);
         hybridizer.SemiHybridizeFlux(cmeshfluxNew,matBC);
-        util.PrintCMeshConnects(cmeshfluxNew);
+        // util.PrintCMeshConnects(cmeshfluxNew);
 
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = PressureCMeshNew(dim,0,matIdNeumannNew,gmesh);
+        hybridizer.SemiHybridizePressure(cmeshpressureNew,pOrder,matBC);
+          // Print pressure mesh
+        std::ofstream myfile5("PressureMeshNew.txt");
+        cmeshpressureNew->Print(myfile5);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
@@ -224,8 +228,6 @@ TPZLogger::InitializePZLOG();
         hybridizer.CreateMultiphysicsInterfaceElements(cmeshNew,gmesh,meshvectorNew,matIdNeumannNew);
         util.PrintCMeshConnects(cmeshNew);
 
-        hybridizer.GroupAndCondenseElements(cmeshNew,matBC);
-        // cmeshNew->LoadReferences();
         // Prints Multiphysics mesh
         std::ofstream myfile("MultiPhysicsMeshNew.txt");
         cmeshNew->Print(myfile);
@@ -236,22 +238,20 @@ TPZLogger::InitializePZLOG();
         std::ofstream vtkfile(vtk_name.str().c_str());
         TPZVTKGeoMesh::PrintCMeshVTK(cmeshNew, vtkfile, true);
 
+        hybridizer.GroupAndCondenseElements(cmeshNew,matBC);
 
         //Solve Multiphysics
         TPZLinearAnalysis anNew(cmeshNew,false);
 
         SolveProblemDirect(anNew,cmeshNew);
 
-        // anNew.Solution().Print("Sol");
-        
         //Print results
         PrintResultsMultiphysicNew(dim,meshvectorNew,anNew,cmeshNew);
         std::ofstream out4("mesh_MDFB.txt");
         anNew.Print("nothing",out4);
-        
 
-        // std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
-        // ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
+        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+        ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
     // }
 
     //...........................Div Free Bubbles...........................
@@ -460,7 +460,6 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> 
     auto mat4 = new TPZLagrangeMultiplierCS<STATE>(EIntfaceRight, dim-1);
     cmesh->InsertMaterialObject(mat4);
 
-    
 
     return cmesh;
 }
@@ -602,12 +601,21 @@ void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
     an.SetExact(exactSol2,solOrder);
     ///Calculating approximation error  
     TPZManVector<REAL,5> error;
-    an.PostProcess(error,anPostProcessFile);
+
+    auto cmeshNew = an.Mesh();
+    int64_t nelem = cmeshNew->NElements();
+    cmeshNew->LoadSolution(cmeshNew->Solution());
+    cmeshNew->ExpandSolution();
+    cmeshNew->ElementSolution().Redim(nelem, 5);
+
+    an.PostProcessError(error);
         
     std::cout << "\nApproximation error:\n";
     std::cout << "H1 Norm = " << error[0]<<'\n';
     std::cout << "L1 Norm = " << error[1]<<'\n'; 
-    std::cout << "H1 Seminorm = " << error[2] << "\n\n";
+    std::cout << "H1 Seminorm = " << error[2]<<'\n'; 
+    // std::cout << "error 4 = " << error[3]<<'\n'; 
+    // std::cout << "error 5 = " << error[4] << "\n\n";
 
     return;
 }
@@ -807,22 +815,24 @@ TPZCompMesh *PressureCMeshNew(int dim, int pOrder, std::set<int> &matIdVec, TPZG
         cmesh->SetAllCreateFunctionsContinuous();
         cmesh->ApproxSpace().CreateDisconnectedElements(true);
         cmesh->SetDefaultOrder(pOrder);
+        cmesh->SetDimModel(dim-1);
     } else
     {
         cmesh->SetDefaultOrder(pOrder);
         cmesh->SetDimModel(dim-1);
         cmesh->SetAllCreateFunctionsDiscontinuous();
     }
-    cmesh->AutoBuild(matIdNeumann);
 
+    cmesh->AutoBuild(matIdNeumann);
+    
     for(auto &newnod : cmesh->ConnectVec())
     {
         newnod.SetLagrangeMultiplier(1);
     }
 
-    // Print pressure mesh
-    std::ofstream myfile("PressureMeshNew.txt");
-    cmesh->Print(myfile);
+    // // Print pressure mesh
+    // std::ofstream myfile("PressureMeshNew.txt");
+    // cmesh->Print(myfile);
 
     //Prints computational mesh properties
     std::stringstream vtk_name;

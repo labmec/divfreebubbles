@@ -215,6 +215,7 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
                 }
             }
             //New implementation for Div-free bubbles
+            // std::cout << phiP<<std::endl;
             for (int ip = 0; ip < phrp; ip++) {
                 ef(ip, 0) += (-1.) * v2 * phiP(ip, 0) * weight;
             }
