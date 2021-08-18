@@ -156,7 +156,13 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
     DebugStop();
   }
 #endif
-  if(order == 0) return 0;
+  if(order == 0) {
+    PZError<<__PRETTY_FUNCTION__
+           <<"\nERROR: polynomial order not compatible.\nAborting..."
+           <<std::endl;
+    DebugStop();
+    return 0;
+  }
   const auto nFaces = TSHAPE::Dimension < 2 ? 0 : TSHAPE::NumSides(2);
   const auto nEdges = TSHAPE::NumSides(1);
   const int nShapeF = [&](){
