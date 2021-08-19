@@ -478,11 +478,11 @@ void TPZMixedDarcyFlowHybrid::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data
         fluxexactneg[i] = -perm * gradpressure[i];
     }
 
-    if (data.size()>2) {
-        for (int i = 0; i < 3; i++) {
-            fluxexactneg[i] = -data[2].sol[0][i];
-        }
-    }
+    // if (data.size()>2) {
+    //     for (int i = 0; i < 3; i++) {
+    //         fluxexactneg[i] = -data[2].sol[0][i];
+    //     }
+    // }
 
     REAL L2flux = 0., L2grad = 0.;
     for (int i = 0; i < 3; i++) {

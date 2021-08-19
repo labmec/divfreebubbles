@@ -28,11 +28,11 @@ class TPZApproxSpaceKernelHdiv
 {
 public:
     /// types of spaces this class can create
-    enum MSpaceType {ENormal, EDomainHybrid, EBCHybrid, EAllHybrid, EDomainSemiHybrid};
+    enum MSpaceType {ENone, EFullHybrid, ESemiHybrid};
 
 private:
     /// the type of space this object will generate
-    MSpaceType fSpaceType = ENormal;
+    MSpaceType fSpaceType = ENone;
 
     /// default internal order for the H1 elements
     int fDefaultPOrder = 3;
@@ -54,7 +54,7 @@ private:
 
 public:
     /// default constructor
-    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENormal);
+    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone);
     
     /// copy constructor
     TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv &copy);
