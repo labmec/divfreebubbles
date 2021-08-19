@@ -155,69 +155,52 @@ TPZLogger::InitializePZLOG();
    
     //.........................Div Free Bubbles NEW.........................
     // {
-        TPZKernelHdivUtils util;
+        TPZKernelHdivUtils<STATE> util;
         TPZKernelHdivHybridizer hybridizer;
-        std::set<int> matBCHybrid={};
+        //Insert here the BC material id's to be hybridized
+        std::set<int> matBCHybrid={ERight};
+        //Insert here the type of all boundary conditions
+        std::set<int> matIDNeumann{ERight};
+        std::set<int> matIDDirichlet{ETop,EBottom,ELeft};
+        /// All bc's mat ID's
+        std::set<int> matBC;
+        std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
-        //Insert here the boundaries where the BC are hybridized
-        hybridizer.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,EDomain);
-        hybridizer.CreateWrapElements(gmesh,matBCHybrid,true);
-        // util.PrintGeoMesh(gmesh);
-
-        // nesta configuracao o material ETop eh substituido por EWrap
-        std::set<int> matIdVecNew={EDomain,ETop,EBottom,ERight,ELeft,EWrap,EPont};
-        // criamos elementos tipo ETop para a pressao
-        std::set<int> matIdNeumannNew = matBCHybrid;
-        matIdNeumannNew.insert(EPressureHyb);
-
-        TPZApproxSpaceKernelHdiv createSpace(gmesh,TPZApproxSpaceKernelHdiv::EDomainHybrid);
+        /// Creates the approximation space - Set the type of domain hybridization
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EDomainHybrid);
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
-        createSpace.fConfig.fPoint = EPont;
-        createSpace.fConfig.fWrap = EWrap;
-        createSpace.fConfig.fBCMatId = matBCHybrid;
-
+        createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.SetPOrder(pOrder+1);
-        
+        createSpace.Initialize();
+
         //Flux mesh
-        TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh(matIdVecNew);
-        util.PrintCMeshConnects(cmeshfluxNew);
-        std::string fluxFile = "FluxCMesh";
-        util.PrintCompMesh(cmeshfluxNew,fluxFile);
+        TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
+        // util.PrintCMeshConnects(cmeshfluxNew);
+        // std::string fluxFile = "FluxCMesh";
+        // util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
         //Pressure mesh
-        TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh(matIdNeumannNew,matBCHybrid);
-        
-        // Print pressure mesh
-        std::string pressureFile = "PressureCMesh";
-        util.PrintCompMesh(cmeshpressureNew,pressureFile);
+        TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
+        // util.PrintCMeshConnects(cmeshpressureNew);
+        // std::string pressureFile = "PressureCMesh";
+        // util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
         meshvectorNew[0] = cmeshfluxNew;
-        meshvectorNew[1] = cmeshpressureNew;
-
-        auto * cmeshNew = MultiphysicCMeshNew(dim,pOrder+1,matIdVecNew,matIdNeumannNew,meshvectorNew,gmesh);
-        hybridizer.CreateMultiphysicsInterfaceElements(cmeshNew,gmesh,meshvectorNew,matIdNeumannNew);
+        meshvectorNew[1] = cmeshpressureNew;      
+        auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
         util.PrintCMeshConnects(cmeshNew);
+        // Group and condense the elements
+        // createSpace.Condense(cmeshNew);
+        // std::string multiphysicsFile = "MultiPhysicsMeshNew";
+        // util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
-        // Prints Multiphysics mesh
-        std::ofstream myfile("MultiPhysicsMeshNew.txt");
-        cmeshNew->Print(myfile);
-
-        //Prints computational mesh properties
-        std::stringstream vtk_name;
-        vtk_name    << "MultiPhysicsNew" << ".vtk";
-        std::ofstream vtkfile(vtk_name.str().c_str());
-        TPZVTKGeoMesh::PrintCMeshVTK(cmeshNew, vtkfile, true);
-
-        hybridizer.GroupAndCondenseElements(cmeshNew,matBCHybrid);
-
-        //Solve Multiphysics
+        // Solve the problem
         TPZLinearAnalysis anNew(cmeshNew,false);
-
-        SolveProblemDirect(anNew,cmeshNew);
+        createSpace.Solve(anNew, cmeshNew, true);
 
         //Print results
         PrintResultsMultiphysicNew(dim,meshvectorNew,anNew,cmeshNew);
@@ -242,64 +225,6 @@ TPZLogger::InitializePZLOG();
     // anDFB.Print("nothing",out);
 
     return 0;
-}
-
-
-// Multiphysics computational mesh
-TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> &matIdVec, std::set<int> &matIdNeumann, TPZVec<TPZCompMesh *> &meshvector,TPZGeoMesh * gmesh)
-{
-    // gmesh->ResetReference();
-    auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
-    cmesh->SetDefaultOrder(pOrder);
-    cmesh->SetDimModel(dim);
-    cmesh->ApproxSpace().SetAllCreateFunctionsMultiphysicElem();
-
-    // eh preciso criar materiais para todos os valores referenciados no enum
-    auto mat = new TPZMixedDarcyFlowHybrid(EDomain, dim);
-    mat->SetPermeabilityFunction(1.);
-    cmesh->InsertMaterialObject(mat);
-    mat -> SetBigNumber(1.e10);
-        
-    //Boundary Conditions
-    TPZFMatrix<STATE> val1(1,1,1.);
-    TPZManVector<STATE> val2(1,0.);
-    TPZManVector<STATE> val4(1,1.);
-    constexpr int boundType{1};
-    constexpr int boundType0{0};
-    auto * BCond0 = mat->CreateBC(mat, EBottom, 0, val1, val2);
-    auto * BCond1 = mat->CreateBC(mat, ERight, 1, val1, val2);
-    BCond0->SetForcingFunctionBC(exactSol);
-    BCond1->SetForcingFunctionBC(exactSol);
-    cmesh->InsertMaterialObject(BCond1);
-    cmesh->InsertMaterialObject(BCond0);
-    auto * BCond2 = mat->CreateBC(mat, ETop, 0, val1, val2);
-    auto * BCond3 = mat->CreateBC(mat, ELeft, 0, val1, val2);
-    BCond2->SetForcingFunctionBC(exactSol);
-    BCond3->SetForcingFunctionBC(exactSol);
-    cmesh->InsertMaterialObject(BCond2);
-    cmesh->InsertMaterialObject(BCond3);
-
-    auto *matL2 = new TPZL2ProjectionCS<>(EPont,0,1);
-    cmesh->InsertMaterialObject(matL2);
-
-    auto * nullmat2 = new TPZNullMaterialCS<>(EWrap,dim-1,1);
-    cmesh->InsertMaterialObject(nullmat2);
-
-    auto * nullmat3 = new TPZNullMaterialCS<>(EPressureHyb,dim-1,1);
-    cmesh->InsertMaterialObject(nullmat3);
-
-    TPZManVector<int> active(2,1);
-    active[0]=1;
-    active[1]=1;
-    cmesh->BuildMultiphysicsSpace(active, meshvector);
-    cmesh->LoadReferences();
-    cmesh->CleanUpUnconnectedNodes(); 
-
-    auto mat3 = new TPZLagrangeMultiplierCS<STATE>(EIntface, dim-1);
-    cmesh->InsertMaterialObject(mat3);
-
-
-    return cmesh;
 }
 
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
@@ -432,59 +357,4 @@ void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
     // std::cout << "error 5 = " << error[4] << "\n\n";
 
     return;
-}
-
-TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh)
-{
-    gmesh->ResetReference();
-        
-    //Creates cmesh object
-    TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
-    cmesh->SetAllCreateFunctionsContinuous();
-    cmesh->SetDefaultOrder(pOrder);
-
-    //Sets materials
-    auto *mat = new TPZMatDivFreeBubbles<STATE>(EDomain,dim);
-    cmesh->InsertMaterialObject(mat);
-    mat -> SetBigNumber(1.e10);
-
-    //Insert boundary conditions
-    TPZFMatrix<STATE> val1(1,1,1.);
-    TPZManVector<STATE> val2(1,0.);
-    TPZManVector<STATE> val4(1,0.);
-    constexpr int boundType{0};
-    auto * BCond = mat->CreateBC(mat,EBottom, 0, val1, val4);//Bottom
-    // auto * BCond1 = mat->CreateBC(mat, ERight, 0, val1, val2);//Right
-    BCond->SetForcingFunctionBC(exactSol);
-    // BCond1->SetForcingFunctionBC(exactSol);
-    cmesh->InsertMaterialObject(BCond);
-    // cmesh->InsertMaterialObject(BCond1);
-    auto * BCond2 = mat->CreateBC(mat, ETop, 1, val1, val2);//Top
-    auto * BCond3 = mat->CreateBC(mat, ELeft, 0, val1, val4);//Left
-    BCond2->SetForcingFunctionBC(exactSol);
-    BCond3->SetForcingFunctionBC(exactSol);
-    cmesh->InsertMaterialObject(BCond2);
-    cmesh->InsertMaterialObject(BCond3);
-
-    auto *mat2 = new TPZL2Projection<>(EPont,0,1);
-    cmesh->InsertMaterialObject(mat2);
-
-    //Prints computational mesh properties
-    // std::stringstream text_name;
-    // std::stringstream vtk_name;
-    // text_name   << "geometry" << ".txt";
-    // vtk_name    << "geometry" << ".vtk";
-    // std::ofstream textfile(text_name.str().c_str());
-    // gmesh->Print(textfile);
-    // std::ofstream vtkfile(vtk_name.str().c_str());
-    // TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
-
-    
-    cmesh->AutoBuild();
-
-    // Prints DFB mesh
-    std::ofstream myfile("DFBMesh.txt");
-    cmesh->Print(myfile);
-
-    return cmesh;
 }

@@ -15,43 +15,84 @@
 #include <TPZNullMaterial.h>
 #include "TPZCompElKernelHdiv.h"
 #include "TPZCompElKernelHdivBC.h"
-#include "TPZKernelHdivHybridizer.h"
+#include "TPZL2ProjectionCS.h"
+#include "TPZLagrangeMultiplierCS.h"
+#include <TPZNullMaterialCS.h>
+#include "TPZMixedDarcyFlowHybrid.h"
+
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
 #include "pzshapequad.h"
 #include "pzshapepoint.h"
 #include "pzshapetriang.h"
 
-TPZApproxSpaceKernelHdiv::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype) :
+template<class TVar>
+TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype) :
             fSpaceType(spacetype), fGeoMesh(gmesh) {
     fDimension = gmesh->Dimension();
 }
 
 /// copy constructor
-TPZApproxSpaceKernelHdiv::TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv &copy)
+template<class TVar>
+TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv<TVar> &copy)
 {
     
 }
 
 /// = operator
-TPZApproxSpaceKernelHdiv & TPZApproxSpaceKernelHdiv::operator=(const TPZApproxSpaceKernelHdiv &copy)
+template<class TVar>
+TPZApproxSpaceKernelHdiv<TVar> & TPZApproxSpaceKernelHdiv<TVar>::operator=(const TPZApproxSpaceKernelHdiv<TVar> &copy)
 {
     return *this;
 }
 
+template<class TVar>
+void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
+{
+    if (fSpaceType != ENormal)
+    {
+        hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
+        hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,true);
+    } else {
+        hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
+        hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false);
+    }
+    
+}
+
+
+template<class TVar>
+void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh * cmesh, bool direct)
+{
+    if (direct)
+    {
+        util->SolveProblemDirect(an,cmesh);
+    } else {
+        util->SolveProblemIterative(an,cmesh);
+    }
+}
+
+
 
 //Creates the flux mesh
-TPZCompMesh * TPZApproxSpaceKernelHdiv::CreateFluxCMesh(std::set<int> &matIdVec)
-{    
+template<class TVar>
+TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
+{   
     fGeoMesh->ResetReference();
     TPZCompMesh *cmesh = new TPZCompMesh(fGeoMesh);
     cmesh->SetDefaultOrder(fDefaultPOrder);
     cmesh->SetDimModel(fDimension);
-    std::set<int> allmat;  
 
-    for (std::set<int>::iterator it=matIdVec.begin(); it!=matIdVec.end(); ++it)
+    //Inserts Null Materials
+    std::set<int> allMat={};
+    //Just the BC's not hybridized
+    set_symmetric_difference(fConfig.fBCMatId.begin(), fConfig.fBCMatId.end(), fConfig.fBCHybridMatId.begin(), fConfig.fBCHybridMatId.end(), inserter(allMat, allMat.begin()));
+    allMat.insert(fConfig.fDomain);
+    allMat.insert(fConfig.fPoint);
+    allMat.insert(fConfig.fWrap);
+
+    for (std::set<int>::iterator it=allMat.begin(); it!=allMat.end(); ++it)
     {
-        allmat.insert(*it);
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
         cmesh->InsertMaterialObject(mat);
         mat->SetDimension(fDimension);
@@ -66,7 +107,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv::CreateFluxCMesh(std::set<int> &matIdVec)
         auto type = gel -> Type();
         int64_t index;
         auto matid = gel->MaterialId();
-        if(allmat.find(matid) == allmat.end()) continue;
 
         using namespace pzgeom;
         using namespace pzshape;
@@ -112,7 +152,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv::CreateFluxCMesh(std::set<int> &matIdVec)
                     nullmat->SetDimension(1);
                     neighbour.Element()->ResetReference();
                 } else {
-                    if (allmat.find(neighbour.Element()->MaterialId()) != allmat.end()){
+                    if (allMat.find(neighbour.Element()->MaterialId()) != allMat.end()){
                         new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
                         TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
                         TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
@@ -142,18 +182,20 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv::CreateFluxCMesh(std::set<int> &matIdVec)
     cmesh->LoadReferences();
 
     if (fSpaceType == EDomainSemiHybrid){
-        TPZKernelHdivHybridizer hybridizer;
-        hybridizer.SemiHybridizeFlux(cmesh,fBCMaterialIds);
+        hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     }
 
     return cmesh;
 }
 
-TPZCompMesh * TPZApproxSpaceKernelHdiv::CreatePressureCMesh(std::set<int> &matIdVec, std::set<int> &matBC){
-
+template<class TVar>
+TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
+{
+    std::set<int> matIdVec = fConfig.fBCHybridMatId;
+    matIdVec.insert(fConfig.fLagrange);
+    
     fGeoMesh->ResetReference();
     TPZCompMesh *cmesh = new TPZCompMesh(fGeoMesh);
-    std::set<int> matIdNeumann;
 
     // Sets matid to BC geometric elements
     for (std::set<int>::iterator it=matIdVec.begin(); it!=matIdVec.end(); ++it)
@@ -162,7 +204,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv::CreatePressureCMesh(std::set<int> &matId
         mat->SetDimension(1);
         cmesh->InsertMaterialObject(mat);
         mat->SetBigNumber(1.e10);
-        matIdNeumann.insert(*it); 
     }
 
     cmesh->InitializeBlock();
@@ -174,11 +215,11 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv::CreatePressureCMesh(std::set<int> &matId
     } else {
         cmesh->SetAllCreateFunctionsContinuous();
         cmesh->ApproxSpace().CreateDisconnectedElements(true);
-        cmesh->SetDefaultOrder(fDefaultPOrder);
+        cmesh->SetDefaultOrder(fDefaultPOrder-1);
         cmesh->SetDimModel(fDimension-1);
     }
 
-    cmesh->AutoBuild(matIdNeumann);
+    cmesh->AutoBuild(matIdVec);
     
     for(auto &newnod : cmesh->ConnectVec())
     {
@@ -186,10 +227,80 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv::CreatePressureCMesh(std::set<int> &matId
     }
 
     if (fSpaceType == EDomainSemiHybrid){
-        TPZKernelHdivHybridizer hybridizer;
-        hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,matBC);
+        hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
     }
 
     return cmesh;
 }
 
+template<class TVar>
+TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet)
+{
+    // gmesh->ResetReference();
+    auto cmesh = new TPZMultiphysicsCompMesh(fGeoMesh);
+    cmesh->SetDefaultOrder(fDefaultPOrder);
+    cmesh->SetDimModel(fDimension);
+    cmesh->ApproxSpace().SetAllCreateFunctionsMultiphysicElem();
+
+    // eh preciso criar materiais para todos os valores referenciados no enum
+    auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
+    mat->SetPermeabilityFunction(1.);
+    cmesh->InsertMaterialObject(mat);
+    mat -> SetBigNumber(1.e10);
+        
+    //Boundary Conditions
+    TPZFMatrix<STATE> val1(1,1,1.);
+    TPZManVector<STATE> val2(1,0.);
+
+    //Dirichlet Boundary Conditions
+    for (auto matId : BCDirichlet)
+    {
+        TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 0, val1, val2);
+        BCond->SetForcingFunctionBC(exactSol);
+        cmesh->InsertMaterialObject(BCond);
+    }
+
+    //Neumann Boundary Conditions
+    for (auto matId : BCNeumann)
+    {
+        TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 1, val1, val2);
+        BCond->SetForcingFunctionBC(exactSol);
+        cmesh->InsertMaterialObject(BCond);
+    }
+
+    if (fSpaceType != ENormal)
+    {
+        auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
+        cmesh->InsertMaterialObject(matL2);
+
+        auto * nullmat2 = new TPZNullMaterialCS<>(fConfig.fWrap,fDimension-1,1);
+        cmesh->InsertMaterialObject(nullmat2);
+
+        auto * nullmat3 = new TPZNullMaterialCS<>(fConfig.fLagrange,fDimension-1,1);
+        cmesh->InsertMaterialObject(nullmat3);
+    }
+
+    TPZManVector<int> active(2,1);
+    active[0]=1;
+    active[1]=1;
+    cmesh->BuildMultiphysicsSpace(active, meshvector);
+    cmesh->LoadReferences();
+    cmesh->CleanUpUnconnectedNodes(); 
+
+    if (fSpaceType != ENormal)
+    {
+        auto mat3 = new TPZLagrangeMultiplierCS<STATE>(fConfig.fInterface, fDimension-1);
+        cmesh->InsertMaterialObject(mat3);
+
+        auto matbc = fConfig.fBCHybridMatId;
+        matbc.insert(fConfig.fLagrange);
+        hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matbc);
+    }
+
+
+
+    return cmesh;
+}
+
+template class TPZApproxSpaceKernelHdiv<STATE>;
+// template class TPZApproxSpaceKernelHdiv<CSTATE>;

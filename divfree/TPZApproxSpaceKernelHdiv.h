@@ -13,13 +13,17 @@
 #include <stdio.h>
 #include <set>
 #include "pzmanvector.h"
+#include "TPZMatTypes.h"
+#include "TPZKernelHdivHybridizer.h"
+#include "TPZKernelHdivUtils.h"
+
 class TPZCompMesh;
 class TPZGeoMesh;
 class TPZMultiphysicsCompMesh;
 class TPZCompEl;
 class TPZGeoElSide;
 
-
+template <class TVar>
 class TPZApproxSpaceKernelHdiv
 {
 public:
@@ -29,12 +33,6 @@ public:
 private:
     /// the type of space this object will generate
     MSpaceType fSpaceType = ENormal;
-
-    /// the materialids which will be used to create the atomic meshes
-    std::set<int> fMaterialIds;
-    
-    /// the boundary condition material ids
-    std::set<int> fBCMaterialIds;
 
     /// default internal order for the H1 elements
     int fDefaultPOrder = 3;
@@ -47,6 +45,12 @@ private:
     
     /// the geometric mesh which will generate the computational mesh
     TPZGeoMesh *fGeoMesh = 0;
+
+    /// The hybridizer
+    TPZKernelHdivHybridizer hybridizer;
+
+    /// The util
+    TPZKernelHdivUtils<TVar> * util;
 
 public:
     /// default constructor
@@ -68,11 +72,20 @@ public:
         fDefaultLagrangeOrder = order;
     }
 
-    TPZCompMesh * CreateFluxCMesh(std::set<int> &matIdVec);
+    void Initialize();
 
-    TPZCompMesh * CreatePressureCMesh(std::set<int> &matIdVec, std::set<int> &matBC);
+    void Solve(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh * cmesh, bool direct);
 
-    void CreateMultiphysicsCMesh();
+    void Condense(TPZMultiphysicsCompMesh * cmesh)
+    {
+        hybridizer.GroupAndCondenseElements(cmesh,fConfig.fBCHybridMatId);
+    }
+
+    TPZCompMesh * CreateFluxCMesh();
+
+    TPZCompMesh * CreatePressureCMesh();
+
+    TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
     
     /// All parameters needed for creating a hybrid H1 space
     struct TConfig
@@ -86,8 +99,17 @@ public:
         /// Point material ID
         int fPoint = -1;
 
-        /// Boundary conditions material ID's
-        std::set<int> fBCMatId;
+        /// Interface material ID
+        int fInterface = -1;
+
+        /// Lagrange Multiplier Material ID
+        int fLagrange = -1;
+
+        /// Hybridized Boundary conditions material ID's
+        std::set<int> fBCHybridMatId = {};
+        
+        /// All Boundary conditions material ID's
+        std::set<int> fBCMatId = {};
 
         /// default constructor
         TConfig(){}
@@ -101,6 +123,16 @@ public:
 
     /// object which contains the relevant information for create a hybrid H1 mesh
     TConfig fConfig;
+
+    void SetPeriferalMaterialIds(int Wrap, int Lagrange, int Interface, int Point, std::set<int > &matBChybrid, std::set<int > &matBC)
+    {
+        fConfig.fWrap = Wrap;
+        fConfig.fLagrange = Lagrange;
+        fConfig.fInterface = Interface;
+        fConfig.fPoint = Point;
+        fConfig.fBCHybridMatId = matBChybrid;
+        fConfig.fBCMatId = matBC;
+    }
 
 };
 

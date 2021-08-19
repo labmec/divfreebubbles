@@ -11,8 +11,8 @@
 #include <pzskylstrmatrix.h> //symmetric skyline matrix storage
 #include <pzstepsolver.h> //for TPZStepSolver
 
-
-void TPZKernelHdivUtils::PrintCMeshConnects(TPZCompMesh *cmesh){
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::PrintCMeshConnects(TPZCompMesh *cmesh){
     
     for (int i = 0; i < cmesh->NElements(); i++)
     {
@@ -58,7 +58,8 @@ void TPZKernelHdivUtils::PrintCMeshConnects(TPZCompMesh *cmesh){
     }
 }
 
-void TPZKernelHdivUtils::PrintGeoMesh(TPZGeoMesh *gmesh){
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::PrintGeoMesh(TPZGeoMesh *gmesh){
     
     for (int i = 0; i < gmesh->NElements(); i++)
     {
@@ -85,7 +86,8 @@ void TPZKernelHdivUtils::PrintGeoMesh(TPZGeoMesh *gmesh){
     }
 }
 
-void TPZKernelHdivUtils::PrintCompMesh(TPZCompMesh *cmesh,std::string &file_name){
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string &file_name){
 
     // Print pressure mesh
     std::string txt = file_name + ".txt";
@@ -99,3 +101,64 @@ void TPZKernelHdivUtils::PrintCompMesh(TPZCompMesh *cmesh,std::string &file_name
 
 }
 
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
+{
+    //sets number of threads to be used by the solver
+    constexpr int nThreads{0};
+    TPZSkylineStructMatrix<STATE> matskl(cmesh);
+    matskl.SetNumThreads(nThreads);
+    an.SetStructuralMatrix(matskl);
+
+    ///Setting a direct solver
+    TPZStepSolver<STATE> step;
+    step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    an.SetSolver(step);
+
+    //assembles the system
+    an.Assemble();
+
+    ///solves the system
+    an.Solve();
+
+    return;
+}
+
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
+{
+    //sets number of threads to be used by the solver
+    constexpr int nThreads{0};
+    //defines storage scheme to be used for the FEM matrices
+    //in this case, a symmetric skyline matrix is used
+    TPZSkylineStructMatrix<STATE> matskl(cmesh);
+    matskl.SetNumThreads(nThreads);
+    an.SetStructuralMatrix(matskl);
+
+    ///Setting a direct solver
+    TPZStepSolver<STATE> step;
+    ///Setting an iterative solver
+    // TPZMatrixSolver<STATE> * precond = an.BuildPreconditioner(TPZAnalysis::EBlockJacobi , true);
+    // TPZCopySolve<STATE> * precond = new TPZCopySolve<STATE>( matskl.Create() );  step.ShareMatrix( *precond );
+    TPZStepSolver<STATE> * precond = new TPZStepSolver<STATE>( matskl.Create() ); step.ShareMatrix( *precond ); precond->SetJacobi(1, 0.0, 0);
+    TPZStepSolver<STATE> jac;
+    REAL tol = 1.e-30;
+    jac.SetSSOR(1,1.1,0.,0);
+    jac.ShareMatrix(step);
+    step.SetGMRES(2000,2000, *precond, tol, 0);
+    // step.SetCG(2000, *precond, tol, 0);
+    an.SetSolver(step);
+
+    //assembles the system
+    an.Assemble();
+
+    ///solves the system
+    an.Solve();
+
+    return;
+}
+
+
+
+template class TPZKernelHdivUtils<STATE>;
+// template class TPZKernelHdivUtils<CSTATE>;

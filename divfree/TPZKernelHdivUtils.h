@@ -28,21 +28,19 @@ class TPZGeoEl;
 template<class T, int N>
 class TPZStack;
 
-struct TPZKernelHdivUtils {
+template <class TVar>
+class TPZKernelHdivUtils {
 
-    /**
-     * @brief Default constructor
-     */
-    TPZKernelHdivUtils() = default;
-
-
+public:
     void PrintCMeshConnects(TPZCompMesh *cmesh);
 
     void PrintGeoMesh(TPZGeoMesh *geomesh);
 
     void PrintCompMesh(TPZCompMesh *cmesh, std::string &file_name);
 
+    void SolveProblemIterative(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 
+    void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh); 
 
 };
 #endif
