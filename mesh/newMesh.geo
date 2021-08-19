@@ -44,8 +44,5 @@ Physical Curve("TopLine") = {5};//5
 Physical Curve("LeftLine") = {6};//6
 //+
 Physical Curve("RightLine") = {4};//7
-//+
-//Physical Point("Point") = {6};//8
 
-//Physical Curve("BottomLine2") = {3};//9
 
