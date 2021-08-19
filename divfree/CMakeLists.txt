@@ -30,11 +30,13 @@ configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/divfree_config.h.in" ${CONFIG_H})
 
 set(UTIL_HEADERS
   divfree_config.h
+  TPZApproxSpaceKernelHdiv.h
   TPZKernelHdivHybridizer.h
   TPZKernelHdivUtils.h)
 
 set(UTIL_SRCS
   TPZKernelHdivHybridizer.cpp
+  TPZApproxSpaceKernelHdiv.cpp
   TPZKernelHdivUtils.cpp)
 
 target_sources(divfree PRIVATE

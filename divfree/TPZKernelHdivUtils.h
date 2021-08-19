@@ -10,6 +10,8 @@
 #include <iostream>
 #include <map>
 #include "pzstack.h"
+#include "TPZLinearAnalysis.h"
+
 //#include "pzgeoelrefless.h"
 
 template<class T>
@@ -37,6 +39,8 @@ struct TPZKernelHdivUtils {
     void PrintCMeshConnects(TPZCompMesh *cmesh);
 
     void PrintGeoMesh(TPZGeoMesh *geomesh);
+
+    void PrintCompMesh(TPZCompMesh *cmesh, std::string &file_name);
 
 
 

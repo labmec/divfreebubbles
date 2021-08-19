@@ -308,11 +308,10 @@ void TPZKernelHdivHybridizer::SemiHybridizePressure(TPZCompMesh *cmesh, int pOrd
         cel->LoadElementReference();
         auto gel = cel->Reference();
         int matid = gel->MaterialId();
-        // std::cout << "Element " << cel->Index() <<", dim = " << cel->Dimension() << " " << cel->NConnects() << " " << cel->GetgOrder()<<std::endl;
+        auto nconnects = cel->NConnects();
+    
         if (matBCId.find(matid) != matBCId.end()){
-            auto nconnects = cel->NConnects();
-            // cel->SetgOrder(pOrder);
-            // std::cout << "cel conn " 
+            
             for (int i = 0; i < nconnects; i++)
             {
                 auto conn = cel->Connect(i);
@@ -323,10 +322,17 @@ void TPZKernelHdivHybridizer::SemiHybridizePressure(TPZCompMesh *cmesh, int pOrd
 
             }
             
-        }
-        // std::cout << "El " << cel->Index() <<", dim = " << cel->Dimension() << " " << cel->NConnects() << " " << cel->GetgOrder()<<std::endl;
+        } else {
+            for (int i = 0; i < nconnects; i++)
+            {
+                auto conn = cel->Connect(i);
+                int64_t index;
+                // conn.SetOrder(pOrder,index);
+                cel->Connect(i).SetOrder(0,index);
+                // std::cout << "El " << cel->Connect(i) <<", " <<std::endl;
 
+            }
+        }
     }
-    // cmesh->LoadReferences();
-    // cmesh->AutoBuild();
+    cmesh->CleanUpUnconnectedNodes();
 }
