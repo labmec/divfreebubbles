@@ -42,5 +42,9 @@ public:
 
     void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh); 
 
+    void PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &meshvector, TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh);
+
+    void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
+
 };
 #endif

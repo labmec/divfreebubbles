@@ -49,20 +49,8 @@
 #include "TPZCompElKernelHdiv.h"
 #include "TPZCompElKernelHdivBC.h"
 #include "TPZMixedDarcyFlowHybrid.h"
-#include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
-
-
-TPZMultiphysicsCompMesh *MultiphysicCMeshNew(int dim, int pOrder, std::set<int> &matIdVec, std::set<int> &matIdNeumann, TPZVec<TPZCompMesh *> &meshvector,TPZGeoMesh * gmesh);
-TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, std::set<int> matIdVec, TPZGeoMesh *gmesh);
-void SolveProblem(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
-void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
-void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> &meshvector, TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh);
-void PrintResultsMultiphysicNew(int dim, TPZVec<TPZCompMesh *> &meshvector, TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh);
-void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an);
-void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
-void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -149,216 +137,74 @@ TPZLogger::InitializePZLOG();
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
     
-    //.................................Hdiv.................................
+
+    //............................Div Free Bubbles............................
     TPZCompMesh * cmeshflux = 0;
     TPZCompMesh * cmeshpressure = 0;
    
-    //.........................Div Free Bubbles NEW.........................
-    // {
-        TPZKernelHdivUtils<STATE> util;
-        TPZKernelHdivHybridizer hybridizer;
-        //Insert here the BC material id's to be hybridized
-        std::set<int> matBCHybrid={};
-        //Insert here the type of all boundary conditions
-        std::set<int> matIDNeumann{};
-        std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
-        /// All bc's mat ID's
-        std::set<int> matBC;
-        std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
+    TPZKernelHdivUtils<STATE> util;
 
-        /// Creates the approximation space - Set the type of domain hybridization
-        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+    //Insert here the BC material id's to be hybridized
+    std::set<int> matBCHybrid={};
+    //Insert here the type of all boundary conditions
+    std::set<int> matIDNeumann{};
+    std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
+    /// All bc's mat ID's
+    std::set<int> matBC;
+    std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
-        //Setting material ids
-        createSpace.fConfig.fDomain = EDomain;
-        createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
-        createSpace.SetPOrder(pOrder+1);
-        createSpace.Initialize();
-        util.PrintGeoMesh(gmesh);
+    /// Creates the approximation space - Set the type of domain hybridization
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
 
-        //Flux mesh
-        TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-        std::cout << "FLUX \n";
-        util.PrintCMeshConnects(cmeshfluxNew);
-        // std::string fluxFile = "FluxCMesh";
-        // util.PrintCompMesh(cmeshfluxNew,fluxFile);
+    //Setting material ids
+    createSpace.fConfig.fDomain = EDomain;
+    createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
+    createSpace.SetPOrder(pOrder+1);
+    createSpace.Initialize();
+    // util.PrintGeoMesh(gmesh);
 
-        //Pressure mesh
-        TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-        std::cout << "PRESSURE \n";
-        util.PrintCMeshConnects(cmeshpressureNew);
-        // std::string pressureFile = "PressureCMesh";
-        // util.PrintCompMesh(cmeshpressureNew,pressureFile);
+    //Flux mesh
+    TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
+    // std::cout << "FLUX \n";
+    // util.PrintCMeshConnects(cmeshfluxNew);
+    // std::string fluxFile = "FluxCMesh";
+    // util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
-        //Multiphysics mesh
-        TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
-        meshvectorNew[0] = cmeshfluxNew;
-        meshvectorNew[1] = cmeshpressureNew;      
-        auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-        std::cout << "MULTIPHYSICS \n";
-        util.PrintCMeshConnects(cmeshNew);
-        // Group and condense the elements
-        createSpace.Condense(cmeshNew);
-        // std::string multiphysicsFile = "MultiPhysicsMeshNew";
-        // util.PrintCompMesh(cmeshNew,multiphysicsFile);
+    //Pressure mesh
+    TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
+    // std::cout << "PRESSURE \n";
+    // util.PrintCMeshConnects(cmeshpressureNew);
+    // std::string pressureFile = "PressureCMesh";
+    // util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
-        // Solve the problem
-        TPZLinearAnalysis anNew(cmeshNew,false);
-        createSpace.Solve(anNew, cmeshNew, true);
+    //Multiphysics mesh
+    TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
+    meshvectorNew[0] = cmeshfluxNew;
+    meshvectorNew[1] = cmeshpressureNew;      
+    auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
+    // std::cout << "MULTIPHYSICS \n";
+    // util.PrintCMeshConnects(cmeshNew);
+    // Group and condense the elements
+    createSpace.Condense(cmeshNew);
+    // std::string multiphysicsFile = "MultiPhysicsMeshNew";
+    // util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
-        //Print results
-        PrintResultsMultiphysicNew(dim,meshvectorNew,anNew,cmeshNew);
-        std::ofstream out4("mesh_MDFB.txt");
-        anNew.Print("nothing",out4);
+    // Solve the problem
+    TPZLinearAnalysis anNew(cmeshNew,false);
+    createSpace.Solve(anNew, cmeshNew, true);
 
-        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
-        ComputeErrorHdiv(anNew,anPostProcessFileMDFB);
-    // }
+    anNew.SetExact(exactSol,solOrder);
+    //Print results
+    util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-    //...........................Div Free Bubbles...........................
-    //Creates DFB problem
-    // TPZCompMesh * cmeshDFB = CMeshDivFreeBubbles(dim,pOrder,matIdVec,gmesh);
+    anNew.SetExact(exactSol2,solOrder);
 
-    // //Solve DFB
-    // TPZLinearAnalysis anDFB(cmeshDFB,true);
-    // SolveProblemDirect(anDFB,cmeshDFB);
-
-    // // //Print results
-    // PrintResultsDivFreeBubbles(dim,anDFB);
-    // std::ofstream out("mesh.txt");
-    // anDFB.Print("nothing",out);
-
+    std::ofstream out4("mesh_MDFB.txt");
+    anNew.Print("nothing",out4);
+    std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+    
+    util.ComputeError(anNew,anPostProcessFileMDFB);
+  
     return 0;
 }
 
-void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
-{
-    //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
-    TPZSkylineStructMatrix<STATE> matskl(cmesh);
-    matskl.SetNumThreads(nThreads);
-    an.SetStructuralMatrix(matskl);
-
-    ///Setting a direct solver
-    TPZStepSolver<STATE> step;
-    step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
-    an.SetSolver(step);
-
-    //assembles the system
-    an.Assemble();
-
-    ///solves the system
-    an.Solve();
-
-    return;
-}
-
-void SolveProblem(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
-{
-    //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
-    //defines storage scheme to be used for the FEM matrices
-    //in this case, a symmetric skyline matrix is used
-    TPZSkylineStructMatrix<STATE> matskl(cmesh);
-    matskl.SetNumThreads(nThreads);
-    an.SetStructuralMatrix(matskl);
-
-    ///Setting a direct solver
-    TPZStepSolver<STATE> step;
-    ///Setting an iterative solver
-    // TPZMatrixSolver<STATE> * precond = an.BuildPreconditioner(TPZAnalysis::EBlockJacobi , true);
-    // TPZCopySolve<STATE> * precond = new TPZCopySolve<STATE>( matskl.Create() );  step.ShareMatrix( *precond );
-    TPZStepSolver<STATE> * precond = new TPZStepSolver<STATE>( matskl.Create() ); step.ShareMatrix( *precond ); precond->SetJacobi(1, 0.0, 0);
-    TPZStepSolver<STATE> jac;
-    REAL tol = 1.e-30;
-    jac.SetSSOR(1,1.1,0.,0);
-    jac.ShareMatrix(step);
-    step.SetGMRES(2000,2000, *precond, tol, 0);
-    // step.SetCG(2000, *precond, tol, 0);
-    an.SetSolver(step);
-
-    //assembles the system
-    an.Assemble();
-
-    ///solves the system
-    an.Solve();
-
-    return;
-}
-
-void PrintResultsMultiphysicNew(int dim, TPZVec<TPZCompMesh *> &meshvector, TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh)
-{
-
-    an.SetExact(exactSol,solOrder);
-
-    TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-    TPZManVector<std::string,10> scalnames(0), vecnames(2);
-
-
-    // scalnames[0] = "Pressure";
-    // scalnames[1] = "ExactPressure";
-    vecnames[0]= "Flux";
-    vecnames[1]= "ExactFlux";
-
-    int div = 0;
-    std::string plotfile = "solutionMDFB.vtk";
-    an.DefineGraphMesh(dim,scalnames,vecnames,plotfile);
-    an.PostProcess(div,dim);
-    // Print mesh properties
-    // std::ofstream out("mesh.txt");
-    // an.Print("nothing",out);
-
-    return;
-}
-
-void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an)
-{
-    an.SetExact(exactSol,solOrder);
-    TPZVec<std::string> vectorVars(1), scalarVars(1);
-    scalarVars[0] = "Solution";
-    vectorVars[0] = "Derivative";
-    an.DefineGraphMesh(dim,scalarVars,vectorVars,"SolutionDFB.vtk");
-    constexpr int resolution{0};
-    an.PostProcess(resolution,dim);	
-
-    return;
-}
-
-void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
-{
-    an.SetExact(exactSol2,solOrder);
-    ///Calculating approximation error  
-    TPZManVector<REAL,3> error;
-    an.PostProcess(error,anPostProcessFile);
-        
-    std::cout << "\nApproximation error:\n";
-    std::cout << "H1 Norm = " << error[0]<<'\n';
-    std::cout << "L1 Norm = " << error[1]<<'\n'; 
-    std::cout << "H1 Seminorm = " << error[2] << "\n\n";
-
-    return;
-}
-
-void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
-{
-    an.SetExact(exactSol2,solOrder);
-    ///Calculating approximation error  
-    TPZManVector<REAL,5> error;
-
-    auto cmeshNew = an.Mesh();
-    int64_t nelem = cmeshNew->NElements();
-    cmeshNew->LoadSolution(cmeshNew->Solution());
-    cmeshNew->ExpandSolution();
-    cmeshNew->ElementSolution().Redim(nelem, 5);
-
-    an.PostProcessError(error);
-        
-    std::cout << "\nApproximation error:\n";
-    std::cout << "H1 Norm = " << error[0]<<'\n';
-    std::cout << "L1 Norm = " << error[1]<<'\n'; 
-    std::cout << "H1 Seminorm = " << error[2]<<'\n'; 
-    // std::cout << "error 4 = " << error[3]<<'\n'; 
-    // std::cout << "error 5 = " << error[4] << "\n\n";
-
-    return;
-}

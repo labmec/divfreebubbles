@@ -10,6 +10,9 @@
 #include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
 #include <pzskylstrmatrix.h> //symmetric skyline matrix storage
 #include <pzstepsolver.h> //for TPZStepSolver
+#include "pzbuildmultiphysicsmesh.h"
+#include "TPZMultiphysicsCompMesh.h"
+
 
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::PrintCMeshConnects(TPZCompMesh *cmesh){
@@ -157,6 +160,51 @@ void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZC
 
     return;
 }
+
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &meshvector, TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh)
+{
+    TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
+    TPZManVector<std::string,10> scalnames(0), vecnames(2);
+
+
+    // scalnames[0] = "Pressure";
+    // scalnames[1] = "ExactPressure";
+    vecnames[0]= "Flux";
+    vecnames[1]= "ExactFlux";
+
+    int div = 0;
+    std::string plotfile = "solutionMDFB.vtk";
+    an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
+    an.PostProcess(div,cmesh->Dimension());
+    // Print mesh properties
+    // std::ofstream out("mesh.txt");
+    // an.Print("nothing",out);
+
+}
+
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
+{
+    ///Calculating approximation error  
+    TPZManVector<REAL,5> error;
+
+    auto cmeshNew = an.Mesh();
+    int64_t nelem = cmeshNew->NElements();
+    cmeshNew->LoadSolution(cmeshNew->Solution());
+    cmeshNew->ExpandSolution();
+    cmeshNew->ElementSolution().Redim(nelem, 5);
+
+    an.PostProcessError(error);
+        
+    std::cout << "\nApproximation error:\n";
+    std::cout << "H1 Norm = " << error[0]<<'\n';
+    std::cout << "L1 Norm = " << error[1]<<'\n'; 
+    std::cout << "H1 Seminorm = " << error[2]<<'\n'; 
+    // std::cout << "error 4 = " << error[3]<<'\n'; 
+    // std::cout << "error 5 = " << error[4] << "\n\n";
+}
+
 
 
 
