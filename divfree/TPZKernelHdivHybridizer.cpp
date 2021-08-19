@@ -59,8 +59,10 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                     
                     bool flag = false;
                     TPZGeoElSide sidePresHyb;
+                    auto ncorner = gel->NCornerNodes();
+
                     //Checks if the geometric element for the hybridized pressure already exists, otherwise creates it
-                    for (int k = 4; k < 8; k++)
+                    for (int k = ncorner; k < nsides-1; k++)
                     {
                         TPZGeoElSide geosideNeig(neighbour.Element(),k);
                         if (geosideNeig.Element()->Neighbour(k).Element()->MaterialId()==fEWrap) {
@@ -80,6 +82,8 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                 TPZGeoElBC gelbcWrap(geoside, fEWrap);
                 TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),2);
                 TPZGeoElBC gelbc(gelWrapSide, fEInterface);
+                // gelbcWrap.CreatedElement()->ResetReference();
+                // gelbc.CreatedElement()->ResetReference();
             }
         }
 
@@ -87,7 +91,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
         if (domainHyb){
             TPZGeoElSide geosidePoint(gel,0);
             TPZGeoElBC gelbcPoint(geosidePoint, fEPont);
-            
+        // }
             for (int side = 0; side < nsides; side++) {
                 TPZGeoElSide gelside(gel,side);
                 gelside.Element()->ResetReference();
