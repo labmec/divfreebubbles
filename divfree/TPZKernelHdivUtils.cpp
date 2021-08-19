@@ -6,6 +6,11 @@
 
 #include "pzcmesh.h"
 #include "pzgmesh.h"
+#include <TPZVTKGeoMesh.h>
+#include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
+#include <pzskylstrmatrix.h> //symmetric skyline matrix storage
+#include <pzstepsolver.h> //for TPZStepSolver
+
 
 void TPZKernelHdivUtils::PrintCMeshConnects(TPZCompMesh *cmesh){
     
@@ -79,3 +84,18 @@ void TPZKernelHdivUtils::PrintGeoMesh(TPZGeoMesh *gmesh){
         }
     }
 }
+
+void TPZKernelHdivUtils::PrintCompMesh(TPZCompMesh *cmesh,std::string &file_name){
+
+    // Print pressure mesh
+    std::string txt = file_name + ".txt";
+    std::ofstream myfile(txt);
+    cmesh->Print(myfile);
+
+    //Prints computational mesh properties
+    std::string vtk_name = file_name + ".vtk";
+    std::ofstream vtkfile(vtk_name.c_str());
+    TPZVTKGeoMesh::PrintCMeshVTK(cmesh, vtkfile, true);
+
+}
+
