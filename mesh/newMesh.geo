@@ -25,9 +25,9 @@ Transfinite Curve {4,6} = nv Using Progression 1/pv;
 Transfinite Curve {3,5} = nv Using Progression pv;
 //+
 Curve Loop(1) = {6, 1, 3, -7};
-Plane Surface(1) = {-1};
+Plane Surface(1) = {1};
 Curve Loop(2) = {4, 2, 5, 7};
-Plane Surface(2) = {-2};
+Plane Surface(2) = {2};
 Transfinite Surface {1, 2} ;
 Recombine Surface{1,2};
 //+
@@ -46,3 +46,5 @@ Physical Curve("LeftLine") = {6};//6
 Physical Curve("RightLine") = {4};//7
 
 
+//+
+//Physical Point("Point") = {5};

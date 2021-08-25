@@ -113,10 +113,10 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         using namespace pzshape;
 
         if (type == EPoint){
-            // if (fSpaceType != ENone) continue;
-            // new TPZIntelGen<TPZShapePoint>(*cmesh,gel,index);
-            // TPZMaterial *mat = cmesh->FindMaterial(matid);
-            // TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            if (fSpaceType != ENone) continue;
+            new TPZIntelGen<TPZShapePoint>(*cmesh,gel,index);
+            TPZMaterial *mat = cmesh->FindMaterial(matid);
+            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             // nullmat->SetDimension(0);
         } else if (type == EOned){
             if (fSpaceType != ENone) continue;
@@ -224,17 +224,19 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
         cmesh->SetDefaultOrder(fDefaultPOrder-1);
         cmesh->SetDimModel(fDimension-1);
     }
-
+    
     cmesh->AutoBuild(matIdVec);
     
+    if (fSpaceType == ESemiHybrid){
+        hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
+    }
+
     for(auto &newnod : cmesh->ConnectVec())
     {
         newnod.SetLagrangeMultiplier(1);
     }
 
-    if (fSpaceType == ESemiHybrid){
-        hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
-    }
+    
 
     return cmesh;
 }

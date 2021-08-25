@@ -305,38 +305,25 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
 
 void TPZKernelHdivHybridizer::SemiHybridizePressure(TPZCompMesh *cmesh, int pOrder, std::set<int> &matBCId)
 {
-    //Here we just check if a boundary condition is hybridized. If yes, then correct the polynomial order
-    //as the domain semi-hybridization creates elements with zero-order.
-    for (auto cel : cmesh->ElementVec())
+ 
+    int64_t nel = cmesh->NElements();
+    cmesh->Reference()->ResetReference();
+    for(int64_t el=0; el<nel; el++)
     {
-        cel->LoadElementReference();
+        TPZCompEl *cel = cmesh->Element(el);
+        if(!cel ||cel->Reference()->Dimension() != cmesh->Dimension()) continue;
         auto gel = cel->Reference();
         int matid = gel->MaterialId();
         auto nconnects = cel->NConnects();
-    
-        if (matBCId.find(matid) != matBCId.end()){
-            
-            for (int i = 0; i < nconnects; i++)
-            {
-                auto conn = cel->Connect(i);
-                int64_t index;
-                // conn.SetOrder(pOrder,index);
-                cel->Connect(i).SetOrder(pOrder,index);
-                // std::cout << "El " << cel->Connect(i) <<", " <<std::endl;
+        
+        if (matBCId.find(matid) == matBCId.end()) continue;
 
-            }
-            
-        } else {
-            for (int i = 0; i < nconnects; i++)
-            {
-                auto conn = cel->Connect(i);
-                int64_t index;
-                // conn.SetOrder(pOrder,index);
-                cel->Connect(i).SetOrder(0,index);
-                // std::cout << "El " << cel->Connect(i) <<", " <<std::endl;
+        auto *intel = dynamic_cast<TPZCompElDisc *>(cel);
 
-            }
-        }
+        if(!intel) DebugStop();
+        intel->PRefine(pOrder-1);
     }
-    cmesh->CleanUpUnconnectedNodes();
+    
+    cmesh->ExpandSolution();
+
 }
