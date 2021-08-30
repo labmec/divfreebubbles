@@ -151,6 +151,8 @@ void TPZL2ProjectionCS<TVar>::Solution(const TPZVec<TPZMaterialDataT<TVar>> &dat
 	if (var == ESolution){
         solOut.Resize(sol.size());
         for (int i=0; i<sol.size(); i++) {
+            // solOut[0] = data.dsol[0](0, 0) + data.dsol[0](1, 1);
+
             solOut[i] = sol[i]/fScale;
         }
 		return;
@@ -199,7 +201,7 @@ void TPZL2ProjectionCS<TVar>::Errors(const TPZVec<TPZMaterialDataT<TVar>> &datav
     if constexpr (is_complex<TVar>::value){
         values[1]  = std::real((diff*std::conj(diff)));
     }else{
-        values[1]  = diff*diff;
+        values[1]  = diff*diff*0.;
     }
   
     values[2] = 0.;
@@ -212,6 +214,7 @@ void TPZL2ProjectionCS<TVar>::Errors(const TPZVec<TPZMaterialDataT<TVar>> &datav
           values[2]  += diff*diff;
       }
     }
+    // std::cout << "VAL = " << std::setprecision(15) << values[0] << " " << values[1] << " " << values[2] << std::endl;
     values[0]  = values[1]+values[2];
 }
 

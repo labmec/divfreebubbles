@@ -20,7 +20,6 @@
 #include "pzelementgroup.h"
 #include "pzcondensedcompel.h"
 
-
 void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int> &matIdBC, bool domainHyb){
 
     int dim = gmesh->Dimension();
@@ -139,14 +138,13 @@ void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int
             }
         }
     }
-            
     
     cmesh->LoadReferences();
     cmesh->CleanUpUnconnectedNodes();
 
 }
 
-void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh * gmesh, TPZVec<TPZCompMesh *> &meshvector, std::set<int> &matIdNeumann){
+void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh * gmesh, TPZVec<TPZCompMesh *> &meshvector, std::set<int> &matIdBCHyb){
 
     cmesh->LoadReferences();
     
@@ -156,7 +154,7 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
         auto nsides = gel->NSides();
         TPZGeoElSide gelside(gel,nsides-1);
         // here I generalized - an interface is created whenever a wrap element exists
-        auto gelsidepr = gelside.HasNeighbour(matIdNeumann);
+        auto gelsidepr = gelside.HasNeighbour(matIdBCHyb);
         if (!gelsidepr)
         {
             DebugStop();
@@ -247,7 +245,6 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
                 if(groupfound != -1 && groupfound != groupindex[cindex])
                 {
                     //Do nothing
-                    // elementgroup2[cel->Index()] = groupindex[cindex];
                     groupfound = groupindex2[cindex];
                 }else{
                     elementgroup[cel->Index()] = groupindex[cindex];
@@ -298,8 +295,6 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
 
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
-    // cmesh->CleanUpUnconnectedNodes();
-    // cmesh->LoadReferences();
 }
 
 
