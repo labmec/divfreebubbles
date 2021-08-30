@@ -13,7 +13,7 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZMultiphysicsCompMesh.h"
 
-
+// Util to print a summary of element information (mainly the connects) of a computational mesh
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::PrintCMeshConnects(TPZCompMesh *cmesh){
     
@@ -61,6 +61,7 @@ void TPZKernelHdivUtils<TVar>::PrintCMeshConnects(TPZCompMesh *cmesh){
     }
 }
 
+//Util to print the element properties of a geometric mesh
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::PrintGeoMesh(TPZGeoMesh *gmesh){
     
@@ -89,6 +90,7 @@ void TPZKernelHdivUtils<TVar>::PrintGeoMesh(TPZGeoMesh *gmesh){
     }
 }
 
+// Util to print the computational mesh
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string &file_name){
 
@@ -104,11 +106,12 @@ void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string &fil
 
 }
 
+// Util to solve the arising linear sistem by means of a direct method
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{12};
     TPZSkylineStructMatrix<STATE> matskl(cmesh);
     matskl.SetNumThreads(nThreads);
     an.SetStructuralMatrix(matskl);
@@ -127,6 +130,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     return;
 }
 
+// An util to solve the arising linear system employing an iterative method
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
@@ -161,6 +165,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZC
     return;
 }
 
+//An Util to print the results of a multiphysics mesh to a .vtk file
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &meshvector, TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh)
 {
@@ -183,6 +188,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
 
 }
 
+// An Util to compute the error on Kernel Hdiv simulations
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
 {
@@ -198,9 +204,9 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ofstream
     an.PostProcessError(error);
         
     std::cout << "\nApproximation error:\n";
-    std::cout << "H1 Norm = " << error[0]<<'\n';
-    std::cout << "L1 Norm = " << error[1]<<'\n'; 
-    std::cout << "H1 Seminorm = " << error[2]<<'\n'; 
+    std::cout << "H1 Norm = " << std::scientific << std::setprecision(15) << error[0]<<'\n';
+    std::cout << "L1 Norm = " << std::scientific << std::setprecision(15) << error[1]<<'\n'; 
+    std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[2]<<'\n'; 
     // std::cout << "error 4 = " << error[3]<<'\n'; 
     // std::cout << "error 5 = " << error[4] << "\n\n";
 }

@@ -489,11 +489,17 @@ void TPZMixedDarcyFlowHybrid::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data
         L2flux += (fluxfem[i] + fluxexactneg[i]) * inv_perm * (fluxfem[i] + fluxexactneg[i]);
         L2grad += (du_exact[i] - gradpressurefem[i]) * (du_exact[i] - gradpressurefem[i]);
     }
-    errors[0] = (pressurefem[0] - u_exact[0]) * (pressurefem[0] - u_exact[0]);//L2 error for pressure
+    errors[0] = 0*(pressurefem[0] - u_exact[0]) * (pressurefem[0] - u_exact[0]);//L2 error for pressure
     errors[1] = L2flux;//L2 error for flux
-    errors[2] = residual;//L2 for div
-    errors[3] = L2grad;
-    errors[4] = L2flux + residual;
+    errors[2] = 0*residual;//L2 for div
+    errors[3] = 0*L2grad;
+    errors[4] = 0*(L2flux + residual);
+
+    // fAux+= L2flux;
+    // std::cout << "ERROR = " <<fAux<< std::endl;
+    // if (errors[1]>1){
+    //  std::cout << "ERROR = \n" << errors[0]<< "\n" <<  errors[1]<< "\n" <<  errors[2] <<  std::endl;
+    // }
 }
 
 int TPZMixedDarcyFlowHybrid::VariableIndex(const std::string &name) const {

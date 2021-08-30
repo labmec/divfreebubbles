@@ -72,15 +72,16 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     u[0] = x*x*x*y - y*y*y*x;
     gradU(0,0) = (3.*x*x*y - y*y*y);
     gradU(1,0) = (x*x*x - 3.*y*y*x);
+};
+auto exactSolError = [](const TPZVec<REAL> &loc,
+    TPZVec<STATE>&u,
+    TPZFMatrix<STATE>&gradU){
+    const auto &x=loc[0];
+    const auto &y=loc[1];
 
-    // u[0]= x*x-y*y;
-    // gradU(0,0) = 2.*x;
-    // gradU(1,0) = -2.*y;
-
-    // const auto &d = 1.5; // distance betweel injection and production wells
-    // u[0]=log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
-    // gradU(0,0) = x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2));
-    // gradU(1,0) = y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2));
+    u[0] = x*x*x*y - y*y*y*x;
+    gradU(0,0) = -(3.*x*x*y - y*y*y);
+    gradU(1,0) = -(x*x*x - 3.*y*y*x);
 };
 
 enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface, EPressureHyb};
@@ -125,16 +126,16 @@ TPZLogger::InitializePZLOG();
     TPZKernelHdivUtils<STATE> util;
 
     //Insert here the BC material id's to be hybridized
-    std::set<int> matBCHybrid={ERight,ETop,EBottom,ELeft};
+    std::set<int> matBCHybrid={};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{ERight,ETop,EBottom,ELeft};
-    std::set<int> matIDDirichlet{};
+    std::set<int> matIDNeumann{};
+    std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
 
     //Setting material ids
     createSpace.fConfig.fDomain = EDomain;
@@ -177,7 +178,7 @@ TPZLogger::InitializePZLOG();
     //Print results
     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-    anNew.SetExact(exactSol,solOrder);
+    anNew.SetExact(exactSolError,solOrder);
 
     std::ofstream out4("mesh_MDFB.txt");
     anNew.Print("nothing",out4);

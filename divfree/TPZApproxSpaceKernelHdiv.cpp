@@ -296,9 +296,9 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     auto mat3 = new TPZLagrangeMultiplierCS<STATE>(fConfig.fInterface, fDimension-1);
     cmesh->InsertMaterialObject(mat3);
 
-    auto matbc = fConfig.fBCHybridMatId;
-    matbc.insert(fConfig.fLagrange);
-    hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matbc);
+    auto matIdBCHyb = fConfig.fBCHybridMatId;
+    matIdBCHyb.insert(fConfig.fLagrange);
+    hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matIdBCHyb);
 
     return cmesh;
 }

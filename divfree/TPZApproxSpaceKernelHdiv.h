@@ -72,22 +72,60 @@ public:
         fDefaultLagrangeOrder = order;
     }
 
+    /**
+     * @brief Sets the material id's to the hybridizer and creates the 
+     * additional geometric elements needed to compute the solution
+     * 
+     */
     void Initialize();
 
+    /**
+     * @brief Solves the problem
+     * 
+     * @param an 
+     * @param cmesh 
+     * @param direct = true if direct solver, false if iterative solver
+     */
     void Solve(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh * cmesh, bool direct);
 
+    /**
+     * @brief Performs the static condensation
+     * 
+     * @param cmesh 
+     */
     void Condense(TPZMultiphysicsCompMesh * cmesh)
     {
         hybridizer.GroupAndCondenseElements(cmesh,fConfig.fBCHybridMatId);
     }
 
+    /**
+     * @brief Creates the flux KernelHdiv computational mesh
+     * 
+     * @return TPZCompMesh* 
+     */
     TPZCompMesh * CreateFluxCMesh();
 
+    /**
+     * @brief Create the Pressure KernelHdiv computational mesh 
+     * (only has elements when some hybridization is implemented)
+     * 
+     * @return TPZCompMesh* 
+     */
     TPZCompMesh * CreatePressureCMesh();
 
+    /**
+     * @brief Create the Multiphysics mesh (always, even when the pressure
+     * computational mesh is empty)
+     * 
+     * @param meshvector 
+     * @param exactSol 
+     * @param BCNeumann 
+     * @param BCDirichlet 
+     * @return TPZMultiphysicsCompMesh* 
+     */
     TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
     
-    /// All parameters needed for creating a hybrid H1 space
+    /// Parameters needed for creating a hybrid KernelHdiv space
     struct TConfig
     {
         /// Domain material ID
@@ -124,6 +162,16 @@ public:
     /// object which contains the relevant information for create a hybrid H1 mesh
     TConfig fConfig;
 
+    /**
+     * @brief Sets the additional material ids needed for the problem solution
+     * 
+     * @param Wrap 
+     * @param Lagrange 
+     * @param Interface 
+     * @param Point 
+     * @param matBChybrid 
+     * @param matBC 
+     */
     void SetPeriferalMaterialIds(int Wrap, int Lagrange, int Interface, int Point, std::set<int > &matBChybrid, std::set<int > &matBC)
     {
         fConfig.fWrap = Wrap;
