@@ -9,3 +9,6 @@ target_link_libraries(2frac PRIVATE divfree)
 
 add_executable(semiHybrid semiHybrid.cpp)
 target_link_libraries(semiHybrid PRIVATE divfree)
+
+add_executable(3d main3d.cpp)
+target_link_libraries(3d PRIVATE divfree)

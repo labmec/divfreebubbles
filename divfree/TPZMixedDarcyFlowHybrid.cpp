@@ -58,7 +58,8 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         }
     } else {
         if (phrp + phrq != ek.Rows()) {
-            DebugStop();
+            std::cout << phrp << " " << phrq << " " << ek.Rows() << std::endl;
+            // DebugStop();
         }
     }
 #endif

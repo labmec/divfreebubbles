@@ -18,10 +18,12 @@ set(MATERIAL_SRCS
 
 set(MESH_HEADERS
   TPZCompElKernelHdiv.h
+  TPZCompElKernelHDiv3D.h
   TPZCompElHCurlNoGrads.h)
 
 set(MESH_SRCS
   TPZCompElKernelHdiv.cpp
+  TPZCompElKernelHDiv3D.cpp
   TPZCompElHCurlNoGrads.cpp)
 
 # let us create a config file with the directory containing the meshes

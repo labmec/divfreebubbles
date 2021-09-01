@@ -14,6 +14,7 @@
 #include "pzgeoelbc.h"
 #include <TPZNullMaterial.h>
 #include "TPZCompElKernelHdiv.h"
+#include "TPZCompElKernelHDiv3D.h"
 #include "TPZCompElKernelHdivBC.h"
 #include "TPZL2ProjectionCS.h"
 #include "TPZLagrangeMultiplierCS.h"
@@ -25,6 +26,7 @@
 #include "pzshapequad.h"
 #include "pzshapepoint.h"
 #include "pzshapetriang.h"
+#include "pzshapetetra.h"
 
 template<class TVar>
 TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype) :
@@ -131,15 +133,30 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             }
 
         } else if (type == EQuadrilateral){
-            new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
-            TPZMaterial *mat = cmesh->FindMaterial(matid);
-            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-            nullmat->SetDimension(2);
+            // new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
+            // TPZMaterial *mat = cmesh->FindMaterial(matid);
+            // TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            // nullmat->SetDimension(2);
         } else if(type == ETriangle) {
-            new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
+            if (fDimension == 2){
+                // new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
+                // TPZMaterial *mat = cmesh->FindMaterial(matid);
+                // TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                // nullmat->SetDimension(2);
+            } else if (fDimension == 3){
+                new TPZCompElKernelHDivBC<TPZShapeTriang>(*cmesh,gel,index);
+                TPZMaterial *mat = cmesh->FindMaterial(matid);
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                nullmat->SetDimension(2);
+                if (matid == fConfig.fWrap){
+                    gel->ResetReference();
+                }
+            }
+        } else if(type == ETetraedro) {
+            new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index); 
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-            nullmat->SetDimension(2);
+            nullmat->SetDimension(3);
         }
         
         if (fSpaceType == ENone) continue;
@@ -255,7 +272,8 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
-        
+    // mat->NStateVariables(3);
+
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);

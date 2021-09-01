@@ -111,7 +111,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{12};
+    constexpr int nThreads{0};
     TPZSkylineStructMatrix<STATE> matskl(cmesh);
     matskl.SetNumThreads(nThreads);
     an.SetStructuralMatrix(matskl);
