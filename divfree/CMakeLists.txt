@@ -5,6 +5,7 @@ set(MATERIAL_HEADERS
   TPZMatDivFreeBubbles.h
   TPZL2ProjectionCS.h
   TPZCompElKernelHdivBC.h
+  TPZCompElKernelHdivBC3D.h
   TPZMixedDarcyFlowHybrid.h
   TPZMatCurlDotCurl.h)
 
@@ -12,6 +13,7 @@ set(MATERIAL_SRCS
   TPZMatDivFreeBubbles.cpp
   TPZL2ProjectionCS.cpp
   TPZCompElKernelHdivBC.cpp
+  TPZCompElKernelHdivBC3D.cpp
   TPZMixedDarcyFlowHybrid.cpp
   TPZMatCurlDotCurl.cpp)
 

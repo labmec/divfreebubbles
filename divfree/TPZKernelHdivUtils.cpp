@@ -114,6 +114,19 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     constexpr int nThreads{0};
     TPZSkylineStructMatrix<STATE> matskl(cmesh);
     matskl.SetNumThreads(nThreads);
+
+    // //-----------------------
+    // TPZVec<int64_t> activeEqs;
+  
+    // if(FilterEdgeEquations(cmesh, activeEqs)){
+    //     return;
+    // }
+    // const int neqs = activeEqs.size();
+    
+    // matskl.EquationFilter().SetActiveEquations(activeEqs);
+
+    // //----------------------
+
     an.SetStructuralMatrix(matskl);
 
     ///Setting a direct solver
@@ -213,6 +226,143 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ofstream
 
 
 
+template <class TVar>
+bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
+                    TPZVec<int64_t> &activeEquations)
+{
+
+  /**TODO:
+     1: for each vertex: at least one edge must be removed
+
+     2: test for p = 1.
+
+     3: create the class for filtering the functions in the master el.
+     3.1: phi_f^{e,n}: remove one for each face.
+
+     4: test for p = 2.
+
+     5: think about the remaining functions.
+   */
+  const auto gmesh = cmesh->Reference();
+  
+  const auto nnodes = gmesh->NNodes();
+
+  /**
+     The i-th position contains the indices of all the 
+     connects associated with the edges adjacent to the i-th node
+   */
+  TPZVec<std::set<int>> vertex_edge_connects(nnodes);
+
+  /**
+     The i-th is true if the i-th node has already been dealt with.
+  */
+  TPZVec<bool> done_vertices(nnodes, false);
+
+
+  /*
+   we need to keep ONE edge, globally speaking*/
+  done_vertices[0] = true;
+
+  
+  /**
+     Contains all the connects marked for removal. It is expected
+     that all the connects are associated with edges.
+   */
+  std::set<int> removed_connects;
+
+  constexpr int edgeDim{1};
+  
+  for(auto gel : gmesh->ElementVec()){
+    const auto nEdges = gel->NSides(edgeDim);
+    const auto firstEdge = gel->FirstSide(edgeDim);
+    const auto firstFace = firstEdge + nEdges;
+    
+    for(auto ie = firstEdge; ie < firstFace; ie++){
+      TPZGeoElSide edge(gel,ie);
+      const auto con = edge.Reference().ConnectIndex();
+      //check if edge has been treated already
+      if (removed_connects.find(con) != removed_connects.end()) {
+        continue;
+      }
+      
+      const auto v1 = edge.SideNodeIndex(0);
+      const auto v2 = edge.SideNodeIndex(1);
+      
+      vertex_edge_connects[v1].insert(con);
+      vertex_edge_connects[v2].insert(con);
+      //both vertices have been treated
+      if(done_vertices[v1] && done_vertices[v2]){
+        continue;
+      }
+      else {
+        /*either one or none vertex has been treated,
+          so we need to remove the edge*/
+        removed_connects.insert(edge.Reference().ConnectIndex());
+        if(!done_vertices[v1] && !done_vertices[v2]){
+          /*if no vertex has been treated we
+            mark ONE OF THEM as treated*/
+          done_vertices[v1] = true;
+        }
+        else {
+          /*one of them had been treated already,
+            instead of checking which, we mark both as true*/
+          done_vertices[v1] = true;
+          done_vertices[v2] = true;
+        }
+      }
+      
+    }
+  }
+  bool check_all_vertices{true};
+  for(auto v : done_vertices){
+    check_all_vertices = check_all_vertices && v;
+    if(!v){
+      break;
+    }
+  }
+//   REQUIRE(check_all_vertices);
+  
+  bool check_edges_left{true};
+  for(auto iv = 0; iv < nnodes; iv++){
+    const auto all_edges = vertex_edge_connects[iv];
+    bool local_check{false};
+    for(auto edge: all_edges){
+      if(removed_connects.find(edge) == removed_connects.end()){
+        local_check = true;
+        break;
+      }
+    }
+    check_edges_left = local_check && check_edges_left;
+  }
+//   REQUIRE(check_edges_left);
+  
+  activeEquations.Resize(0);
+  for (int iCon = 0; iCon < cmesh->NConnects(); iCon++) {
+    if (removed_connects.find(iCon) == removed_connects.end()) {
+      auto &con = cmesh->ConnectVec()[iCon];
+      if (con.HasDependency()){
+        continue;
+      }
+      const auto seqnum = con.SequenceNumber();
+      const auto pos = cmesh->Block().Position(seqnum);
+      const auto blocksize = cmesh->Block().Size(seqnum);
+      if (blocksize == 0){
+        continue;
+      }
+      
+      const auto vs = activeEquations.size();
+      activeEquations.Resize(vs + blocksize);
+      for (auto ieq = 0; ieq < blocksize; ieq++) {
+        activeEquations[vs + ieq] = pos + ieq;
+      }
+    }
+  }
+  
+  return 0;
+}
+
 
 template class TPZKernelHdivUtils<STATE>;
 // template class TPZKernelHdivUtils<CSTATE>;
+
+

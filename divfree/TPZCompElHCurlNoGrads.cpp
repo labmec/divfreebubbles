@@ -335,7 +335,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeCurl(TPZMaterialData &data)
 
   auto &curlPhi = data.curlphi;
   curlPhi.Redim(curlDim,nshape);
-
+    
   int fcount = 0;
   //edges
   for(auto ie = 0; ie < nEdges; ie++){

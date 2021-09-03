@@ -1,4 +1,4 @@
-layers =3;
+layers =1;
 
 Point(1) = {0, 0, 0, 1.0};
 Extrude {1, 0, 0} {

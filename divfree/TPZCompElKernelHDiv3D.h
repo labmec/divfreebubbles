@@ -105,17 +105,20 @@ public:
 
 protected:
 
-	//  //@{
-    // /** @brief Compute the solution using Hdiv structure */
-	// void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
-    //     ComputeSolutionKernelHdivT(data);
-    // }
-    // void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
-    //     ComputeSolutionKernelHdivT(data);
-    // }
+	 //@{
+    /** @brief Compute the solution using Hdiv structure */
+	void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
+        ComputeSolutionKernelHdivT(data);
+    }
+    void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
+        ComputeSolutionKernelHdivT(data);
+    }
 
-	// template<class TVar>
-    // void ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data);
+    template<class TVar>
+    void GetCurl(TPZMaterialDataT<TVar> &data);
+
+	template<class TVar>
+    void ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data);
     template<class TVar>
     void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
 };

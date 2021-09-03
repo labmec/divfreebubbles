@@ -10,8 +10,8 @@ Line(4) = {4, 1};
 Curve Loop(1) = {1, 2, 3, 4};
 Plane Surface(1) = {1};
 
-Transfinite Curve {1,3} = 4 Using Progression 1;
-Transfinite Curve {2,4} = 4 Using Progression 1;
+Transfinite Curve {1,3} = 6 Using Progression 1;
+Transfinite Curve {2,4} = 6 Using Progression 1;
 Transfinite Surface {1};
 Recombine Surface{1};
 

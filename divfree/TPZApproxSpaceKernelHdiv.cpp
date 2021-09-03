@@ -16,6 +16,7 @@
 #include "TPZCompElKernelHdiv.h"
 #include "TPZCompElKernelHDiv3D.h"
 #include "TPZCompElKernelHdivBC.h"
+#include "TPZCompElKernelHdivBC3D.h"
 #include "TPZL2ProjectionCS.h"
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
@@ -133,18 +134,18 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             }
 
         } else if (type == EQuadrilateral){
-            // new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
-            // TPZMaterial *mat = cmesh->FindMaterial(matid);
-            // TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-            // nullmat->SetDimension(2);
+            new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
+            TPZMaterial *mat = cmesh->FindMaterial(matid);
+            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            nullmat->SetDimension(2);
         } else if(type == ETriangle) {
             if (fDimension == 2){
-                // new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
-                // TPZMaterial *mat = cmesh->FindMaterial(matid);
-                // TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-                // nullmat->SetDimension(2);
+                new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
+                TPZMaterial *mat = cmesh->FindMaterial(matid);
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                nullmat->SetDimension(2);
             } else if (fDimension == 3){
-                new TPZCompElKernelHDivBC<TPZShapeTriang>(*cmesh,gel,index);
+                new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 nullmat->SetDimension(2);
@@ -153,13 +154,14 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 }
             }
         } else if(type == ETetraedro) {
-            new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index); 
+            new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index);
+            // new TPZCompElHCurlNoGrads<TPZShapeTetra>(*cmesh,gel,index); 
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);
         }
         
-        if (fSpaceType == ENone) continue;
+        if (fSpaceType == ENone) continue;//No hybridization
         if (gel->Dimension() != fDimension) continue;
         //Creates point
         TPZGeoElSide gelside(gel,0);
@@ -265,6 +267,8 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     auto cmesh = new TPZMultiphysicsCompMesh(fGeoMesh);
     cmesh->SetDefaultOrder(fDefaultPOrder);
     cmesh->SetDimModel(fDimension);
+    if (fDimension == 3) cmesh->SetAllCreateFunctionsHCurl();
+    
     cmesh->ApproxSpace().SetAllCreateFunctionsMultiphysicElem();
 
     // eh preciso criar materiais para todos os valores referenciados no enum

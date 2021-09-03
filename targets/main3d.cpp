@@ -131,109 +131,109 @@ TPZLogger::InitializePZLOG();
 
     //..................................HDiv..................................
 
-    {
-        TPZCompMesh * cmeshflux = 0;
-        TPZCompMesh * cmeshpressure = 0;    
+    // {
+    //     TPZCompMesh * cmeshflux = 0;
+    //     TPZCompMesh * cmeshpressure = 0;    
 
-        std::set<int> matIdVecHdiv={EDomain,ESurfaces};
-        std::set<int> matIdNeumannHdiv;
+    //     std::set<int> matIdVecHdiv={EDomain,ESurfaces};
+    //     std::set<int> matIdNeumannHdiv;
         
-        //Flux mesh
-        cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+    //     //Flux mesh
+    //     cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
 
-        //Pressure mesh
-        cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+    //     //Pressure mesh
+    //     cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
 
-        //Multiphysics mesh
-        TPZManVector< TPZCompMesh *, 2> meshvector(2);
-        meshvector[0] = cmeshflux;
-        meshvector[1] = cmeshpressure;
-        TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
+    //     //Multiphysics mesh
+    //     TPZManVector< TPZCompMesh *, 2> meshvector(2);
+    //     meshvector[0] = cmeshflux;
+    //     meshvector[1] = cmeshpressure;
+    //     TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
         
-        //Solve Multiphysics
-        TPZLinearAnalysis an(cmesh,true);
-        util.SolveProblemDirect(an,cmesh);
-        std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
+    //     //Solve Multiphysics
+    //     TPZLinearAnalysis an(cmesh,true);
+    //     util.SolveProblemDirect(an,cmesh);
+    //     std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
         
-        //Print results
-        an.SetExact(exactSol,solOrder);
-        util.PrintResultsMultiphysics(meshvector,an,cmesh);
-        an.SetExact(exactSolError,solOrder);
-        std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
-        util.ComputeError(an,anPostProcessFileHdiv);
-    }
+    //     //Print results
+    //     an.SetExact(exactSol,solOrder);
+    //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    //     an.SetExact(exactSolError,solOrder);
+    //     std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
+    //     util.ComputeError(an,anPostProcessFileHdiv);
+    // }
 
 
 
 
     //............................Div Free Bubbles............................
-    // {
-    //     TPZCompMesh * cmeshflux = 0;
-    //     TPZCompMesh * cmeshpressure = 0;    
+    {
+        TPZCompMesh * cmeshflux = 0;
+        TPZCompMesh * cmeshpressure = 0;    
 
-    //     //Insert here the BC material id's to be hybridized
-    //     std::set<int> matBCHybrid={};
-    //     //Insert here the type of all boundary conditions
-    //     std::set<int> matIDNeumann{};
-    //     std::set<int> matIDDirichlet{ESurfaces};
-    //     /// All bc's mat ID's
-    //     std::set<int> matBC;
-    //     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
+        //Insert here the BC material id's to be hybridized
+        std::set<int> matBCHybrid={};
+        //Insert here the type of all boundary conditions
+        std::set<int> matIDNeumann{};
+        std::set<int> matIDDirichlet{ESurfaces};
+        /// All bc's mat ID's
+        std::set<int> matBC;
+        std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
-    //     /// Creates the approximation space - Set the type of domain hybridization
-    //     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
+        /// Creates the approximation space - Set the type of domain hybridization
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
 
-    //     //Setting material ids
-    //     createSpace.fConfig.fDomain = EDomain;
-    //     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
-    //     createSpace.SetPOrder(pOrder+1);
-    //     createSpace.Initialize();
-    //     // util.PrintGeoMesh(gmesh);
+        //Setting material ids
+        createSpace.fConfig.fDomain = EDomain;
+        createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
+        createSpace.SetPOrder(pOrder+1);
+        createSpace.Initialize();
+        // util.PrintGeoMesh(gmesh);
 
-    //     //Flux mesh
-    //     TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-    //     // std::cout << "FLUX \n";
-    //     // util.PrintCMeshConnects(cmeshfluxNew);
-    //     // std::string fluxFile = "FluxCMesh";
-    //     // util.PrintCompMesh(cmeshfluxNew,fluxFile);
+        //Flux mesh
+        TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
+        std::cout << "FLUX \n";
+        util.PrintCMeshConnects(cmeshfluxNew);
+        std::string fluxFile = "FluxCMesh";
+        util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
-    //     //Pressure mesh
-    //     TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-    //     // std::cout << "PRESSURE \n";
-    //     // util.PrintCMeshConnects(cmeshpressureNew);
-    //     // std::string pressureFile = "PressureCMesh";
-    //     // util.PrintCompMesh(cmeshpressureNew,pressureFile);
+        //Pressure mesh
+        TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
+        std::cout << "PRESSURE \n";
+        util.PrintCMeshConnects(cmeshpressureNew);
+        std::string pressureFile = "PressureCMesh";
+        util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
-    //     //Multiphysics mesh
-    //     TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
-    //     meshvectorNew[0] = cmeshfluxNew;
-    //     meshvectorNew[1] = cmeshpressureNew;      
-    //     auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-    //     std::cout << "MULTIPHYSICS \n";
-    //     util.PrintCMeshConnects(cmeshNew);
-    //     // Group and condense the elements
-    //     // createSpace.Condense(cmeshNew);
-    //     std::string multiphysicsFile = "MultiPhysicsMeshNew";
-    //     util.PrintCompMesh(cmeshNew,multiphysicsFile);
+        //Multiphysics mesh
+        TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
+        meshvectorNew[0] = cmeshfluxNew;
+        meshvectorNew[1] = cmeshpressureNew;      
+        auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
+        std::cout << "MULTIPHYSICS \n";
+        util.PrintCMeshConnects(cmeshNew);
+        // Group and condense the elements
+        // createSpace.Condense(cmeshNew);
+        std::string multiphysicsFile = "MultiPhysicsMeshNew";
+        util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
-    //     // Solve the problem
-    //     TPZLinearAnalysis anNew(cmeshNew,false);
-    //     createSpace.Solve(anNew, cmeshNew, true); 
+        // Solve the problem
+        TPZLinearAnalysis anNew(cmeshNew,true);
+        createSpace.Solve(anNew, cmeshNew, true); 
 
-    //     std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
+        std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
 
-    //     anNew.SetExact(exactSol,solOrder);
-    //     //Print results
-    //     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
+        anNew.SetExact(exactSol,solOrder);
+        //Print results
+        util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-    //     anNew.SetExact(exactSolError,solOrder);
+        anNew.SetExact(exactSolError,solOrder);
 
-    //     std::ofstream out4("mesh_MDFB.txt");
-    //     anNew.Print("nothing",out4);
-    //     std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+        std::ofstream out4("mesh_MDFB.txt");
+        anNew.Print("nothing",out4);
+        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         
-    //     util.ComputeError(anNew,anPostProcessFileMDFB);
-    // }
+        util.ComputeError(anNew,anPostProcessFileMDFB);
+    }
   
     return 0;
 }

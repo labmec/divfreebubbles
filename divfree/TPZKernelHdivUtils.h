@@ -87,5 +87,8 @@ public:
      */
     void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 
+
+    bool FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<int64_t> &activeEquations);
+
 };
 #endif
