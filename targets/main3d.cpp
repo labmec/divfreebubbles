@@ -30,6 +30,7 @@
 #include "TPZMultiphysicsInterfaceEl.h"
 #include "TPZLagrangeMultiplier.h"
 #include "TPZLagrangeMultiplierCS.h"
+#include "DarcyFlow/TPZIsotropicPermeability.h"
 #include "pzelementgroup.h"
 #include "pzcondensedcompel.h"
 #include "pzbuildmultiphysicsmesh.h"
@@ -327,7 +328,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     cmesh->SetDefaultOrder(pOrder);
     cmesh->SetDimModel(dim);
     TPZMixedDarcyFlow* mat = new TPZMixedDarcyFlow(EDomain, dim);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);

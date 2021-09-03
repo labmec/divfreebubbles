@@ -236,31 +236,33 @@ template<class TSHAPE>
 template<class TVar>
 void TPZCompElKernelHDiv3D<TSHAPE>::GetCurl(TPZMaterialDataT<TVar> &data)
 {
-    constexpr auto dim = 3;
-    const auto nShapeFuncs = data.fVecShapeIndex.size();
+    data.fDeformedDirections=data.curlphi;
+
+    // constexpr auto dim = 3;
+    // const auto nShapeFuncs = data.fVecShapeIndex.size();
     
-    const REAL jacInv = 1/data.detjac;
-    TPZFNMatrix<dim,REAL> tempCurl(dim, 1, 0),gradPhiCrossDirections(dim, 1, 0);
+    // const REAL jacInv = 1/data.detjac;
+    // TPZFNMatrix<dim,REAL> tempCurl(dim, 1, 0),gradPhiCrossDirections(dim, 1, 0);
     
-    for(auto iShapeFunc = 0; iShapeFunc < nShapeFuncs; iShapeFunc++) {
-        const auto iVec = data.fVecShapeIndex[iShapeFunc].first;
-        const auto iShape = data.fVecShapeIndex[iShapeFunc].second;
+    // for(auto iShapeFunc = 0; iShapeFunc < nShapeFuncs; iShapeFunc++) {
+    //     const auto iVec = data.fVecShapeIndex[iShapeFunc].first;
+    //     const auto iShape = data.fVecShapeIndex[iShapeFunc].second;
         
-        for(auto ix = 0; ix < dim; ix++) {
-            const auto i = (ix+1)%dim;
-            const auto j = (ix+2)%dim;
-            gradPhiCrossDirections(ix,0) =
-                data.curlphi.GetVal(i,iShape) * data.fMasterDirections.GetVal(j,iVec)-
-                data.curlphi.GetVal(j,iShape) * data.fMasterDirections.GetVal(i,iVec);
-        }
+    //     for(auto ix = 0; ix < dim; ix++) {
+    //         const auto i = (ix+1)%dim;
+    //         const auto j = (ix+2)%dim;
+    //         gradPhiCrossDirections(ix,0) =
+    //             data.curlphi.GetVal(i,iShape) * data.fMasterDirections.GetVal(j,iVec)-
+    //             data.curlphi.GetVal(j,iShape) * data.fMasterDirections.GetVal(i,iVec);
+    //     }
         
 
-        tempCurl = data.jacobian * gradPhiCrossDirections;
-        tempCurl *= jacInv;
-        for (auto ix = 0; ix < dim; ix++) {
-            data.fDeformedDirections.PutVal(ix, iShapeFunc,tempCurl.GetVal(ix,0));
-        }
-    }
+    //     tempCurl = data.jacobian * gradPhiCrossDirections;
+    //     tempCurl *= jacInv;
+    //     for (auto ix = 0; ix < dim; ix++) {
+    //         data.fDeformedDirections.PutVal(ix, iShapeFunc,tempCurl.GetVal(ix,0));
+    //     }
+    // }
 
     double tol = 1.e-10;
     for (int i = 0; i < data.curlphi.Cols(); i++)

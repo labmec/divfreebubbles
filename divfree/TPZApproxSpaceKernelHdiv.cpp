@@ -267,13 +267,14 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     auto cmesh = new TPZMultiphysicsCompMesh(fGeoMesh);
     cmesh->SetDefaultOrder(fDefaultPOrder);
     cmesh->SetDimModel(fDimension);
-    if (fDimension == 3) cmesh->SetAllCreateFunctionsHCurl();
-    
+   
     cmesh->ApproxSpace().SetAllCreateFunctionsMultiphysicElem();
 
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
+
+    // mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
     // mat->NStateVariables(3);
