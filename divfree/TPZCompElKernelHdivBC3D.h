@@ -12,7 +12,7 @@
 #include "pzshapequad.h"
 #include "pzgeoquad.h"
 #include "tpzquadrilateral.h"
-
+#include "TPZCompElHCurlNoGrads.h"
 
 /**
  * @brief This class implements a "generic" computational element to HDiv scope. \ref CompElement "Computational Element"
@@ -23,7 +23,7 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDivBC3D : public TPZIntelGen<TSHAPE>  {
+class TPZCompElKernelHDivBC3D : public TPZCompElHCurlNoGrads<TSHAPE>  {
 
 public:
 	    
@@ -31,8 +31,6 @@ public:
     
     TPZCompElKernelHDivBC3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
 	
-	virtual ~TPZCompElKernelHDivBC3D();
-
     virtual void InitMaterialData(TPZMaterialData &data) override;
 
     void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;

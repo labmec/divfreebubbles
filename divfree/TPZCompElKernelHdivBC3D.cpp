@@ -10,23 +10,21 @@
 
 template<class TSHAPE>
 TPZCompElKernelHDivBC3D<TSHAPE>::TPZCompElKernelHDivBC3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDivBC3D::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index)  {
+TPZRegisterClassId(&TPZCompElKernelHDivBC3D::ClassId), TPZCompElHCurlNoGrads<TSHAPE>(mesh,gel,index)  {
 
-}
-
-template<class TSHAPE>
-TPZCompElKernelHDivBC3D<TSHAPE>::~TPZCompElKernelHDivBC3D(){
-    this->~TPZIntelGen<TSHAPE>();
 }
 
 template<class TSHAPE>
 void TPZCompElKernelHDivBC3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
-	TPZIntelGen<TSHAPE>::InitMaterialData(data);
+	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
 
-    int nshape = this->NShapeF();
-    data.fVecShapeIndex.Resize(nshape);
-    for (int i=0; i<nshape; i++) {
+    int nshape = this->NShapeF();    
+    int64_t size = nshape*3;//(TSHAPE::Dimension);
+    data.fVecShapeIndex.Resize(size);
+    // auto size = data.fVecShapeIndex.size();
+    
+    for (int i=0; i<size; i++) {
 		data.fVecShapeIndex[i] = std::make_pair(i,1);
     }
 
@@ -37,16 +35,16 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
 
     bool needsol = data.fNeedsSol;
     data.fNeedsSol = true;
-    TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);
+    TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
     
-    TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
-    TPZFMatrix<REAL> &dphi = data.dphix;
-    TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+    // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
+    // TPZFMatrix<REAL> &dphi = data.dphix;
+    // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
 
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = dphi(1,i)-dphi(0,i);
+		data.phi(i,0) = data.curlphi(0,i);
 	  }
     }
 
@@ -85,7 +83,7 @@ using namespace pztopology;
 using namespace pzgeom;
 using namespace pzshape;
 
-template class TPZCompElKernelHDivBC3D<TPZShapePoint>;
-template class TPZCompElKernelHDivBC3D<TPZShapeLinear>;
+// template class TPZCompElKernelHDivBC3D<TPZShapePoint>;
+// template class TPZCompElKernelHDivBC3D<TPZShapeLinear>;
 template class TPZCompElKernelHDivBC3D<TPZShapeTriang>;
-template class TPZCompElKernelHDivBC3D<TPZShapeQuad>;
+// template class TPZCompElKernelHDivBC3D<TPZShapeQuad>;

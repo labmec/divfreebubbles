@@ -326,7 +326,7 @@ using namespace pzshape;
 
 
 // template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeLinear>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeTriang>>;
+// template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeTriang>>;
 // template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeQuad>>;
 // template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeCube>>;
 template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeTetra>>;
@@ -334,7 +334,7 @@ template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeTetra>>;
 // template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapePiram>>;
 
 // template class TPZCompElKernelHDiv3D<TPZShapeLinear>;
-template class TPZCompElKernelHDiv3D<TPZShapeTriang>;
+// template class TPZCompElKernelHDiv3D<TPZShapeTriang>;
 // template class TPZCompElKernelHDiv3D<TPZShapeQuad>;
 template class TPZCompElKernelHDiv3D<TPZShapeTetra>;
 // template class TPZCompElKernelHDiv3D<TPZShapePrism>;
