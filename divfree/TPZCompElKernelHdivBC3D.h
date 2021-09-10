@@ -31,9 +31,9 @@ public:
     
     TPZCompElKernelHDivBC3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
 	
-    virtual void InitMaterialData(TPZMaterialData &data) override;
+    // virtual void InitMaterialData(TPZMaterialData &data) override;
 
-    void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;
+    // void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;
 	
 };
 

@@ -14,41 +14,41 @@ TPZRegisterClassId(&TPZCompElKernelHDivBC3D::ClassId), TPZCompElHCurlNoGrads<TSH
 
 }
 
-template<class TSHAPE>
-void TPZCompElKernelHDivBC3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
-{
-	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
+// template<class TSHAPE>
+// void TPZCompElKernelHDivBC3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
+// {
+// 	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
 
-    int nshape = this->NShapeF();    
-    int64_t size = nshape*3;//(TSHAPE::Dimension);
-    data.fVecShapeIndex.Resize(size);
-    // auto size = data.fVecShapeIndex.size();
+//     // int nshape = this->NShapeF();    
+//     // int64_t size = nshape*3;//(TSHAPE::Dimension);
+//     // data.fVecShapeIndex.Resize(size);
+//     // // auto size = data.fVecShapeIndex.size();
     
-    for (int i=0; i<size; i++) {
-		data.fVecShapeIndex[i] = std::make_pair(i,1);
-    }
+//     // for (int i=0; i<size; i++) {
+// 	// 	data.fVecShapeIndex[i] = std::make_pair(i,1);
+//     // }
 
-}
+// }
 
-template<class TSHAPE>
-void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi){
+// template<class TSHAPE>
+// void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi){
 
-    bool needsol = data.fNeedsSol;
-    data.fNeedsSol = true;
-    TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
-    data.fNeedsSol = needsol;
+//     bool needsol = data.fNeedsSol;
+//     data.fNeedsSol = true;
+//     TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
+//     data.fNeedsSol = needsol;
     
-    // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
-    // TPZFMatrix<REAL> &dphi = data.dphix;
-    // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+//     // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
+//     // TPZFMatrix<REAL> &dphi = data.dphix;
+//     // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
 
-    if (data.phi.Rows()>1){
-      for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = data.curlphi(0,i);
-	  }
-    }
+//     if (data.phi.Rows()>1){
+//       for (int i = 0; i < data.phi.Rows(); i++){
+// 		data.phi(i,0) = data.curlphi(0,i);
+// 	  }
+//     }
 
-}//void
+// }//void
 
 
 
@@ -73,12 +73,12 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
 
 using namespace pztopology;
 
-#include "tpzpoint.h"
-#include "tpzline.h"
-#include "tpzquadrilateral.h"
+// #include "tpzpoint.h"
+// #include "tpzline.h"
+// #include "tpzquadrilateral.h"
 #include "tpztriangle.h"
 
-#include "pzelchdivbound2.h"
+// #include "TPZCompElHCurl.h"
 
 using namespace pzgeom;
 using namespace pzshape;

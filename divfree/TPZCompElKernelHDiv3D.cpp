@@ -54,12 +54,13 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
     data.fDeformedDirections.Resize(3,nshape);
     data.fDeformedDirections.Zero();
 
-    GetCurl(data);
+    data.fDeformedDirections=data.curlphi;
+    // GetCurl(data);
     // // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
     // // TPZFMatrix<REAL> &dphi = data.dphix;;
     // // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
 
-    // 
+    
     // for (int i = 0; i < data.curlphi.Cols(); i++)
     // {
     //     for (int j = 0; j < data.dphix.Cols(); j++)
@@ -220,8 +221,9 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<
                 // data.dsol[0](dim*idf,1)+= meshsol * dphix(1,ishape);
 
                 //Compute rotated flux
-                data.sol[0][dim*idf+0] -= meshsol * dphix(1,ishape);
-                data.sol[0][dim*idf+1] += meshsol * dphix(0,ishape);
+                data.sol[0][dim*idf+0] += meshsol;
+                data.sol[0][dim*idf+1] += meshsol;
+                data.sol[0][dim*idf+2] += meshsol;
             }
             counter++;
         }

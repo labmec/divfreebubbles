@@ -253,7 +253,7 @@ FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
     
     for(auto ie = firstEdge; ie < firstFace; ie++){
       TPZGeoElSide edge(gel,ie);
-      const auto con = edge.Reference().ConnectIndex();
+      const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
       //check if edge has been treated already
       if (removed_connects.find(con) != removed_connects.end()) {
         continue;
@@ -271,7 +271,7 @@ FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
       else {
         /*either one or none vertex has been treated,
           so we need to remove the edge*/
-        removed_connects.insert(edge.Reference().ConnectIndex());
+        removed_connects.insert(edge.Element()->Reference()->ConnectIndex(ie-firstEdge));
         if(!done_vertices[v1] && !done_vertices[v2]){
           /*if no vertex has been treated we
             mark ONE OF THEM as treated*/

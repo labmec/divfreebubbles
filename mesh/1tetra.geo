@@ -26,15 +26,15 @@ Plane Surface(1) = {1};
 //+
 Curve Loop(2) = {3, 5, 6};
 //+
-Plane Surface(2) = {2};
+Plane Surface(2) = {-2};
 //+
 Curve Loop(3) = {4, -1, -5};
 //+
-Plane Surface(3) = {3};
+Plane Surface(3) = {-3};
 //+
 Curve Loop(4) = {2, -6, 1};
 //+
-Plane Surface(4) = {4};
+Plane Surface(4) = {-4};
 //+
 Surface Loop(1) = {1, 3, 4, 2};
 //+
@@ -43,3 +43,4 @@ Volume(1) = {1};
 Physical Volume("Domain") = {1};
 //+
 Physical Surface("Surfaces") = {1, 2, 3, 4};
+

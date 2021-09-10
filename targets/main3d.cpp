@@ -43,6 +43,9 @@
 #include "pzshapequad.h"
 #include "pzshapepoint.h"
 #include "pzshapetriang.h"
+#include "pzshapetetra.h"
+#include <pzfstrmatrix.h>
+
 
 #include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
@@ -52,11 +55,16 @@
 #include "TPZMixedDarcyFlowHybrid.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
+#include <TPZGeoMeshTools.h>
+#include "TPZCompElHCurlNoGrads.h"
+#include "TPZMatCurlDotCurl.h"
+
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh);
-
+TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
+TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -76,10 +84,10 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = (x*x*x*y - y*y*y*x);
+    u[0] = 1;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 };
 auto exactSolError = [](const TPZVec<REAL> &loc,
     TPZVec<STATE>&u,
@@ -88,10 +96,10 @@ auto exactSolError = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = -(3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = -(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = -(x*x*x*y - y*y*y*x);
+    u[0] = 1.;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 0.;//-(3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = 0.;//-(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = 0.;//-(x*x*x*y - y*y*y*x);
 };
 
 enum EMatid  {ENone, EDomain, ESurfaces, EPont, EWrap, EIntface, EPressureHyb};
@@ -115,18 +123,24 @@ TPZLogger::InitializePZLOG();
         // essa interface permite voce mapear os nomes dos physical groups para
         // o matid que voce mesmo escolher
         TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-        stringtoint[2]["Surface"] = 1;
-        stringtoint[1]["Bottom"] = 2;
-        stringtoint[1]["Right"] = 3;
-        stringtoint[1]["Top"] = 4;
-        stringtoint[1]["Left"] = 5;
-        stringtoint[0]["Point"] = 6;
-        stringtoint[1]["Top2"] = 7;
+        stringtoint[3]["Domain"] = 1;
+        stringtoint[2]["Surfaces"] = 2;
+        // stringtoint[0]["Point"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
+        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
+    
+    // //for now this should suffice
+    // const int xdiv = 1;
+    // const int ydiv = 1;
+    // const int zdiv = 1;
+    // const MMeshType meshType = MMeshType::ETetrahedral;
+    // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+
+    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    
     
     TPZKernelHdivUtils<STATE> util;
 
@@ -187,9 +201,9 @@ TPZLogger::InitializePZLOG();
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
-        createSpace.SetPOrder(pOrder+1);
+        createSpace.SetPOrder(pOrder);
         createSpace.Initialize();
-        // util.PrintGeoMesh(gmesh);
+        util.PrintGeoMesh(gmesh);
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
@@ -218,10 +232,12 @@ TPZLogger::InitializePZLOG();
         util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
         // Solve the problem
-        TPZLinearAnalysis anNew(cmeshNew,true);
+        TPZLinearAnalysis anNew(cmeshNew,false);
         createSpace.Solve(anNew, cmeshNew, true); 
-
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
+        std::cout << "Solution = \n" << std::endl;
+        anNew.Solution();
+        
 
         anNew.SetExact(exactSol,solOrder);
         //Print results
@@ -234,6 +250,50 @@ TPZLogger::InitializePZLOG();
         std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         
         util.ComputeError(anNew,anPostProcessFileMDFB);
+    }
+
+
+    {
+        TPZCompMesh * cmeshflux = 0;
+        cmeshflux = FluxCMeshCurl(dim,pOrder,gmesh);
+
+        constexpr bool reorderEqs{true};
+        TPZLinearAnalysis an(cmeshflux, reorderEqs);
+        
+        TPZAutoPointer<TPZStructMatrix> strmtrx =
+            new TPZFStructMatrix<STATE>(cmeshflux);
+        
+        constexpr int nThreads{0};
+        strmtrx->SetNumThreads(nThreads);
+
+        TPZVec<int64_t> activeEqs;
+        
+        if(util.FilterEdgeEquations(cmeshflux, activeEqs)){
+            DebugStop();
+        }
+
+        const int neqs = activeEqs.size();
+        
+        strmtrx->EquationFilter().SetActiveEquations(activeEqs);
+
+        an.SetStructuralMatrix(strmtrx);
+
+        TPZStepSolver<STATE> step;
+
+        step.SetDirect(ECholesky);
+        an.SetSolver(step);
+
+        an.Assemble();
+
+        // TPZLinearAnalysis anNew(cmeshflux,false);
+        // createSpace.Solve(anNew, cmeshflux, true); 
+        // std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
+        // std::cout << "Solution = \n" << std::endl;
+        // anNew.Solution();
+        
+
+        // anNew.SetExact(exactSol,solOrder);
+
     }
   
     return 0;
@@ -358,6 +418,77 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     // vtk_name    << "MultiPhysics" << ".vtk";
     // std::ofstream vtkfile(vtk_name.str().c_str());
     // TPZVTKGeoMesh::PrintCMeshVTK(cmesh, vtkfile, true);
+
+    return cmesh;
+}
+
+
+TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
+              const int volId, const int bcId)
+{
+  constexpr int dim{3};
+  const TPZManVector<REAL,3> minX = {0,0,0};
+  const TPZManVector<REAL,3> maxX = {1,1,1};
+  constexpr bool createBoundEls{true};
+
+  //all bcs share the same id
+  const TPZManVector<int,7> matIds(7,bcId);
+  matIds[0] = volId;
+  
+  TPZGeoMesh *gmesh = 
+    TPZGeoMeshTools::CreateGeoMeshOnGrid(dim, minX, maxX,
+            matIds, nDivs, meshType,createBoundEls);
+
+  return gmesh;
+}
+
+//Flux computational mesh
+TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh) 
+{
+    gmesh->ResetReference();
+    TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
+
+    cmesh->SetDefaultOrder(pOrder);
+    cmesh->SetDimModel(dim);
+
+    //insert volumetric material
+    auto volMat = new TPZMatCurlDotCurl(EDomain);
+    cmesh->InsertMaterialObject(volMat);
+    //insert boundary material
+    const int bcType = 0;//dirichlet
+    TPZFNMatrix<1, STATE> val1(1, 1, 1);
+    TPZManVector<STATE,1> val2(1, 0.);
+    auto bcMat = volMat->CreateBC(volMat, ESurfaces, bcType, val1, val2);
+    cmesh->InsertMaterialObject(bcMat);
+    
+    //Creates computational elements
+    int64_t nel = gmesh->NElements();
+    for (int64_t el = 0; el < nel; el++) {
+        TPZGeoEl *gel = gmesh->Element(el);
+        if(!gel) DebugStop();
+        gel->ResetReference();   
+        const MElementType type = gel->Type();
+        const auto matid = gel->MaterialId();
+        int64_t index;
+        switch(type){
+        case ETriangle:
+        new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel,index);
+        break;
+        case ETetraedro:
+        new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel,index);
+        break;
+        default:
+        const auto elName =  MElementType_Name(type);
+        // CAPTURE(elName);
+        // CHECK(false);
+        PZError<<__PRETTY_FUNCTION__
+                <<"\n type not yet supported. Aborting..."<<std::endl;
+        DebugStop();
+        }
+    }
+    cmesh->SetAllCreateFunctionsHCurl();
+    cmesh->AutoBuild();
+    cmesh->CleanUpUnconnectedNodes();
 
     return cmesh;
 }

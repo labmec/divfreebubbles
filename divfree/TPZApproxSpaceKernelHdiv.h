@@ -86,7 +86,7 @@ public:
      * @param cmesh 
      * @param direct = true if direct solver, false if iterative solver
      */
-    void Solve(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh * cmesh, bool direct);
+    void Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct);
 
     /**
      * @brief Performs the static condensation
@@ -182,6 +182,8 @@ public:
         fConfig.fBCMatId = matBC;
     }
 
+    void CreateOrientedBoundaryElements();
+    
 };
 
 #endif //TPZApproxSpaceKernelHdiv

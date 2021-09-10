@@ -60,12 +60,14 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
         hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false);
     }
+
+    if (fDimension == 3) CreateOrientedBoundaryElements();
     
 }
 
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh * cmesh, bool direct)
+void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct)
 {
     if (direct)
     {
@@ -145,10 +147,11 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 nullmat->SetDimension(2);
             } else if (fDimension == 3){
-                new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
+                // new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
+                new TPZCompElHCurlNoGrads<TPZShapeTriang>(*cmesh,gel,index);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-                nullmat->SetDimension(2);
+                // nullmat->SetDimension(2);
                 if (matid == fConfig.fWrap){
                     gel->ResetReference();
                 }
@@ -201,6 +204,8 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         }
     }    
 
+    cmesh->SetAllCreateFunctionsHCurl();
+    cmesh->AutoBuild();
     cmesh->ExpandSolution();
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
@@ -268,8 +273,6 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     cmesh->SetDefaultOrder(fDefaultPOrder);
     cmesh->SetDimModel(fDimension);
    
-    cmesh->ApproxSpace().SetAllCreateFunctionsMultiphysicElem();
-
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
     mat->SetConstantPermeability(1.);
@@ -299,7 +302,6 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
         cmesh->InsertMaterialObject(BCond);
     }
 
-
     auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
     cmesh->InsertMaterialObject(matL2);
 
@@ -324,6 +326,30 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matIdBCHyb);
 
     return cmesh;
+}
+
+
+template<class TVar>
+void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
+{   
+    for(auto gel : fGeoMesh->ElementVec())
+    {
+        if (gel->Dimension() < 3) continue;
+        
+
+        //For tetrahedra only
+        for (int side = 10; side < 14; side++){
+            TPZGeoElSide gelside(gel,side);
+            TPZGeoElSide neighbour = gelside.Neighbour();
+            auto Nmatid = neighbour.Element()->MaterialId();
+
+            if (fConfig.fBCMatId.find(Nmatid) == fConfig.fBCMatId.end()) continue;
+            
+            fGeoMesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
+            TPZGeoElBC gelbcWrap(gelside, Nmatid);
+           
+        }
+    }
 }
 
 template class TPZApproxSpaceKernelHdiv<STATE>;
