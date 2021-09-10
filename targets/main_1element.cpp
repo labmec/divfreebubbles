@@ -53,7 +53,7 @@ void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 //-------------------------------------------------------------------------------------------------
 using namespace std;
 
-enum EMatid {ENone, EDomain, EInjection, EProduction, EBottom,  ETop, ELeft, ERight, EPont, EWrap, EIntface, EPressureHyb};
+enum EMatid {ENone, EDomain, EBottom,  ETop, ELeft, ERight, EPont, EWrap, EIntface, EPressureHyb};
 
 int main(int argc, char* argv[]){
     //dimension of the problem
@@ -82,7 +82,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 8;
         stringtoint[1]["BottomLine2"] = 9;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4(string(MESHDIR)+"newMesh.msh",gmesh);
+        reader.GeometricGmshMesh4(string(MESHDIR)+"1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -91,7 +91,7 @@ TPZLogger::InitializePZLOG();
     TPZCompMesh * cmeshflux = 0;
     TPZCompMesh * cmeshpressure = 0;
     {
-        std::set<int> matIdVecHdiv={EDomain,EInjection,EProduction,EBottom,ETop,ELeft,ERight};
+        std::set<int> matIdVecHdiv={EDomain,EBottom,ETop,ELeft,ERight};
         std::set<int> matIdNeumannHdiv;
         
         //Flux mesh
@@ -487,7 +487,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     cmesh->SetDefaultOrder(pOrder);
     cmesh->SetDimModel(dim);
     auto mat = new TPZMixedDarcyFlow(EDomain, dim);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
@@ -495,14 +495,14 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
-    auto * BCond0 = mat->CreateBC(mat, EInjection, 0, val1, val2);
+//    auto * BCond0 = mat->CreateBC(mat, EInjection, 0, val1, val2);
     TPZFMatrix<STATE> val3(1,1,1.); 
     TPZManVector<STATE> val4(1,0.);
-    auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val4);
-    BCond0->SetForcingFunctionBC(exactSol);
-    BCond1->SetForcingFunctionBC(exactSol);
-    cmesh->InsertMaterialObject(BCond1);
-    cmesh->InsertMaterialObject(BCond0);
+//    auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val4);
+//    BCond0->SetForcingFunctionBC(exactSol);
+//    BCond1->SetForcingFunctionBC(exactSol);
+//    cmesh->InsertMaterialObject(BCond1);
+//    cmesh->InsertMaterialObject(BCond0);
 
     TPZFMatrix<STATE> val5(1,1,1.);
     TPZManVector<STATE> val6(1,0.);
@@ -554,21 +554,21 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, std::set<int> 
 
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlow(EDomain, dim);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
     
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
-    auto * BCond0 = mat->CreateBC(mat, EInjection, 1, val1, val2);
+//    auto * BCond0 = mat->CreateBC(mat, EInjection, 1, val1, val2);
     TPZFMatrix<STATE> val3(1,1,1.); 
     TPZManVector<STATE> val4(1,0.);
-    auto * BCond1 = mat->CreateBC(mat, EProduction, 1, val3, val4);
-    BCond0->SetForcingFunctionBC(exactSolError);
-    BCond1->SetForcingFunctionBC(exactSolError);
-    cmesh->InsertMaterialObject(BCond1);
-    cmesh->InsertMaterialObject(BCond0);
+//    auto * BCond1 = mat->CreateBC(mat, EProduction, 1, val3, val4);
+//    BCond0->SetForcingFunctionBC(exactSolError);
+//    BCond1->SetForcingFunctionBC(exactSolError);
+//    cmesh->InsertMaterialObject(BCond1);
+//    cmesh->InsertMaterialObject(BCond0);
 
     TPZFMatrix<STATE> val5(1,1,1.);
     TPZManVector<STATE> val6(1,0.);
@@ -695,14 +695,14 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *g
   //Insert boundary conditions
   TPZFMatrix<STATE> val1(1,1,1.);
   TPZManVector<STATE> val2(2,0.);
-  auto * BCond = mat->CreateBC(mat, EInjection, 0, val1, val2);
+//  auto * BCond = mat->CreateBC(mat, EInjection, 0, val1, val2);
   TPZFMatrix<STATE> val3(1,1,1.);
   TPZManVector<STATE> val4(2,0.);
-  auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val4);
-  BCond->SetForcingFunctionBC(exactSolH1);
-  BCond1->SetForcingFunctionBC(exactSolH1);
-  cmesh->InsertMaterialObject(BCond);
-  cmesh->InsertMaterialObject(BCond1);
+//  auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val4);
+//  BCond->SetForcingFunctionBC(exactSolH1);
+//  BCond1->SetForcingFunctionBC(exactSolH1);
+//  cmesh->InsertMaterialObject(BCond);
+//  cmesh->InsertMaterialObject(BCond1);
   
   cmesh->SetDefaultOrder(pOrder);
   cmesh->AutoBuild();
@@ -782,14 +782,14 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, std::set<int> matIdVec, TP
   TPZManVector<STATE> val2(1,0.);
   TPZManVector<STATE> val5(1,0.);
   constexpr int boundType{0};
-  auto * BCond = mat->CreateBC(mat, EInjection, 0, val1, val5);//Injection
+//  auto * BCond = mat->CreateBC(mat, EInjection, 0, val1, val5);//Injection
   TPZFMatrix<STATE> val3(1,1,1.);
   TPZManVector<STATE> val4(1,0.);
-  auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val5);//Production
-  BCond->SetForcingFunctionBC(exactSol);
-  BCond1->SetForcingFunctionBC(exactSol);
-  cmesh->InsertMaterialObject(BCond);
-  cmesh->InsertMaterialObject(BCond1);
+//  auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val5);//Production
+//  BCond->SetForcingFunctionBC(exactSol);
+//  BCond1->SetForcingFunctionBC(exactSol);
+//  cmesh->InsertMaterialObject(BCond);
+//  cmesh->InsertMaterialObject(BCond1);
   mat -> SetBigNumber(1.e10);
   
   auto * BCond2 = mat->CreateBC(mat, EBottom, 0, val3, val5);//Bottom
