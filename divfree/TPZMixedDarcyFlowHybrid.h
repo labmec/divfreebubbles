@@ -10,16 +10,16 @@
 #include "TPZMatBase.h"
 #include "TPZMatCombinedSpaces.h"
 #include "TPZMatErrorCombinedSpaces.h"
-#include "DarcyFlow/TPZDarcyFlowInterface.h"
+#include "DarcyFlow/TPZIsotropicPermeability.h"
 
 // TODO add doc
 
 class TPZMixedDarcyFlowHybrid : public TPZMatBase<STATE, TPZMatCombinedSpacesT<STATE>,
-        TPZMatErrorCombinedSpaces<STATE>, TPZDarcyFlowInterface> {
+        TPZMatErrorCombinedSpaces<STATE>, TPZIsotropicPermeability> {
 
     // type alias to improve constructor readability
     using TBase = TPZMatBase<STATE, TPZMatCombinedSpacesT<STATE>,
-            TPZMatErrorCombinedSpaces<STATE>, TPZDarcyFlowInterface>;
+            TPZMatErrorCombinedSpaces<STATE>, TPZIsotropicPermeability>;
 
 public:
     /**

@@ -25,10 +25,9 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
     TPZFNMatrix<1, STATE> K(3, 3, 0);
     TPZFNMatrix<1, STATE> InvK(3, 3, 0);
 
-    fPermeabilityFunction(datavec[0].x, K, InvK);
-    const REAL perm = K(0, 0);
+    const STATE perm = GetPermeability(datavec[0].x);
     const REAL inv_perm = 1 / perm;
-
+    
     // Setting the phis
     TPZFMatrix<REAL> &phiQ = datavec[0].phi;
     TPZFMatrix<REAL> &phip = datavec[1].phi;
@@ -167,8 +166,8 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
 
         TPZFNMatrix<9, STATE> K(3, 3, 0);
         TPZFNMatrix<9, STATE> InvK(3, 3, 0);
-        fPermeabilityFunction(dataAux.x, K, InvK);
-        REAL perm = K(0, 0);
+        const STATE perm = GetPermeability(datavec[0].x);
+        const REAL inv_perm = 1 / perm;
 
         for (int i = 0; i < 3; i++) {
             normflux += dataAux.normal[i] * perm * gradu(i, 0);
@@ -271,8 +270,7 @@ void TPZMixedDarcyFlowHybrid::Solution(const TPZVec<TPZMaterialDataT<STATE>> &da
     TPZFNMatrix<9, STATE> K(3, 3, 0);
     TPZFNMatrix<9, STATE> InvK(3, 3, 0);
 
-    fPermeabilityFunction(datavec[0].x, K, InvK);
-    const REAL perm = K(0, 0);
+    const STATE perm = GetPermeability(datavec[0].x);
     const REAL inv_perm = 1 / perm;
 
     // SolQ = datavec[0].sol[0];
@@ -464,8 +462,7 @@ void TPZMixedDarcyFlowHybrid::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data
     TPZFNMatrix<9, STATE> K(3, 3, 0);
     TPZFNMatrix<9, STATE> InvK(3, 3, 0);
 
-    fPermeabilityFunction(data[0].x, K, InvK);
-    const REAL perm = K(0, 0);
+    const STATE perm = GetPermeability(data[0].x);
     const REAL inv_perm = 1 / perm;
 
     TPZManVector<STATE, 3> gradpressurefem(3, 0.);

@@ -252,7 +252,7 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
 
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
         
