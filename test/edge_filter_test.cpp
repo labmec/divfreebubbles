@@ -70,7 +70,7 @@ void TestEdgeFiltering(const MMeshType meshType,
   
   auto gmesh = CreateGeoMesh(meshType, nDivs, volId, bcId);
 
-  constexpr int pOrder{3};
+  constexpr int pOrder{1};
 
   auto cmesh = CreateCompMesh(gmesh, pOrder, volId, bcId);
 
