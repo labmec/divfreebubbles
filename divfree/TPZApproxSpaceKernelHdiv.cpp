@@ -147,8 +147,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 nullmat->SetDimension(2);
             } else if (fDimension == 3){
-                // new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
-                new TPZCompElHCurlNoGrads<TPZShapeTriang>(*cmesh,gel,index);
+                new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 // nullmat->SetDimension(2);
@@ -158,7 +157,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             }
         } else if(type == ETetraedro) {
             new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index);
-            // new TPZCompElHCurlNoGrads<TPZShapeTetra>(*cmesh,gel,index); 
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);

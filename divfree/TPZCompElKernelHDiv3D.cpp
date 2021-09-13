@@ -79,9 +79,9 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
         for (int j = 0; j < data.dphix.Cols(); j++)
     	    	data.dphix(i,j) = 1.;
     
-    for (int i=0; i<data.fVecShapeIndex.size(); i++) {
-		data.fVecShapeIndex[i] = std::make_pair(i,1);
-    }
+    // for (int i=0; i<data.fVecShapeIndex.size(); i++) {
+	// 	data.fVecShapeIndex[i] = std::make_pair(i,1);
+    // }
 
 }//void
 
@@ -91,14 +91,14 @@ void TPZCompElKernelHDiv3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 	data.fNeedsSol = true;
 	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
 
-	int nshape = this->NShapeF();    
-    int64_t size = nshape*3;//(TSHAPE::Dimension);
-    data.fVecShapeIndex.Resize(size);
-    // auto size = data.fVecShapeIndex.size();
+	// int nshape = this->NShapeF();    
+    // int64_t size = nshape*3;//(TSHAPE::Dimension);
+    // data.fVecShapeIndex.Resize(size);
+    // // auto size = data.fVecShapeIndex.size();
     
-    for (int i=0; i<size; i++) {
-		data.fVecShapeIndex[i] = std::make_pair(i,1);
-    }
+    // for (int i=0; i<size; i++) {
+	// 	data.fVecShapeIndex[i] = std::make_pair(1,i);
+    // }
     
    
 }

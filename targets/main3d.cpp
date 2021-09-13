@@ -115,31 +115,31 @@ int main(int argc, char* argv[])
 TPZLogger::InitializePZLOG();
 #endif
     
-    //read mesh from gmsh
-    TPZGeoMesh *gmesh;
-    gmesh = new TPZGeoMesh();
-    {
-        TPZGmshReader reader;
-        // essa interface permite voce mapear os nomes dos physical groups para
-        // o matid que voce mesmo escolher
-        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-        stringtoint[3]["Domain"] = 1;
-        stringtoint[2]["Surfaces"] = 2;
-        // stringtoint[0]["Point"] = 3;
-        reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
-        std::ofstream out("gmesh.vtk");
-        TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
-    }
+    // //read mesh from gmsh
+    // TPZGeoMesh *gmesh;
+    // gmesh = new TPZGeoMesh();
+    // {
+    //     TPZGmshReader reader;
+    //     // essa interface permite voce mapear os nomes dos physical groups para
+    //     // o matid que voce mesmo escolher
+    //     TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+    //     stringtoint[3]["Domain"] = 1;
+    //     stringtoint[2]["Surfaces"] = 2;
+    //     // stringtoint[0]["Point"] = 3;
+    //     reader.SetDimNamePhysical(stringtoint);
+    //     reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
+    //     std::ofstream out("gmesh.vtk");
+    //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
+    // }
     
-    // //for now this should suffice
-    // const int xdiv = 1;
-    // const int ydiv = 1;
-    // const int zdiv = 1;
-    // const MMeshType meshType = MMeshType::ETetrahedral;
-    // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+    //for now this should suffice
+    const int xdiv = 1;
+    const int ydiv = 1;
+    const int zdiv = 1;
+    const MMeshType meshType = MMeshType::ETetrahedral;
+    const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
-    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
     
     
     TPZKernelHdivUtils<STATE> util;

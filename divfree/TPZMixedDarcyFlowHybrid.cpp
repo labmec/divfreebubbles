@@ -40,13 +40,14 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
 
     int phrq, phrp;
     phrp = phip.Rows();
+    
     if (Dimension() == 2)
     {
         phrq = datavec[0].fVecShapeIndex.NElements();
     } else if (Dimension() == 3)
     {
         phrq = datavec[0].fDeformedDirections.Cols();
-    }
+    }//phrq = datavec[0].fVecShapeIndex.NElements();
 
     int nactive = 0;
     for (const auto &i : datavec) {
@@ -76,13 +77,7 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         int ishapeind = datavec[0].fVecShapeIndex[iq].second;
         TPZFNMatrix<3, REAL> ivec(3, 1, 0.);
         for (int id = 0; id < 3; id++) {
-            if (Dimension() == 2)
-            {
-                ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
-            } else if (Dimension() == 3)
-            {
-                ivec(id, 0) = datavec[0].fDeformedDirections(id, iq);
-            }
+            ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
         }
 
         TPZFNMatrix<3, REAL> ivecZ(3, 1, 0.);
@@ -93,13 +88,7 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
             int jshapeind = datavec[0].fVecShapeIndex[jq].second;
 
             for (int id = 0; id < fDim; id++) {
-                if (Dimension() == 2)
-                {
-                    jvec(id, 0) = datavec[0].fDeformedDirections(id, jvecind);
-                } else if (Dimension() == 3)
-                {
-                    jvec(id, 0) = datavec[0].fDeformedDirections(id, jq);
-                }
+                jvec(id, 0) = datavec[0].fDeformedDirections(id, jvecind);
             }
 
             //dot product between Kinv[u]v
@@ -108,11 +97,6 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
                 jvecZ(id, 0) += inv_perm * jvec(id, 0);
             }
             REAL prod1 = ivec(0, 0) * jvecZ(0, 0) + ivec(1, 0) * jvecZ(1, 0) + ivec(2, 0) * jvecZ(2, 0);
-            // if (prod1 == 0){
-                // std::cout << ivec(0,0) << " " << jvecZ(0,0) << " " << ivec(1,0) << " " << jvecZ(1,0) << " " << ivec(2,0) << " " << jvecZ(2,0) << std::endl;
-                // std::cout << "DEFORMED DIRECTIONS = \n" << datavec[0].fDeformedDirections << std::endl;
-                // std::cout << "CURL = \n" << datavec[0].curlphi << std::endl;
-            // }
             ek(iq, jq) += weight * phiQ(ishapeind, 0) * phiQ(jshapeind, 0) * prod1;
         }
     }
@@ -161,9 +145,6 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         ek(phrp + phrq + 1, phrq + phrp) += -weight;
         ek(phrq + phrp, phrp + phrq + 1) += -weight;
     }
-
-
-    // std::cout << "EK = \n" << ek << std::endl;
 }
 
 void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek,
@@ -194,7 +175,6 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
         TPZFNMatrix<9, STATE> K(3, 3, 0);
         TPZFNMatrix<9, STATE> InvK(3, 3, 0);
         const STATE perm = GetPermeability(datavec[0].x);
-        const REAL inv_perm = 1 / perm;
 
         for (int i = 0; i < 3; i++) {
             normflux += dataAux.normal[i] * perm * gradu(i, 0);
@@ -223,14 +203,9 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
 
     switch (bc.Type()) {
         case 0 :        // Dirichlet condition
-            // if (Dimension() == 2){
-                for (int iq = 0; iq < phrq; iq++) {
-                    ef(iq, 0) += (-1.) * v2 * phiQ(iq, 0) * weight;
-                }
-            // } else if (Dimension() == 3)
-            // {
-            //     DebugStop();
-            // }
+            for (int iq = 0; iq < phrq; iq++) {
+                ef(iq, 0) += (-1.) * v2 * phiQ(iq, 0) * weight;
+            }
             //New implementation for Div-free bubbles
             for (int ip = 0; ip < phrp; ip++) {
                 DebugStop();

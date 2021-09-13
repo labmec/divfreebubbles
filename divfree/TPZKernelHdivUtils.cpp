@@ -273,19 +273,26 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
     */
     std::set<int> removed_connects;
 
+    /**
+         Contains coplanar connects (to removed_connects) that should not be removed.
+    */
+    std::set<int> no_remove;
     constexpr int edgeDim{1};
-    
+
     for(auto gel : gmesh->ElementVec()){
         const auto nEdges = gel->NSides(edgeDim);
         const auto firstEdge = gel->FirstSide(edgeDim);
         const auto firstFace = firstEdge + nEdges;
 
+        //Auxiliary variable to avoid the selection of three connects of the same face
+        int aux = 0;
+
         for(auto ie = firstEdge; ie < firstFace; ie++){
             TPZGeoElSide edge(gel,ie);
         
             const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
-            
-            //check if edge has been treated already
+
+            /* checks if edge has been treated already */
             if (removed_connects.find(con) != removed_connects.end()) {
                 continue;
             }
@@ -298,25 +305,35 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
             //both vertices have been treated
             if(done_vertices[v1] && done_vertices[v2]){
                 continue;
-            }
-            else {
+            } else {
+                /* If aux = 2, then we can't take the next connect from this side.
+                  We also store the connect that can't be removed amd check it in the next elements.*/
+                if (aux == 2) {
+                    no_remove.insert(con);
+                    continue;
+                }
+                if (no_remove.find(con) != no_remove.end()) {
+                    continue;
+                }
                 /*either one or none vertex has been treated,
                 so we need to remove the edge*/
-                removed_connects.insert(edge.Element()->Reference()->ConnectIndex(ie-firstEdge));
+                removed_connects.insert(con);
                 if(!done_vertices[v1] && !done_vertices[v2]){
-                /*if no vertex has been treated we
-                    mark ONE OF THEM as treated*/
-                done_vertices[v1] = true;
-                }
-                else {
-                /*one of them had been treated already,
-                    instead of checking which, we mark both as true*/
-                done_vertices[v1] = true;
-                done_vertices[v2] = true;
+                    /*if no vertex has been treated we
+                        mark ONE OF THEM as treated*/
+                    done_vertices[v1] = true;
+                    aux++;
+                } else {
+                    /*one of them had been treated already,
+                        instead of checking which, we mark both as true*/
+                    done_vertices[v1] = true;
+                    done_vertices[v2] = true;
                 }
             }
         }
     }
+
+
     bool check_all_vertices{true};
     for(auto v : done_vertices){
         check_all_vertices = check_all_vertices && v;
@@ -324,6 +341,13 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         break;
         }
     }
+
+    // for (auto rem : removed_connects)
+    // {
+    //     std::cout << rem << " " ;
+    // }
+    // std::cout << std::endl;
+    
 
     if(check_all_vertices == false) DebugStop();
     
