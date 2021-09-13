@@ -55,33 +55,24 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
     data.fDeformedDirections.Zero();
 
     data.fDeformedDirections=data.curlphi;
-    // GetCurl(data);
-    // // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
-    // // TPZFMatrix<REAL> &dphi = data.dphix;;
-    // // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
 
-    
-    // for (int i = 0; i < data.curlphi.Cols(); i++)
-    // {
-    //     for (int j = 0; j < data.dphix.Cols(); j++)
-    //     {
-    //         data.fDeformedDirections(0,i) += data.curlphi(2,i)*data.dphix(1,j)-data.curlphi(1,i)*data.dphix(2,j);
-    //         data.fDeformedDirections(1,i) += data.curlphi(0,i)*data.dphix(2,j)-data.curlphi(2,i)*data.dphix(0,j);
-    //         data.fDeformedDirections(2,i) += data.curlphi(1,i)*data.dphix(0,j)-data.curlphi(0,i)*data.dphix(1,j);
-    //     }
-    // }
-
-
+    data.phi.Resize(nshape,3);
     for (int i = 0; i < data.phi.Rows(); i++){
 		data.phi(i,0) = 1.;
+        data.phi(i,1) = 1.;
+        data.phi(i,2) = 1.;
 	}
 	for (int i = 0; i < data.dphix.Rows(); i++)
         for (int j = 0; j < data.dphix.Cols(); j++)
     	    	data.dphix(i,j) = 1.;
     
+    
     // for (int i=0; i<data.fVecShapeIndex.size(); i++) {
 	// 	data.fVecShapeIndex[i] = std::make_pair(i,1);
     // }
+    if (data.fNeedsSol) {
+        this->ReallyComputeSolution(data);
+    }
 
 }//void
 
@@ -91,14 +82,17 @@ void TPZCompElKernelHDiv3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 	data.fNeedsSol = true;
 	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
 
+    data.fShapeType = data.EVecandShape;
+
 	// int nshape = this->NShapeF();    
     // int64_t size = nshape*3;//(TSHAPE::Dimension);
     // data.fVecShapeIndex.Resize(size);
-    // // auto size = data.fVecShapeIndex.size();
+    // auto size = data.fVecShapeIndex.size();
     
     // for (int i=0; i<size; i++) {
-	// 	data.fVecShapeIndex[i] = std::make_pair(1,i);
+	// 	data.fVecShapeIndex[i] = std::make_pair(i,1);
     // }
+    
     
    
 }
@@ -133,23 +127,23 @@ void TPZCompElKernelHDiv3D<TSHAPE>::SetSideOrient(int side, int sideorient){
     fSideOrient[side-firstside] = sideorient;
 }
 
-template<class TSHAPE>
-void TPZCompElKernelHDiv3D<TSHAPE>:: Solution(TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol)
-{
+// template<class TSHAPE>
+// void TPZCompElKernelHDiv3D<TSHAPE>:: Solution(TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol)
+// {
     
-    TPZMaterialDataT<STATE> data;
-    constexpr bool hasPhi{false};
-    this->ComputeSolution(qsi,data,hasPhi);
+//     TPZMaterialDataT<STATE> data;
+//     constexpr bool hasPhi{false};
+//     this->ComputeSolution(qsi,data,hasPhi);
 
-    sol.Resize(3);
+//     sol.Resize(3);
     
-    // REAL Sol = data.sol[0];
-    // data.sol.resize(3);
-    // data.sol[0] = Sol;
-    sol[0] = data.sol[0][0];
-    data.sol[0].Resize(3);
-    // sol = std::move(data.sol[0]);
-}
+//     // REAL Sol = data.sol[0];
+//     // data.sol.resize(3);
+//     // data.sol[0] = Sol;
+//     sol[0] = data.sol[0][0];
+//     data.sol[0].Resize(3);
+//     // sol = std::move(data.sol[0]);
+// }
 
 
 template<class TSHAPE>
@@ -157,7 +151,93 @@ template<class TVar>
 void TPZCompElKernelHDiv3D<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data)
 {
     
-    const int dim = 3; 
+//     const int dim = 3; 
+//     const int nstate = this->Material()->NStateVariables();
+//     const int ncon = this->NConnects();
+
+//     TPZFMatrix<TVar> &MeshSol = this->Mesh()->Solution();
+
+//     int64_t numbersol = MeshSol.Cols();
+
+//     if(numbersol != 1)
+//     {
+//         DebugStop();
+//     }
+//     data.sol.Resize(numbersol);
+//     data.dsol.Resize(numbersol);
+//     data.divsol.Resize(numbersol);
+
+//     for (int64_t is=0; is<numbersol; is++)
+//     {
+//         data.sol[is].Resize(dim*nstate);
+//         data.sol[is].Fill(0);
+//         data.dsol[is].Redim(dim*nstate, dim);
+//         data.divsol[is].Resize(nstate);
+//         data.divsol[is].Fill(0.);
+//     }
+//     TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
+//     TPZFMatrix<REAL> &dphi = data.dphix;;
+
+//     TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+
+//     TPZBlock &block =this->Mesh()->Block();
+//     int ishape=0,ivec=0,counter=0;
+
+//     int nshape = this->NShapeF();
+//     data.phi.Resize(nshape,3);
+//     data.curlphi.Resize(3,nshape);
+
+//     auto size = data.fVecShapeIndex.size();
+    
+//     for (int i=0; i<size; i++) {
+// 		data.fVecShapeIndex[i] = std::make_pair(i,1);
+//     }
+
+    
+
+//     // TPZFMatrix<TVar> dsolX(3,1);
+//     // // const auto &sol = data.sol[0];
+//     // const auto &dsol = data.dsol[0];
+//     // TPZAxesTools<TVar>::Axes2XYZ(dsol,dsolX,data.axes);
+
+//     // int nshapeV = data.fVecShapeIndex.NElements();
+
+//     for(int in=0; in<ncon; in++)
+//     {
+//         TPZConnect *df = &this->Connect(in);
+//         int64_t dfseq = df->SequenceNumber();
+//         int dfvar = block.Size(dfseq);
+// //         // pos : position of the block in the solution matrix
+//         int64_t pos = block.Position(dfseq);
+
+// //         /// ish loops of the number of shape functions associated with the block
+//         for(int ish=0; ish<dfvar/nstate; ish++)
+//         {
+//             ishape  = data.fVecShapeIndex[counter].first;
+//             // std::cout << "ISHAPE = " << ishape << std::endl;
+//             for(int idf=0; idf<nstate; idf++)
+//             {
+//                 TVar meshsol = MeshSol(pos+ish*nstate+idf,0);
+//                 // REAL phival = data.phi(ishape,0);
+//                 //Computes sol and dsol
+//                 // data.sol[0][dim*idf] += phival*meshsol;
+//                 // data.dsol[0](dim*idf,0)+= meshsol * dphix(0,ishape);
+//                 // data.dsol[0](dim*idf,1)+= meshsol * dphix(1,ishape);
+
+//                 //Compute rotated flux
+//                 // data.sol[0][dim*idf+0] += data.curlsol[0][0];
+//                 // data.sol[0][dim*idf+1] += data.curlsol[0][1];
+//                 // data.sol[0][dim*idf+2] += data.curlsol[0][2];
+//                 std::cout << "CurlSol = " << meshsol << " " << pos+ish*nstate+idf << " " << in << " " << ish << std::endl;
+//             }
+//             counter++;
+//         }
+//     }
+
+    TPZCompElHCurlNoGrads<TSHAPE>::ReallyComputeSolution(data);
+    // data.fDeformedDirections=data.curlphi;
+
+    const int dim = 3; // Hdiv vectors are always in R3
     const int nstate = this->Material()->NStateVariables();
     const int ncon = this->NConnects();
 
@@ -186,99 +266,123 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<
 
     TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
 
+    TPZFMatrix<TVar> GradOfPhiHdiv(dim,dim);
+    GradOfPhiHdiv.Zero();
+
+
+    int normvecRows = data.fDeformedDirections.Rows();
+    int normvecCols = data.fDeformedDirections.Cols();
+    TPZFNMatrix<3,REAL> Normalvec(normvecRows,normvecCols,0.);
+    TPZManVector<TPZFNMatrix<9,REAL>,18> GradNormalvec(normvecCols);
+    for (int i=0; i<GradNormalvec.size(); i++) {
+        GradNormalvec[i].Redim(dim,dim);
+    }
+
+    if (data.fNeedsDeformedDirectionsFad) {
+        for (int e = 0; e < normvecRows; e++) {
+            for (int s = 0; s < normvecCols; s++) {
+                Normalvec(e,s)=data.fDeformedDirectionsFad(e,s).val();
+            }
+        }
+
+    TPZFNMatrix<4,REAL> Grad0(3,3,0.);
+	TPZGeoEl *ref = this->Reference();
+	const int gel_dim = ref->Dimension();
+
+	for (int s = 0; s < normvecCols; s++) {
+            for (int i = 0; i < gel_dim; i++) {
+                for (int j = 0; j < gel_dim; j++) {
+                    Grad0(i,j)=data.fDeformedDirectionsFad(i,s).fastAccessDx(j);
+                }
+            }
+            GradNormalvec[s] = Grad0;
+        }
+
+    }else{
+        Normalvec=data.fDeformedDirections;
+    }
+
     TPZBlock &block =this->Mesh()->Block();
     int ishape=0,ivec=0,counter=0;
 
-
-
-    // TPZFMatrix<TVar> dsolX(3,1);
-    // // const auto &sol = data.sol[0];
-    // const auto &dsol = data.dsol[0];
-    // TPZAxesTools<TVar>::Axes2XYZ(dsol,dsolX,data.axes);
-
-//     int nshapeV = data.fVecShapeIndex.NElements();
+    int nshapeV = data.fVecShapeIndex.NElements();
 
     for(int in=0; in<ncon; in++)
     {
         TPZConnect *df = &this->Connect(in);
         int64_t dfseq = df->SequenceNumber();
         int dfvar = block.Size(dfseq);
-//         // pos : position of the block in the solution matrix
+        // pos : position of the block in the solution matrix
         int64_t pos = block.Position(dfseq);
 
-//         /// ish loops of the number of shape functions associated with the block
+        /// ish loops of the number of shape functions associated with the block
         for(int ish=0; ish<dfvar/nstate; ish++)
         {
-            ishape  = data.fVecShapeIndex[counter].first;
-            // std::cout << "ISHAPE = " << ishape << std::endl;
-            for(int idf=0; idf<nstate; idf++)
-            {
-                TVar meshsol = MeshSol(pos+ish*nstate+idf,0);
-                // REAL phival = data.phi(ishape,0);
-                //Computes sol and dsol
-                // data.sol[0][dim*idf] += phival*meshsol;
-                // data.dsol[0](dim*idf,0)+= meshsol * dphix(0,ishape);
-                // data.dsol[0](dim*idf,1)+= meshsol * dphix(1,ishape);
+            ivec    = data.fVecShapeIndex[counter].first;
+            ishape  = data.fVecShapeIndex[counter].second;
+            ivec = ishape;
 
-                //Compute rotated flux
-                data.sol[0][dim*idf+0] += meshsol;
-                data.sol[0][dim*idf+1] += meshsol;
-                data.sol[0][dim*idf+2] += meshsol;
+            // portion of the gradient coming from the gradient of the scalar function
+            for (int e = 0; e < dim; e++) {
+                for (int f = 0; f< dim; f++) {
+                    GradOfPhiHdiv(e,f) = Normalvec(e,ivec)*dphix(f,ishape);
+                }
+            }
+
+            for (int64_t is=0; is<numbersol; is++)
+            {
+                for(int idf=0; idf<nstate; idf++)
+                {
+                    TVar meshsol = MeshSol(pos+ish*nstate+idf,is);
+                    REAL phival = data.phi(ishape,0);
+                    // REAL phival = data.curlphi(0,ishape);
+                    TPZManVector<REAL,3> normal(3);
+
+                    for (int i=0; i<3; i++)
+                    {
+                        if (data.fNeedsDeformedDirectionsFad) {
+                            normal[i] = data.fDeformedDirectionsFad(i,ivec).val();
+                        }else{
+                            normal[i] = data.fDeformedDirections(i,ivec);
+                        }
+                    }
+
+// #ifdef PZ_LOG
+//                     if(logger.isDebugEnabled() && abs(meshsol) > 1.e-6)
+//                     {
+//                         std::stringstream sout;
+//                         sout << "meshsol = " << meshsol << " ivec " << ivec << " ishape " << ishape << " x " << data.x << std::endl;
+//                         sout << " phi = " << data.phi(ishape,0) << " dphix " << dphix(0,ishape) << " " << dphix(1,ishape) << std::endl;
+//                         sout << "normal = " << normal << std::endl;
+//                         sout << "GradOfPhiHdiv " << GradOfPhiHdiv << std::endl;
+//                         sout << "GradNormalVec " << GradNormalvec[ivec] << std::endl;
+//                         LOGPZ_DEBUG(logger,sout.str())
+//                     }
+// #endif
+
+                    // data.divsol[is][idf] += data.divphi(counter,0)*meshsol;
+                    for (int ilinha=0; ilinha<dim; ilinha++) {
+                        data.sol[is][ilinha+dim*idf] += normal[ilinha]*phival*meshsol;
+                        for (int kdim = 0 ; kdim < dim; kdim++) {
+                            data.dsol[is](ilinha+dim*idf,kdim)+= meshsol * GradOfPhiHdiv(ilinha,kdim);
+                            if(data.fNeedsDeformedDirectionsFad){
+                                data.dsol[is](ilinha+dim*idf,kdim)+=meshsol *GradNormalvec[ivec](ilinha,kdim)*data.phi(ishape,0);
+                            }
+                        }
+
+                    }
+
+                }
             }
             counter++;
         }
     }
-    // data.sol[1][0] = 0.;
-    // data.sol[0][0] = -data.dsol[0](0,1);
-    // data.sol[0][1] = data.dsol[0](0,0);
-    // data.sol[0][2] = 0.;
+
+
+
+
 }
 
-template<class TSHAPE>
-template<class TVar>
-void TPZCompElKernelHDiv3D<TSHAPE>::GetCurl(TPZMaterialDataT<TVar> &data)
-{
-    data.fDeformedDirections=data.curlphi;
-
-    // constexpr auto dim = 3;
-    // const auto nShapeFuncs = data.fVecShapeIndex.size();
-    
-    // const REAL jacInv = 1/data.detjac;
-    // TPZFNMatrix<dim,REAL> tempCurl(dim, 1, 0),gradPhiCrossDirections(dim, 1, 0);
-    
-    // for(auto iShapeFunc = 0; iShapeFunc < nShapeFuncs; iShapeFunc++) {
-    //     const auto iVec = data.fVecShapeIndex[iShapeFunc].first;
-    //     const auto iShape = data.fVecShapeIndex[iShapeFunc].second;
-        
-    //     for(auto ix = 0; ix < dim; ix++) {
-    //         const auto i = (ix+1)%dim;
-    //         const auto j = (ix+2)%dim;
-    //         gradPhiCrossDirections(ix,0) =
-    //             data.curlphi.GetVal(i,iShape) * data.fMasterDirections.GetVal(j,iVec)-
-    //             data.curlphi.GetVal(j,iShape) * data.fMasterDirections.GetVal(i,iVec);
-    //     }
-        
-
-    //     tempCurl = data.jacobian * gradPhiCrossDirections;
-    //     tempCurl *= jacInv;
-    //     for (auto ix = 0; ix < dim; ix++) {
-    //         data.fDeformedDirections.PutVal(ix, iShapeFunc,tempCurl.GetVal(ix,0));
-    //     }
-    // }
-
-    double tol = 1.e-10;
-    for (int i = 0; i < data.curlphi.Cols(); i++)
-    {
-        if ((fabs(data.curlphi(0,i)) < tol) && (fabs(data.curlphi(1,i)) < tol) && (fabs(data.curlphi(2,i)) < tol)){
-            std::cout << "PROBLEM WITH CURL = 0 !!" << std::endl; 
-            std::cout << "Curl = \n " << data.curlphi(0,i) << " " << data.curlphi(1,i) << " " << data.curlphi(2,i) << std::endl;
-        }
-        if ((fabs(data.fDeformedDirections(0,i)) < tol) && (fabs(data.fDeformedDirections(1,i)) < tol) && (fabs(data.fDeformedDirections(2,i)) < tol)){
-            std::cout << "PROBLEM WITH fDeformedDirections = 0 !!" << std::endl; 
-            std::cout << "Curl = \n " << data.fDeformedDirections(0,i) << " " << data.fDeformedDirections(1,i) << " " << data.fDeformedDirections(2,i) << std::endl;
-        }
-    }
-}
 
 #include "pzshapecube.h"
 #include "TPZRefCube.h"

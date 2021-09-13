@@ -115,31 +115,31 @@ int main(int argc, char* argv[])
 TPZLogger::InitializePZLOG();
 #endif
     
-    // //read mesh from gmsh
-    // TPZGeoMesh *gmesh;
-    // gmesh = new TPZGeoMesh();
-    // {
-    //     TPZGmshReader reader;
-    //     // essa interface permite voce mapear os nomes dos physical groups para
-    //     // o matid que voce mesmo escolher
-    //     TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-    //     stringtoint[3]["Domain"] = 1;
-    //     stringtoint[2]["Surfaces"] = 2;
-    //     // stringtoint[0]["Point"] = 3;
-    //     reader.SetDimNamePhysical(stringtoint);
-    //     reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
-    //     std::ofstream out("gmesh.vtk");
-    //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
-    // }
+    //read mesh from gmsh
+    TPZGeoMesh *gmesh;
+    gmesh = new TPZGeoMesh();
+    {
+        TPZGmshReader reader;
+        // essa interface permite voce mapear os nomes dos physical groups para
+        // o matid que voce mesmo escolher
+        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+        stringtoint[3]["Domain"] = 1;
+        stringtoint[2]["Surfaces"] = 2;
+        // stringtoint[0]["Point"] = 3;
+        reader.SetDimNamePhysical(stringtoint);
+        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
+        std::ofstream out("gmesh.vtk");
+        TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
+    }
     
-    //for now this should suffice
-    const int xdiv = 1;
-    const int ydiv = 1;
-    const int zdiv = 1;
-    const MMeshType meshType = MMeshType::ETetrahedral;
-    const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+    // //for now this should suffice
+    // const int xdiv = 1;
+    // const int ydiv = 1;
+    // const int zdiv = 1;
+    // const MMeshType meshType = MMeshType::ETetrahedral;
+    // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
-    TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
     
     
     TPZKernelHdivUtils<STATE> util;
@@ -234,67 +234,64 @@ TPZLogger::InitializePZLOG();
         // Solve the problem
         TPZLinearAnalysis anNew(cmeshNew,false);
         createSpace.Solve(anNew, cmeshNew, true); 
-        std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
-        std::cout << "Solution = \n" << std::endl;
-        anNew.Solution();
-        
+        std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
 
         anNew.SetExact(exactSol,solOrder);
         //Print results
         util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-        anNew.SetExact(exactSolError,solOrder);
+        // anNew.SetExact(exactSolError,solOrder);
 
-        std::ofstream out4("mesh_MDFB.txt");
-        anNew.Print("nothing",out4);
-        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+        // std::ofstream out4("mesh_MDFB.txt");
+        // anNew.Print("nothing",out4);
+        // std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         
-        util.ComputeError(anNew,anPostProcessFileMDFB);
+        // util.ComputeError(anNew,anPostProcessFileMDFB);
     }
 
 
-    {
-        TPZCompMesh * cmeshflux = 0;
-        cmeshflux = FluxCMeshCurl(dim,pOrder,gmesh);
+    // {
+    //     TPZCompMesh * cmeshflux = 0;
+    //     cmeshflux = FluxCMeshCurl(dim,pOrder,gmesh);
 
-        constexpr bool reorderEqs{true};
-        TPZLinearAnalysis an(cmeshflux, reorderEqs);
+    //     constexpr bool reorderEqs{true};
+    //     TPZLinearAnalysis an(cmeshflux, reorderEqs);
         
-        TPZAutoPointer<TPZStructMatrix> strmtrx =
-            new TPZFStructMatrix<STATE>(cmeshflux);
+    //     TPZAutoPointer<TPZStructMatrix> strmtrx =
+    //         new TPZFStructMatrix<STATE>(cmeshflux);
         
-        constexpr int nThreads{0};
-        strmtrx->SetNumThreads(nThreads);
+    //     constexpr int nThreads{0};
+    //     strmtrx->SetNumThreads(nThreads);
 
-        TPZVec<int64_t> activeEqs;
+    //     TPZVec<int64_t> activeEqs;
         
-        if(util.FilterEdgeEquations(cmeshflux, activeEqs)){
-            DebugStop();
-        }
+    //     if(util.FilterEdgeEquations(cmeshflux, activeEqs)){
+    //         DebugStop();
+    //     }
 
-        const int neqs = activeEqs.size();
+    //     const int neqs = activeEqs.size();
         
-        strmtrx->EquationFilter().SetActiveEquations(activeEqs);
+    //     strmtrx->EquationFilter().SetActiveEquations(activeEqs);
 
-        an.SetStructuralMatrix(strmtrx);
+    //     an.SetStructuralMatrix(strmtrx);
 
-        TPZStepSolver<STATE> step;
+    //     TPZStepSolver<STATE> step;
 
-        step.SetDirect(ECholesky);
-        an.SetSolver(step);
+    //     step.SetDirect(ECholesky);
+    //     an.SetSolver(step);
 
-        an.Assemble();
+    //     an.Assemble();
 
-        // TPZLinearAnalysis anNew(cmeshflux,false);
-        // createSpace.Solve(anNew, cmeshflux, true); 
-        // std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
-        // std::cout << "Solution = \n" << std::endl;
-        // anNew.Solution();
+    //     // TPZLinearAnalysis anNew(cmeshflux,false);
+    //     // createSpace.Solve(anNew, cmeshflux, true); 
+    //     // std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
+    //     // std::cout << "Solution = \n" << std::endl;
+    //     // anNew.Solution();
         
 
-        // anNew.SetExact(exactSol,solOrder);
+    //     // anNew.SetExact(exactSol,solOrder);
 
-    }
+    // }
   
     return 0;
 }

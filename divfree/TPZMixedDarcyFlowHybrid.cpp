@@ -77,8 +77,16 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         int ishapeind = datavec[0].fVecShapeIndex[iq].second;
         TPZFNMatrix<3, REAL> ivec(3, 1, 0.);
         for (int id = 0; id < 3; id++) {
-            ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
+            // ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
+            if (Dimension() == 2)
+            {
+                ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
+            } else if (Dimension() == 3)
+            {
+                ivec(id, 0) = datavec[0].fDeformedDirections(id, iq);
+            }
         }
+        
 
         TPZFNMatrix<3, REAL> ivecZ(3, 1, 0.);
         TPZFNMatrix<3, REAL> jvecZ(3, 1, 0.);
@@ -87,9 +95,19 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
             int jvecind = datavec[0].fVecShapeIndex[jq].first;
             int jshapeind = datavec[0].fVecShapeIndex[jq].second;
 
+            // for (int id = 0; id < fDim; id++) {
+            //     jvec(id, 0) = datavec[0].fDeformedDirections(id, jvecind);
+            // }
             for (int id = 0; id < fDim; id++) {
-                jvec(id, 0) = datavec[0].fDeformedDirections(id, jvecind);
+                if (Dimension() == 2)
+                {
+                    jvec(id, 0) = datavec[0].fDeformedDirections(id, jvecind);
+                } else if (Dimension() == 3)
+                {
+                    jvec(id, 0) = datavec[0].fDeformedDirections(id, jq);
+                }
             }
+            
 
             //dot product between Kinv[u]v
             jvecZ.Zero();
@@ -109,10 +127,15 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
 
         TPZFNMatrix<3, REAL> ivec(3, 1, 0.);
         for (int id = 0; id < 3; id++) {
-            ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
-            //ivec(1,0) = datavec[0].fDeformedDirections(1,ivecind);
-            //ivec(2,0) = datavec[0].fDeformedDirections(2,ivecind);
+            if (Dimension() == 2)
+            {
+                ivec(id, 0) = datavec[0].fDeformedDirections(id, ivecind);
+            } else if (Dimension() == 3)
+            {
+                ivec(id, 0) = datavec[0].fDeformedDirections(id, iq);
+            }
         }
+        
         TPZFNMatrix<3, REAL> axesvec(3, 1, 0.);
         datavec[0].axes.Multiply(ivec, axesvec);
 
@@ -285,8 +308,9 @@ void TPZMixedDarcyFlowHybrid::Solution(const TPZVec<TPZMaterialDataT<STATE>> &da
 
     if (var == 1) { //function (state variable Q)
         for (int i = 0; i < 3; i++) {
+            // solOut[i] = datavec[0].curlsol[0][i];
             solOut[i] = datavec[0].sol[0][i];
-
+            std::cout << "SOL = " << i << " " << datavec[0].curlsol[0][i] << " " << datavec[0].sol[0][i] << std::endl;
         }
         return;
     }

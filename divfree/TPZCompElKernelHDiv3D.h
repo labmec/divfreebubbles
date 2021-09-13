@@ -70,8 +70,8 @@ public:
     }
     //@}
 		
-	/** @brief Compute the solution for a given variable */
-	virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
+	// /** @brief Compute the solution for a given variable */
+	// virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
 
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
     int ClassId() const override;
@@ -113,9 +113,6 @@ protected:
     void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
         ComputeSolutionKernelHdivT(data);
     }
-
-    template<class TVar>
-    void GetCurl(TPZMaterialDataT<TVar> &data);
 
 	template<class TVar>
     void ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data);

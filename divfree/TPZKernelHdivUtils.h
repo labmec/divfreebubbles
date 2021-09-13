@@ -87,7 +87,14 @@ public:
      */
     void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 
-
+    /**
+         @brief Removes some equations associated with edges to ensure that
+        the gradient of the lowest order H1 functions cannot be represented.
+        @param[in] cmesh Computational mesh.
+        @param[out] indices of all remaining equations.
+        @return 0 if no errors were detected, 1 if a vertex was left untreated,
+        2 if a vertex had all the adjacent edges removed.
+    */
     bool FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<int64_t> &activeEquations);
 
 };
