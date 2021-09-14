@@ -283,10 +283,56 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         const auto nEdges = gel->NSides(edgeDim);
         const auto firstEdge = gel->FirstSide(edgeDim);
         const auto firstFace = firstEdge + nEdges;
+        int ind = gel->Index();
 
         //Auxiliary variable to avoid the selection of three connects of the same face
         int aux = 0;
 
+        std::set<int> local_removed;
+        std::set<int> local_connect;
+
+        //First - check how many edges have already been removed
+        for(auto ie = firstEdge; ie < firstFace; ie++){
+            TPZGeoElSide edge(gel,ie);        
+            const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
+            local_connect.insert(con);
+
+            if (removed_connects.find(con) != removed_connects.end()) {
+                local_removed.insert(con);
+                aux++;
+            }
+            //Additional check of removed connects
+            if (aux == nEdges) DebugStop();
+            /*The maximum number of edges were already been removed, then we need 
+                to store the remaining connect to not be removed.
+            */
+            if (aux == nEdges-1){
+                set_symmetric_difference(local_connect.begin(), local_connect.end(), local_removed.begin(), local_removed.end(), inserter(no_remove, no_remove.begin()));
+            }
+        }
+        
+        //Maximum number of edges that can be removed
+        int max_remove = nEdges-1;
+
+        if (aux == nEdges-1){
+            //The maximum number of edges have been removed
+            continue;
+        } else if (aux > nEdges-1) {
+            //All edges have been removed
+            DebugStop();
+        } else {
+            //Update the maximum number of edges that can be removed in the current element
+            max_remove = nEdges-1-aux;
+        }
+        
+        // If the maximum number of connects allowed to be removed is nEdges-1, then the last connect must not be removed.
+        if(max_remove == nEdges-1){
+            TPZGeoElSide edge(gel,firstFace-1-firstEdge);
+            no_remove.insert(edge.Element()->Reference()->ConnectIndex(firstFace-1-firstEdge));
+        }
+
+        int count = 0;
+        //Second - remove connects.
         for(auto ie = firstEdge; ie < firstFace; ie++){
             TPZGeoElSide edge(gel,ie);
         
@@ -296,33 +342,33 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
             if (removed_connects.find(con) != removed_connects.end()) {
                 continue;
             }
-            
+            if (count == max_remove) continue;
+
             const auto v1 = edge.SideNodeIndex(0);
             const auto v2 = edge.SideNodeIndex(1);
             
             vertex_edge_connects[v1].insert(con);
             vertex_edge_connects[v2].insert(con);
+
             //both vertices have been treated
             if(done_vertices[v1] && done_vertices[v2]){
                 continue;
             } else {
-                /* If aux = 2, then we can't take the next connect from this side.
-                  We also store the connect that can't be removed amd check it in the next elements.*/
-                if (aux == 2) {
-                    no_remove.insert(con);
-                    continue;
-                }
+
+                /* Checks if the connect can be removed*/
                 if (no_remove.find(con) != no_remove.end()) {
                     continue;
                 }
+
                 /*either one or none vertex has been treated,
                 so we need to remove the edge*/
                 removed_connects.insert(con);
+                count++;
+
                 if(!done_vertices[v1] && !done_vertices[v2]){
                     /*if no vertex has been treated we
                         mark ONE OF THEM as treated*/
-                    done_vertices[v1] = true;
-                    aux++;
+                    done_vertices[v1] = true;                    
                 } else {
                     /*one of them had been treated already,
                         instead of checking which, we mark both as true*/
@@ -342,10 +388,15 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         }
     }
     
-    // removed_connects.insert(0);
-    // removed_connects.insert(2);
-    // removed_connects.insert(5);
+    // std::cout << "Removed = ";
     // for (auto rem : removed_connects)
+    // {
+    //     std::cout << rem << " " ;
+    // }
+    // std::cout << std::endl;
+
+    // std::cout << "No_remove = ";
+    // for (auto rem : no_remove)
     // {
     //     std::cout << rem << " " ;
     // }
@@ -391,9 +442,35 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         }
     }
     
+    //Check if a face has all the edges removed
+    for(auto gel : gmesh->ElementVec()){
+        const auto nEdges = gel->NSides(edgeDim);
+        const auto firstEdge = gel->FirstSide(edgeDim);
+        const auto firstFace = firstEdge + nEdges;
+
+        int aux = 0;
+        for(auto ie = firstEdge; ie < firstFace; ie++){
+            
+            TPZGeoElSide edge(gel,ie);
+        
+            const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
+
+            /* checks if edge has been treated already */
+            if (removed_connects.find(con) != removed_connects.end()) {
+                aux++;
+            }
+            const auto v1 = edge.SideNodeIndex(0);
+            const auto v2 = edge.SideNodeIndex(1);
+        }
+
+        if (aux == nEdges) std::cout << "All edges have been removed in GeoEl " << gel->Index()<< std::endl;
+        // if (aux == 0) std::cout << "Possible problem? " << gel->Index() << std::endl;
+    }
+
+
+
+
     return 0;
-
-
 }
 
 
