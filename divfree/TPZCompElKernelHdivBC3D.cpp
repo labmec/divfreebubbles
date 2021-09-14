@@ -44,7 +44,7 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
 
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = data.curlphi(0,i) * data.normal[i];
+		data.phi(i,0) = -data.curlphi(0,i);// * data.normal[i];
 	  }
     }
 

@@ -84,8 +84,8 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = 1;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
+    u[0] = x;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 1.;//(3.*x*x*y*z - y*y*y*z);
     gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
     gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 };
@@ -96,7 +96,7 @@ auto exactSolError = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = 1.;//x*x*x*y*z - y*y*y*x*z;
+    u[0] = 1;//x*x*x*y*z - y*y*y*x*z;
     gradU(0,0) = 0.;//-(3.*x*x*y*z - y*y*y*z);
     gradU(1,0) = 0.;//-(x*x*x*z - 3.*y*y*x*z);
     gradU(2,0) = 0.;//-(x*x*x*y - y*y*y*x);
@@ -127,7 +127,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[0]["Point"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
+        reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -203,19 +203,19 @@ TPZLogger::InitializePZLOG();
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.SetPOrder(pOrder);
         createSpace.Initialize();
-        util.PrintGeoMesh(gmesh);
+        // util.PrintGeoMesh(gmesh);
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
         std::cout << "FLUX \n";
-        util.PrintCMeshConnects(cmeshfluxNew);
+        // util.PrintCMeshConnects(cmeshfluxNew);
         std::string fluxFile = "FluxCMesh";
         util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
         std::cout << "PRESSURE \n";
-        util.PrintCMeshConnects(cmeshpressureNew);
+        // util.PrintCMeshConnects(cmeshpressureNew);
         std::string pressureFile = "PressureCMesh";
         util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
@@ -225,7 +225,7 @@ TPZLogger::InitializePZLOG();
         meshvectorNew[1] = cmeshpressureNew;      
         auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
         std::cout << "MULTIPHYSICS \n";
-        util.PrintCMeshConnects(cmeshNew);
+        // util.PrintCMeshConnects(cmeshNew);
         // Group and condense the elements
         // createSpace.Condense(cmeshNew);
         std::string multiphysicsFile = "MultiPhysicsMeshNew";
@@ -240,13 +240,13 @@ TPZLogger::InitializePZLOG();
         //Print results
         util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-        // anNew.SetExact(exactSolError,solOrder);
+        anNew.SetExact(exactSolError,solOrder);
 
-        // std::ofstream out4("mesh_MDFB.txt");
-        // anNew.Print("nothing",out4);
-        // std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+        std::ofstream out4("mesh_MDFB.txt");
+        anNew.Print("nothing",out4);
+        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         
-        // util.ComputeError(anNew,anPostProcessFileMDFB);
+        util.ComputeError(anNew,anPostProcessFileMDFB);
     }
 
 

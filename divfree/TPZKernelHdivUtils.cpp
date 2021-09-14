@@ -341,7 +341,10 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         break;
         }
     }
-
+    
+    // removed_connects.insert(0);
+    // removed_connects.insert(2);
+    // removed_connects.insert(5);
     // for (auto rem : removed_connects)
     // {
     //     std::cout << rem << " " ;

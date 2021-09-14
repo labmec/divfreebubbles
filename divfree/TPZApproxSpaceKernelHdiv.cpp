@@ -61,7 +61,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false);
     }
 
-    if (fDimension == 3) CreateOrientedBoundaryElements();
+    // if (fDimension == 3) CreateOrientedBoundaryElements();
     
 }
 
@@ -334,15 +334,17 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
     {
         if (gel->Dimension() < 3) continue;
         
-
-        //For tetrahedra only
+        //For tetrahedra only, loop over the surface sides
         for (int side = 10; side < 14; side++){
             TPZGeoElSide gelside(gel,side);
             TPZGeoElSide neighbour = gelside.Neighbour();
+            //Neighbour material id
             auto Nmatid = neighbour.Element()->MaterialId();
 
+            /*  If the boundary has BC, delete the neighbour GeoElement and  
+                create another one from TPZGeoElBC with the same material id
+            */
             if (fConfig.fBCMatId.find(Nmatid) == fConfig.fBCMatId.end()) continue;
-            
             fGeoMesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
             TPZGeoElBC gelbcWrap(gelside, Nmatid);
            

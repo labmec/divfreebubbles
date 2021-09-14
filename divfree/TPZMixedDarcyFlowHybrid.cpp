@@ -308,9 +308,9 @@ void TPZMixedDarcyFlowHybrid::Solution(const TPZVec<TPZMaterialDataT<STATE>> &da
 
     if (var == 1) { //function (state variable Q)
         for (int i = 0; i < 3; i++) {
-            // solOut[i] = datavec[0].curlsol[0][i];
-            solOut[i] = datavec[0].sol[0][i];
-            std::cout << "SOL = " << i << " " << datavec[0].curlsol[0][i] << " " << datavec[0].sol[0][i] << std::endl;
+            solOut[i] = -datavec[0].curlsol[0][i];
+            // solOut[i] = datavec[0].sol[0][i];
+            // std::cout << "SOL = " << i << " " << datavec[0].curlsol[0][i] << " " << datavec[0].sol[0][i] << std::endl;
         }
         return;
     }
