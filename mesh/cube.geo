@@ -1,4 +1,5 @@
-a =1;
+a =10;
+layers = 1;
 
 Point(1) = {0, 0, 0, a};
 Point(2) = {1, 0, 0, a};
@@ -33,7 +34,7 @@ Line(11) = {1, 2};
 //+
 Line(12) = {3, 5};
 
-//Transfinite Curve {1,2,3,4,5,6,7,8,9,10,11,12} = layers Using Progression 1;
+Transfinite Curve {1,2,3,4,5,6,7,8,9,10,11,12} = layers Using Progression 1;
 //+
 Curve Loop(1) = {12, 5, -11, -8};
 //+
@@ -61,12 +62,11 @@ Plane Surface(6) = {6};
 //+
 Surface Loop(1) = {6, 3, 2, 1, 5, 4};
 
-//Transfinite Surface {1,2,3,4,5,6};
+Transfinite Surface {1,2,3,4,5,6};
 //+
 Volume(1) = {1};
 
-//Transfinite Volume {1};
+Transfinite Volume {1};
 //+
 Physical Volume("Domain") = {1};
-//+
 Physical Surface("Surfaces") = {1,2,3,4,5,6};

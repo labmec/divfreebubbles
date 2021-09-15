@@ -64,6 +64,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh 
 TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh);
 TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
+TPZGeoMesh *CreateGeoMeshTetra(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
 TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh);
 
 //-------------------------------------------------------------------------------------------------
@@ -133,15 +134,16 @@ TPZLogger::InitializePZLOG();
     }
     
     // //for now this should suffice
-    // const int xdiv = 1;
-    // const int ydiv = 1;
-    // const int zdiv = 1;
+    // const int xdiv = 3;
+    // const int ydiv = 3;
+    // const int zdiv = 3;
     // const MMeshType meshType = MMeshType::ETetrahedral;
     // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
     // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    
-    
+    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+
+
     TPZKernelHdivUtils<STATE> util;
 
     //..................................HDiv..................................
@@ -203,7 +205,7 @@ TPZLogger::InitializePZLOG();
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.SetPOrder(pOrder);
         createSpace.Initialize();
-        // util.PrintGeoMesh(gmesh);
+        util.PrintGeoMesh(gmesh);
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
@@ -225,7 +227,7 @@ TPZLogger::InitializePZLOG();
         meshvectorNew[1] = cmeshpressureNew;      
         auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
         std::cout << "MULTIPHYSICS \n";
-        // util.PrintCMeshConnects(cmeshNew);
+        util.PrintCMeshConnects(cmeshNew);
         // Group and condense the elements
         // createSpace.Condense(cmeshNew);
         std::string multiphysicsFile = "MultiPhysicsMeshNew";
@@ -438,6 +440,34 @@ TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
 
   return gmesh;
 }
+
+TPZGeoMesh *CreateGeoMeshTetra(const MMeshType meshType, const TPZVec<int> &nDivs,
+              const int volId, const int bcId)
+{
+    constexpr int dim{3};
+    const TPZManVector<REAL,3> minX = {0,0,0};
+    const TPZManVector<REAL,3> maxX = {1,1,1};
+    constexpr bool createBoundEls{true};
+
+    //all bcs share the same id
+    const TPZManVector<int,7> matIds(7,bcId);
+    matIds[0] = volId;
+    
+    TPZGeoMesh *gmesh = 
+    TPZGeoMeshTools::CreateGeoMeshSingleEl(meshType,volId,createBoundEls);
+
+    for (auto gel : gmesh->ElementVec())
+    {
+        if (gel->Dimension() == 3) continue;
+
+        gel->SetMaterialId(bcId);
+
+    }
+    
+
+  return gmesh;
+}
+
 
 //Flux computational mesh
 TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh) 

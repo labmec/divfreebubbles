@@ -245,7 +245,7 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
      3.1: phi_f^{e,n}: remove one for each face.
      4: test for p = 2.
      5: think about the remaining functions.
-   */
+    */
     const auto gmesh = cmesh->Reference();
     
     const auto nnodes = gmesh->NNodes();
@@ -257,153 +257,191 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
     TPZVec<std::set<int>> vertex_edge_connects(nnodes);
 
     /**
-         The i-th is true if the i-th node has already been dealt with.
+        The i-th is true if the i-th node has already been dealt with.
     */
     TPZVec<bool> done_vertices(nnodes, false);
+    TPZVec<int> removed_edges(nnodes, 0);
 
 
-    /*
-    we need to keep ONE edge, globally speaking*/
+    /* We need to keep ONE edge, globally speaking*/
     done_vertices[0] = true;
 
-    
     /**
-         Contains all the connects marked for removal. It is expected
+        Contains all the connects marked for removal. It is expected
         that all the connects are associated with edges.
     */
-    std::set<int> removed_connects;
+    std::set<int64_t> removed_connects;
 
     /**
-         Contains coplanar connects (to removed_connects) that should not be removed.
+        Contains coplanar connects (to removed_connects) that should not be removed.
     */
     std::set<int> no_remove;
+
     constexpr int edgeDim{1};
 
-    for(auto gel : gmesh->ElementVec()){
+    auto nElements = gmesh->NElements();
+
+    for (auto gel : gmesh->ElementVec()){
+    // for(int64_t el = nElements-1; el >=0; el--){
+    //     auto gel = gmesh->Element(el);
+        if (gel->Dimension() < 3) continue;
+
         const auto nEdges = gel->NSides(edgeDim);
         const auto firstEdge = gel->FirstSide(edgeDim);
         const auto firstFace = firstEdge + nEdges;
-        int ind = gel->Index();
+        const auto index = gel->Index();
 
-        //Auxiliary variable to avoid the selection of three connects of the same face
-        int aux = 0;
+        TPZManVector<int> nface_removed(4,0);
+        TPZManVector<int> block_edges(6,0);
 
-        std::set<int> local_removed;
-        std::set<int> local_connect;
-
-        //First - check how many edges have already been removed
-        for(auto ie = firstEdge; ie < firstFace; ie++){
-            TPZGeoElSide edge(gel,ie);        
-            const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
-            local_connect.insert(con);
-
-            if (removed_connects.find(con) != removed_connects.end()) {
-                local_removed.insert(con);
-                aux++;
-            }
-            //Additional check of removed connects
-            if (aux == nEdges) DebugStop();
-            /*The maximum number of edges were already been removed, then we need 
-                to store the remaining connect to not be removed.
-            */
-            if (aux == nEdges-1){
-                set_symmetric_difference(local_connect.begin(), local_connect.end(), local_removed.begin(), local_removed.end(), inserter(no_remove, no_remove.begin()));
-            }
-        }
-        
-        //Maximum number of edges that can be removed
-        int max_remove = nEdges-1;
-
-        if (aux == nEdges-1){
-            //The maximum number of edges have been removed
-            continue;
-        } else if (aux > nEdges-1) {
-            //All edges have been removed
-            DebugStop();
-        } else {
-            //Update the maximum number of edges that can be removed in the current element
-            max_remove = nEdges-1-aux;
-        }
-        
-        // If the maximum number of connects allowed to be removed is nEdges-1, then the last connect must not be removed.
-        if(max_remove == nEdges-1){
-            TPZGeoElSide edge(gel,firstFace-1-firstEdge);
-            no_remove.insert(edge.Element()->Reference()->ConnectIndex(firstFace-1-firstEdge));
-        }
-
-        int count = 0;
-        //Second - remove connects.
         for(auto ie = firstEdge; ie < firstFace; ie++){
             TPZGeoElSide edge(gel,ie);
         
             const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
 
+            bool connectHasBeenRemoved = false;
             /* checks if edge has been treated already */
             if (removed_connects.find(con) != removed_connects.end()) {
+                connectHasBeenRemoved = true;
+            }
+
+            if (connectHasBeenRemoved){
+                TPZStack<TPZGeoElSide> gelsides;
+                gel->AllHigherDimensionSides(ie,2,gelsides);
+                
+                for (int i = 0; i < gelsides.size(); i++)
+                {
+                    int face = gelsides[i].Side() - firstFace;
+                    nface_removed[face]++;
+                    if (nface_removed[face] == 3){
+                        DebugStop();
+                    }
+                }
+            }
+            
+        }//edges
+
+        for(auto ie = firstEdge; ie < firstFace; ie++){
+            TPZGeoElSide edge(gel,ie);
+        
+            const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
+
+            TPZStack<TPZGeoElSide> gelsides;
+            gel->AllHigherDimensionSides(ie,2,gelsides);
+            
+            for (int i = 0; i < gelsides.size(); i++)
+            {
+                int face = gelsides[i].Side() - firstFace;
+                if (nface_removed[face] == 2) {
+                    block_edges[ie-firstEdge]=1;
+                } else if (nface_removed[face] > 2){
+                    DebugStop();
+                }
+            }
+        }//edge
+
+        for (int i = 0; i < gel->NCornerNodes(); i++)
+        {            
+            auto inode = gel->NodeIndex(i);
+            if (done_vertices[inode]) {
                 continue;
             }
-            if (count == max_remove) continue;
 
-            const auto v1 = edge.SideNodeIndex(0);
-            const auto v2 = edge.SideNodeIndex(1);
-            
-            vertex_edge_connects[v1].insert(con);
-            vertex_edge_connects[v2].insert(con);
+            TPZStack<TPZGeoElSide> gelsides;
+            gel->AllHigherDimensionSides(i,1,gelsides);
 
-            //both vertices have been treated
-            if(done_vertices[v1] && done_vertices[v2]){
-                continue;
-            } else {
+            for (int j = 0; j < gelsides.size(); j++)
+            {
+                int edge = gelsides[j].Side() - gel->NCornerNodes();
+                const auto con = gel->Reference()->ConnectIndex(edge);
 
-                /* Checks if the connect can be removed*/
-                if (no_remove.find(con) != no_remove.end()) {
-                    continue;
-                }
-
-                /*either one or none vertex has been treated,
-                so we need to remove the edge*/
+                if(removed_connects.find(con) != removed_connects.end()) continue;
+                if(block_edges[edge]==1) continue;
                 removed_connects.insert(con);
-                count++;
+                done_vertices[inode] = true;
 
-                if(!done_vertices[v1] && !done_vertices[v2]){
-                    /*if no vertex has been treated we
-                        mark ONE OF THEM as treated*/
-                    done_vertices[v1] = true;                    
-                } else {
-                    /*one of them had been treated already,
-                        instead of checking which, we mark both as true*/
-                    done_vertices[v1] = true;
-                    done_vertices[v2] = true;
+                TPZStack<TPZGeoElSide> gelsides2D;
+                gel->AllHigherDimensionSides(edge+gel->NCornerNodes(),2,gelsides2D);
+                
+                for (int k = 0; k < gelsides2D.size(); k++)
+                {
+                    int face = gelsides2D[k].Side() - firstFace;
+                    nface_removed[face]++;
+                    if (nface_removed[face]==3){
+                        DebugStop();
+                    }
+                    if (nface_removed[face] == 2) {
+                        TPZStack<int> smallsides;
+                        gel->LowerDimensionSides(face+firstFace,smallsides);
+
+                        for (size_t isize = 0; isize < smallsides.size(); isize++)
+                        {
+                            int side = smallsides[isize];
+                            if (side < gel->NCornerNodes()) continue;
+                            
+                            block_edges[side-gel->NCornerNodes()]=1;
+                        }                       
+                    }   
                 }
             }
         }
-    }
+    }//gel
+
+    // removed_connects.insert(1);
+    // removed_connects.insert(2);
+    // removed_connects.insert(7);
 
 
     bool check_all_vertices{true};
     for(auto v : done_vertices){
         check_all_vertices = check_all_vertices && v;
         if(!v){
-        break;
+            break;
         }
     }
     
-    // std::cout << "Removed = ";
-    // for (auto rem : removed_connects)
-    // {
-    //     std::cout << rem << " " ;
-    // }
-    // std::cout << std::endl;
+    std::cout << "Removed (" << removed_connects.size() << ") = ";
+    for (auto rem : removed_connects)
+    {
+        std::cout << rem << " " ;
+    }
+    std::cout << std::endl;
 
-    // std::cout << "No_remove = ";
-    // for (auto rem : no_remove)
-    // {
-    //     std::cout << rem << " " ;
-    // }
-    // std::cout << std::endl;
+    std::cout << "No_remove (" << no_remove.size() << ") = ";
+    for (auto rem : no_remove)
+    {
+        std::cout << rem << " " ;
+    }
+    std::cout << std::endl;
+
+    std::cout << "Done_vertices (" << done_vertices.size() << ") = ";
+    for (auto rem : done_vertices)
+    {
+        std::cout << rem << " " ;
+    }
+    std::cout << std::endl;
+
+    std::cout << "vertex_edge_connects \n";
+    for (int i = 0; i < nnodes; i++)
+    {
+        std::cout << "node = " << i << "; ";
+        int count = 0;
+        for (auto rem : vertex_edge_connects[i])
+        {
+            if (removed_connects.find(rem) != removed_connects.end()){
+                std::cout << "{" << rem << "} " ;
+                count++;
+            } else {
+                std::cout << rem << " " ;
+            }
+            
+        }
+        std::cout <<";             " << count << " edge(s) removed" << std::endl;
+        if (count == 0 && i != 0) std::cout << "PROBLEM! Node " << i << " did not removed an edge!\n" ;
+        
+    }
     
-
-    if(check_all_vertices == false) DebugStop();
+    // if(check_all_vertices == false) DebugStop();
     
     bool check_edges_left{true};
     for(auto iv = 0; iv < nnodes; iv++){
@@ -418,7 +456,7 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         check_edges_left = local_check && check_edges_left;
     }
 
-    if (check_edges_left == false) DebugStop();
+    // if (check_edges_left == false) DebugStop();
     
     activeEquations.Resize(0);
     for (int iCon = 0; iCon < cmesh->NConnects(); iCon++) {
@@ -449,6 +487,9 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
         const auto firstFace = firstEdge + nEdges;
 
         int aux = 0;
+
+        std::set<int> local_removed;
+        TPZVec<bool> local_index(firstFace,false);
         for(auto ie = firstEdge; ie < firstFace; ie++){
             
             TPZGeoElSide edge(gel,ie);
@@ -458,21 +499,46 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
             /* checks if edge has been treated already */
             if (removed_connects.find(con) != removed_connects.end()) {
                 aux++;
+                local_removed.insert(con);
+                local_index[ie-firstEdge] = true;
             }
-            const auto v1 = edge.SideNodeIndex(0);
-            const auto v2 = edge.SideNodeIndex(1);
         }
 
-        if (aux == nEdges) std::cout << "All edges have been removed in GeoEl " << gel->Index()<< std::endl;
-        // if (aux == 0) std::cout << "Possible problem? " << gel->Index() << std::endl;
+        if (gel->Dimension() == 3){
+            std::cout << "gel = " << gel->Index() << ", removed connects = ";
+            for (auto rem : local_removed)
+            {
+                std::cout << rem << ", " ;
+            }
+            // Checks of coplanar edges
+            if ((local_index[0] && local_index[1] && local_index[2]) ||
+                (local_index[0] && local_index[3] && local_index[4]) ||
+                (local_index[2] && local_index[3] && local_index[5]) ||
+                (local_index[1] && local_index[5] && local_index[4])) 
+                std::cout << "Problem with this element: coplanar edges removed!" ;
+            // // Checks of edges sharing the same node
+            // if ((local_index[0] && local_index[2] && local_index[3]) ||
+            //     (local_index[0] && local_index[1] && local_index[4]) ||
+            //     (local_index[2] && local_index[1] && local_index[5]) ||
+            //     (local_index[3] && local_index[5] && local_index[4])) 
+            //     std::cout << "Problem with this element: at least 3 edges sharing the same node!" ;
+            std::cout << std::endl;
+        }
+
+        if (aux == nEdges) {
+            std::cout << "All edges have been removed in GeoEl " << gel->Index()<< std::endl;
+        }
+
     }
 
-
+    if (removed_connects.size() != nnodes-1){
+        std::cout << "Removed " << removed_connects.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
+        DebugStop();
+    }
 
 
     return 0;
 }
-
 
 template class TPZKernelHdivUtils<STATE>;
 // template class TPZKernelHdivUtils<CSTATE>;

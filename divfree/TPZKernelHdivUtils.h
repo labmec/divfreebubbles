@@ -11,6 +11,7 @@
 #include <map>
 #include "pzstack.h"
 #include "TPZLinearAnalysis.h"
+#include <TPZVTKGeoMesh.h>
 
 //#include "pzgeoelrefless.h"
 
