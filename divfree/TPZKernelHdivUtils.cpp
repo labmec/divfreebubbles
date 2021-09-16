@@ -281,110 +281,150 @@ bool TPZKernelHdivUtils<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> c
 
     auto nElements = gmesh->NElements();
 
+    //Loop over the elements
     for (auto gel : gmesh->ElementVec()){
-    // for(int64_t el = nElements-1; el >=0; el--){
-    //     auto gel = gmesh->Element(el);
+    
+        //Only tetrahedra is considered in the algorithm
         if (gel->Dimension() < 3) continue;
-
+        
         const auto nEdges = gel->NSides(edgeDim);
         const auto firstEdge = gel->FirstSide(edgeDim);
         const auto firstFace = firstEdge + nEdges;
         const auto index = gel->Index();
+        const auto ncorner = gel->NCornerNodes();
 
+        // Number of faces removed
         TPZManVector<int> nface_removed(4,0);
+        // Edge blocked - 1 if it can't be removed
         TPZManVector<int> block_edges(6,0);
 
+        //First - check which edges have already been treated and relates them to the element faces
         for(auto ie = firstEdge; ie < firstFace; ie++){
+            
             TPZGeoElSide edge(gel,ie);
-        
             const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
+            
+            //Store vertex edge connects for checking purposes - not part of the algorithm
+            //------------------------------------
+            const auto v1 = edge.SideNodeIndex(0);
+            const auto v2 = edge.SideNodeIndex(1);
+            
+            vertex_edge_connects[v1].insert(con);
+            vertex_edge_connects[v2].insert(con);
+            //------------------------------------
 
-            bool connectHasBeenRemoved = false;
-            /* checks if edge has been treated already */
+            // checks if the edge has already been treated
             if (removed_connects.find(con) != removed_connects.end()) {
-                connectHasBeenRemoved = true;
-            }
-
-            if (connectHasBeenRemoved){
+                
+                // Gets all the element faces containing the edge ie
                 TPZStack<TPZGeoElSide> gelsides;
                 gel->AllHigherDimensionSides(ie,2,gelsides);
                 
-                for (int i = 0; i < gelsides.size(); i++)
+                // Increment the faces with the edge ie 
+                for (int iside = 0; iside < gelsides.size(); iside++)
                 {
-                    int face = gelsides[i].Side() - firstFace;
+                    int face = gelsides[iside].Side() - firstFace;
                     nface_removed[face]++;
-                    if (nface_removed[face] == 3){
+                    if (nface_removed[face] > 2){
                         DebugStop();
                     }
-                }
-            }
-            
+                }//iside
+            }//if connect has been treated
         }//edges
 
+        //Second - Blocks the remaining edge in
         for(auto ie = firstEdge; ie < firstFace; ie++){
+            
             TPZGeoElSide edge(gel,ie);
-        
             const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
 
+            // Gets all the element faces containing the edge ie
             TPZStack<TPZGeoElSide> gelsides;
             gel->AllHigherDimensionSides(ie,2,gelsides);
             
-            for (int i = 0; i < gelsides.size(); i++)
+            // Blocks remaining edge in the faces with 2 edges already treated
+            for (int iside = 0; iside < gelsides.size(); iside++)
             {
-                int face = gelsides[i].Side() - firstFace;
+                int face = gelsides[iside].Side() - firstFace;
+                // If 2 edges were removed, block the third edge;
+                // If 3 edges were removed - forbiden! DebugStop();
+                // Do nothing otherwise.
                 if (nface_removed[face] == 2) {
                     block_edges[ie-firstEdge]=1;
+                    //this connect should not be removed in the next elements too.
+                    // no_remove.insert(con); 
                 } else if (nface_removed[face] > 2){
                     DebugStop();
                 }
-            }
+            }//iside
         }//edge
 
-        for (int i = 0; i < gel->NCornerNodes(); i++)
+        //Third - Removes a connect, if possible. Loops over the corner nodes
+        for (int icorner = 0; icorner < ncorner; icorner++)
         {            
-            auto inode = gel->NodeIndex(i);
+            // If the node has been treated, go to the next one
+            auto inode = gel->NodeIndex(icorner);
             if (done_vertices[inode]) {
                 continue;
             }
 
-            TPZStack<TPZGeoElSide> gelsides;
-            gel->AllHigherDimensionSides(i,1,gelsides);
+            // Gets the edges with the corner node
+            TPZStack<TPZGeoElSide> cornerEdges;
+            gel->AllHigherDimensionSides(icorner,1,cornerEdges);
 
-            for (int j = 0; j < gelsides.size(); j++)
+            // Loops over the edges with the corner
+            for (int iedge = 0; iedge < cornerEdges.size(); iedge++)
             {
-                int edge = gelsides[j].Side() - gel->NCornerNodes();
+                int edge = cornerEdges[iedge].Side() - ncorner;
                 const auto con = gel->Reference()->ConnectIndex(edge);
 
-                if(removed_connects.find(con) != removed_connects.end()) continue;
-                if(block_edges[edge]==1) continue;
+                // /* Checks if the connect can be removed*/
+                // if (no_remove.find(con) != no_remove.end()) {
+                //     done_vertices[inode] = true;
+                //     break;
+                // }
+
+                // If the edge has already been removed or it is blocked, go to the next one
+                if(removed_connects.find(con) != removed_connects.end()) {
+                    done_vertices[inode] = true;
+                    break;
+                }
+                if(block_edges[edge] == 1) continue;
+                
+                // Else, remove the edge
                 removed_connects.insert(con);
                 done_vertices[inode] = true;
 
-                TPZStack<TPZGeoElSide> gelsides2D;
-                gel->AllHigherDimensionSides(edge+gel->NCornerNodes(),2,gelsides2D);
+                // Gets the faces with the edge
+                TPZStack<TPZGeoElSide> gelsides;
+                gel->AllHigherDimensionSides(edge+ncorner,2,gelsides);
                 
-                for (int k = 0; k < gelsides2D.size(); k++)
+                for (int iface = 0; iface < gelsides.size(); iface++)
                 {
-                    int face = gelsides2D[k].Side() - firstFace;
+                    //Increment the face counter with the edge
+                    int face = gelsides[iface].Side() - firstFace;
                     nface_removed[face]++;
-                    if (nface_removed[face]==3){
+                    if (nface_removed[face] > 2){
                         DebugStop();
                     }
+                    // If the counter is 2, then block the remaining edge
                     if (nface_removed[face] == 2) {
+                        
                         TPZStack<int> smallsides;
                         gel->LowerDimensionSides(face+firstFace,smallsides);
 
                         for (size_t isize = 0; isize < smallsides.size(); isize++)
                         {
                             int side = smallsides[isize];
-                            if (side < gel->NCornerNodes()) continue;
+                            if (side < ncorner) continue;
                             
-                            block_edges[side-gel->NCornerNodes()]=1;
+                            block_edges[side-ncorner] = 1;
+                            // no_remove.insert(gel->Reference()->ConnectIndex(side-ncorner));
                         }                       
                     }   
-                }
-            }
-        }
+                }//iside
+            }//iedge
+        }//icorner
     }//gel
 
     // removed_connects.insert(1);
