@@ -205,18 +205,18 @@ TPZLogger::InitializePZLOG();
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.SetPOrder(pOrder);
         createSpace.Initialize();
-        util.PrintGeoMesh(gmesh);
+        // util.PrintGeoMesh(gmesh);
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-        std::cout << "FLUX \n";
+        // std::cout << "FLUX \n";
         // util.PrintCMeshConnects(cmeshfluxNew);
         std::string fluxFile = "FluxCMesh";
         util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-        std::cout << "PRESSURE \n";
+        // std::cout << "PRESSURE \n";
         // util.PrintCMeshConnects(cmeshpressureNew);
         std::string pressureFile = "PressureCMesh";
         util.PrintCompMesh(cmeshpressureNew,pressureFile);

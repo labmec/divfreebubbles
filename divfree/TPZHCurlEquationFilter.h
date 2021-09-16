@@ -28,8 +28,50 @@ template <class TVar>
 class TPZHCurlEquationFilter {
 
 private:
-    // The data structures
+    // DATA STRUCTURES
+    // 1 - VERTEX DATA STRUCTURE
+    struct Vertex
+    {   
+        // The edges connected to a vertex
+        std::set<int> edge_connect;
+        // The number of free edges, i.e, not removed in a vertex
+        int64_t free_edges;
+    };
 
+    // 2 - EDGE DATA STRUCTURE
+    struct Edge
+    {
+        //The edge index
+        int index;
+        //The vertices connected to an edge
+        std::set<int> vertex_connect;
+        //The faces connected to an edge
+        std::set<int> face_connect;
+        //The edge status: 0 - free to be removed; 1 - removed; 2 - blocked
+        int status = 0;
+        //Number of faces removed from the edge
+        int faces_removed = 0;
+    };
+    
+    // 3 - FACE DATA STRUCTURE
+    struct Face
+    {
+        //The face index
+        int index;
+
+        //The connects of a face
+        // TPZVec<int> edge_connect(const int size = 3);
+        std::set<int> edge_connect;
+        
+        //Face status:
+        //  0 - free: 0 edges removed
+        //  1 - crytical: 1 edge removed
+        //  2 - blocked: 2 edges removed
+        //  3 - fortunate: 1 edge blocked
+        int status = 0;    
+    };
+
+  
 public:
     /**
          @brief Removes some equations associated with edges to ensure that
@@ -41,8 +83,8 @@ public:
     */
     bool FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<int64_t> &activeEquations);
     
-    
-    void CreateFilterDataStructure(TPZGeoMesh* gmesh, const int &edgeDim, TPZVec<std::set<int>> &vertex_edge_connects);
+    void InitDataStructures(TPZGeoMesh* gmesh, TPZVec<Vertex> &mVertex, std::map<int,Edge> &mEdge,std::map<int,Face> &mFace);
+
 
 };
 #endif
