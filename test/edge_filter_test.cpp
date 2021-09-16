@@ -19,8 +19,8 @@
 #include <pzstepsolver.h>
 #include "TPZMatCurlDotCurl.h"
 #include "TPZCompElHCurlNoGrads.h"
-#include "TPZKernelHdivUtils.h"
-#include <TPZGmshReader.h>
+ #include <TPZGmshReader.h>
+#include "TPZHCurlEquationFilter.h"
 
 /**
    @brief Creates a geometric mesh with elements of a given type on a unit cube.
@@ -104,9 +104,9 @@ void TestEdgeFiltering(TPZGeoMesh* gmesh, const int &volId, const int &bcId)
 
     TPZVec<int64_t> activeEqs;
     
-    TPZKernelHdivUtils<STATE> util;
+    TPZHCurlEquationFilter<STATE> *filter;
 
-    if(util.FilterEdgeEquations(cmesh, activeEqs)){
+    if(filter->FilterEdgeEquations(cmesh, activeEqs)){
         return;
     }
 

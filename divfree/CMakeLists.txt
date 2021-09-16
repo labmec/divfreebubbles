@@ -38,12 +38,14 @@ set(UTIL_HEADERS
   divfree_config.h
   TPZApproxSpaceKernelHdiv.h
   TPZKernelHdivHybridizer.h
-  TPZKernelHdivUtils.h)
+  TPZKernelHdivUtils.h
+  TPZHCurlEquationFilter.h)
 
 set(UTIL_SRCS
   TPZKernelHdivHybridizer.cpp
   TPZApproxSpaceKernelHdiv.cpp
-  TPZKernelHdivUtils.cpp)
+  TPZKernelHdivUtils.cpp
+  TPZHCurlEquationFilter.cpp)
 
 target_sources(divfree PRIVATE
   ${MATERIAL_HEADERS} ${MATERIAL_SRCS}
