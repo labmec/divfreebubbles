@@ -47,8 +47,9 @@ private:
         std::set<int> vertex_connect;
         //The faces connected to an edge
         std::set<int> face_connect;
-        //The edge status: 0 - free to be removed; 1 - removed; 2 - blocked
-        int status = 0;
+        //The edge status
+        enum StatusType {EFree, ERemoved, EBlocked};
+        StatusType status = EFree;
         //Number of faces removed from the edge
         int faces_removed = 0;
     };
@@ -68,7 +69,8 @@ private:
         //  1 - crytical: 1 edge removed
         //  2 - blocked: 2 edges removed
         //  3 - fortunate: 1 edge blocked
-        int status = 0;    
+        enum StatusType {EFree, ECrytical, EBlocked, EFortunate};
+        StatusType status = EFree;  
     };
 
   

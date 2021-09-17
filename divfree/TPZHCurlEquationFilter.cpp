@@ -83,6 +83,22 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
         mVertex[inode].free_edges = mVertex[inode].edge_connect.size();
     }
 
+    //Cheks if an edge has more than 2 vertices
+    for(auto it = mEdge.cbegin(); it != mEdge.cend(); ++it){
+        if (it->second.vertex_connect.size() != 2){
+            std::cout << "Edge with more than 2 vertices!\n";
+            DebugStop();
+        }
+    }
+    
+    //Cheks if a face has more than 3 edges
+    for(auto it = mFace.cbegin(); it != mFace.cend(); ++it){
+        if (it->second.edge_connect.size() != 3){
+            std::cout << "Face with more than 3 edges!\n"; 
+            DebugStop();
+        }
+    }
+
     // PRINT THE DATA STRUCTURES
     // std::cout << "MEDGE.size() " << mEdge.size()<<std::endl;
     // for(auto it = mEdge.cbegin(); it != mEdge.cend(); ++it)
@@ -105,6 +121,8 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
     //     }
     //     std::cout << std::endl;
     // }
+    
+    
 
     // std::cout << "mEdge.size() " << mEdge.size()<<std::endl;
     // for(auto it = mEdge.cbegin(); it != mEdge.cend(); ++it)
@@ -124,23 +142,17 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
                     TPZVec<int64_t> &activeEquations)
 {
 
-    /**TODO:
-     1: for each vertex: at least one edge must be removed
-     2: test for p = 1.
-     3: create the class for filtering the functions in the master el.
-     3.1: phi_f^{e,n}: remove one for each face.
-     4: test for p = 2.
-     5: think about the remaining functions.
-    */
-    const auto gmesh = cmesh->Reference();
-    
+    const auto gmesh = cmesh->Reference();    
     const auto nnodes = gmesh->NNodes();
 
-    /**
-         The i-th position contains the indices of all the 
-        connects associated with the edges adjacent to the i-th node
-    */
-    // TPZVec<std::set<int>> vertex_edge_connects(nnodes);
+    // 1 - Vertex Data Structure
+    TPZVec<Vertex> mVertex(gmesh->NNodes());
+    // 2 - Edge Data Structure
+    std::map<int,Edge> mEdge;
+    // 3 - Face Data Structure
+    std::map<int,Face> mFace;
+
+    InitDataStructures(gmesh,mVertex,mEdge,mFace);
 
     /**
         The i-th is true if the i-th node has already been dealt with.
@@ -166,14 +178,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
     const int edgeDim{1};
     auto nElements = gmesh->NElements();
 
-    // 1 - Vertex Data Structure
-    TPZVec<Vertex> mVertex(gmesh->NNodes());
-    // 2 - Edge Data Structure
-    std::map<int,Edge> mEdge;
-    // 3 - Face Data Structure
-    std::map<int,Face> mFace;
-
-    InitDataStructures(gmesh,mVertex,mEdge,mFace);
+    
 
     //Loop over the elements
     for (auto gel : gmesh->ElementVec()){
