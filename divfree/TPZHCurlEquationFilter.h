@@ -30,35 +30,42 @@ class TPZHCurlEquationFilter {
 private:
     // DATA STRUCTURES
     // 1 - VERTEX DATA STRUCTURE
-    struct Vertex
+    struct VertexFilter
     {   
         // The edges connected to a vertex
         std::set<int> edge_connect;
         // The number of free edges, i.e, not removed in a vertex
         int64_t free_edges;
+        // Edge associated removed
+        int64_t removed_edge;
+        // The vertex status: false - free; true - removed
+        bool status = false;
     };
 
     // 2 - EDGE DATA STRUCTURE
-    struct Edge
+    enum EdgeStatusType {EFreeEdge, ERemovedEdge, EBlockedEdge};
+    struct EdgeFilter
     {
         //The edge index
-        int index;
+        int64_t index;
         //The vertices connected to an edge
         std::set<int> vertex_connect;
         //The faces connected to an edge
         std::set<int> face_connect;
         //The edge status
-        enum StatusType {EFree, ERemoved, EBlocked};
-        StatusType status = EFree;
+        EdgeStatusType status = EFreeEdge;
         //Number of faces removed from the edge
-        int faces_removed = 0;
+        int64_t faces_removed = 0;
+        //If it was removed, which is the vertex associated
+        int64_t vertex_treated;
     };
     
     // 3 - FACE DATA STRUCTURE
-    struct Face
+    enum FaceStatusType {EFreeFace, ECryticalFace, EBlockedFace, EFortunateFace};
+    struct FaceFilter
     {
         //The face index
-        int index;
+        int64_t index;
 
         //The connects of a face
         // TPZVec<int> edge_connect(const int size = 3);
@@ -69,8 +76,7 @@ private:
         //  1 - crytical: 1 edge removed
         //  2 - blocked: 2 edges removed
         //  3 - fortunate: 1 edge blocked
-        enum StatusType {EFree, ECrytical, EBlocked, EFortunate};
-        StatusType status = EFree;  
+        FaceStatusType status = EFreeFace;  
     };
 
   
@@ -85,8 +91,16 @@ public:
     */
     bool FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<int64_t> &activeEquations);
     
-    void InitDataStructures(TPZGeoMesh* gmesh, TPZVec<Vertex> &mVertex, std::map<int,Edge> &mEdge,std::map<int,Face> &mFace);
+    void InitDataStructures(TPZGeoMesh* gmesh, TPZVec<VertexFilter> &mVertex, 
+                            std::map<int,EdgeFilter> &mEdge,std::map<int,FaceFilter> &mFace, 
+                            std::map<int,std::set<int>> &freeEdges);
 
+    int64_t ChooseNode(TPZVec<VertexFilter> &mVertex);
 
+    int64_t ChooseEdge(int64_t &treatNode, TPZVec<VertexFilter> &mVertex, std::map<int,EdgeFilter> &mEdge);
+
+    void UpdateVertexFreeEdges(int64_t &treatNode, int64_t &remEdge, TPZVec<VertexFilter> &mVertex, std::map<int,std::set<int>> &freeEdges);
+
+    void UpdateEdgeAndFaceStatus(int64_t &remEdge, std::map<int,EdgeFilter> &mEdge, std::map<int,FaceFilter> &mFace);
 };
 #endif

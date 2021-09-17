@@ -10,9 +10,10 @@
 
 template <class TVar>
 void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh, 
-                                                      TPZVec<Vertex> &mVertex,
-                                                      std::map<int,Edge> &mEdge,
-                                                      std::map<int,Face> &mFace)
+                                                      TPZVec<VertexFilter> &mVertex,
+                                                      std::map<int,EdgeFilter> &mEdge,
+                                                      std::map<int,FaceFilter> &mFace,
+                                                      std::map<int,std::set<int>> &freeEdges)
 {
     const int edgeDim{1};
 
@@ -43,6 +44,9 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
 
             mEdge[con].vertex_connect.insert(v1);
             mEdge[con].vertex_connect.insert(v2);
+
+            freeEdges[con].insert(v1);
+            freeEdges[con].insert(v2);
             
             TPZStack<TPZGeoElSide> gelsides;
             gel->AllHigherDimensionSides(ie,2,gelsides);
@@ -56,7 +60,7 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
                     mEdge[con].face_connect.insert(con_face);
                 } else {
                     //create an auxiliary edge
-                    Edge auxEdge;
+                    EdgeFilter auxEdge;
                     mEdge.insert(std::make_pair(con,auxEdge));
                     mEdge[con].index = con;           
                     mEdge[con].face_connect.insert(con_face);
@@ -68,7 +72,7 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
                     mFace[con_face].edge_connect.insert(con);
                 } else {
                     //create an auxiliary edge
-                    Face auxFace;
+                    FaceFilter auxFace;
                     mFace.insert(std::make_pair(con_face,auxFace));
                     mFace[con_face].index = con;           
                     mFace[con_face].edge_connect.insert(con);
@@ -90,6 +94,12 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
             DebugStop();
         }
     }
+    for(auto it = freeEdges.cbegin(); it != freeEdges.cend(); ++it){
+        if (it->second.size() != 2){
+            std::cout << "Edge with more than 2 vertices!\n";
+            DebugStop();
+        }
+    }
     
     //Cheks if a face has more than 3 edges
     for(auto it = mFace.cbegin(); it != mFace.cend(); ++it){
@@ -99,6 +109,7 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
         }
     }
 
+    //*************FINISH**************
     // PRINT THE DATA STRUCTURES
     // std::cout << "MEDGE.size() " << mEdge.size()<<std::endl;
     // for(auto it = mEdge.cbegin(); it != mEdge.cend(); ++it)
@@ -121,8 +132,6 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
     //     }
     //     std::cout << std::endl;
     // }
-    
-    
 
     // std::cout << "mEdge.size() " << mEdge.size()<<std::endl;
     // for(auto it = mEdge.cbegin(); it != mEdge.cend(); ++it)
@@ -134,8 +143,144 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh,
     //     }
     //     std::cout << std::endl;
     // }
-    
+
+    // std::cout << "freeEdges.size() " << freeEdges.size()<<std::endl;
+    // for(auto it = freeEdges.cbegin(); it != freeEdges.cend(); ++it)
+    // {
+    //     std::cout <<  "freeEdges = " << it->first <<  ", free vertices = ";
+    //     for (auto rem : it->second)
+    //     {
+    //         std::cout << rem << " " ;
+    //     }
+    //     std::cout << std::endl;
+    // }
 }
+
+template <class TVar>
+int64_t TPZHCurlEquationFilter<TVar>::ChooseNode(TPZVec<VertexFilter> &mVertex)
+{
+    int64_t nedges_min = 1e3;
+    int64_t treatNode;
+    for (int inode = 0; inode < mVertex.size(); inode++)
+    {
+        if (mVertex[inode].status) continue; // it has been already treated
+
+        // The criterium is the node with min edges. TO BE DISCUSSED
+        if (mVertex[inode].edge_connect.size() < nedges_min) {
+            treatNode = inode;
+            nedges_min = mVertex[inode].edge_connect.size();
+        }
+    }
+
+    return treatNode;
+}   
+
+template <class TVar>
+int64_t TPZHCurlEquationFilter<TVar>::ChooseEdge(int64_t &treatNode, TPZVec<VertexFilter> &mVertex, 
+                                                 std::map<int,EdgeFilter> &mEdge)
+{
+    int64_t nfaces_min = 1e3;
+    int64_t remEdge;
+    bool flag = false;
+    for (auto iedge : mVertex[treatNode].edge_connect)
+    {
+        // If the edge has been removed or is blocked, go to the next one
+        if (mVertex[treatNode].status == EBlockedEdge) continue;
+        if (mVertex[treatNode].status == ERemovedEdge) continue;
+
+        // The criterium adopted is the edge with min number of faces... to be discussed
+        if (mEdge[iedge].face_connect.size() < nfaces_min) {
+            remEdge = iedge;
+            nfaces_min = mEdge[iedge].face_connect.size();
+            flag = true;
+        }
+    }
+
+    if (!flag) DebugStop(); // No edge available to remove in this node
+
+    return remEdge;
+}
+
+template <class TVar>
+void TPZHCurlEquationFilter<TVar>::UpdateVertexFreeEdges(int64_t &treatNode, int64_t &remEdge, 
+                                                         TPZVec<VertexFilter> &mVertex,
+                                                         std::map<int,std::set<int>> &freeEdges)
+{
+    // Discover the two nodes connect to the chosen edge 
+    TPZVec<int> twoNodes(2);
+    twoNodes[0] = treatNode; //One is the treated node. Just need to find the other one
+    for (int inode = 0; inode < mVertex.size(); inode++)
+    {
+        if (mVertex[inode].edge_connect.find(remEdge) != mVertex[inode].edge_connect.end()) {
+            if (inode == treatNode) continue;
+            twoNodes[1] = inode;
+            break;
+        }
+    }
+    //Reduce the number of free edges for the two nodes
+    mVertex[twoNodes[0]].free_edges--;
+    mVertex[twoNodes[1]].free_edges--;
+
+    // if(mVertex[twoNodes[0]].free_edges < 0 || mVertex[twoNodes[1]].free_edges < 0) DebugStop();
+
+    
+
+}
+
+template <class TVar>
+void TPZHCurlEquationFilter<TVar>::UpdateEdgeAndFaceStatus(int64_t &remEdge, std::map<int,EdgeFilter> &mEdge, std::map<int,FaceFilter> &mFace)
+{
+
+    //************** MAYBE THERE IS SOMETHING MISSING HERE.**************
+    for (auto iface : mEdge[remEdge].face_connect)
+    {
+        auto status = mFace[iface].status;
+        if (status == EFreeFace){
+            mFace[iface].status == ECryticalFace;
+        } else if (status == ECryticalFace) {
+            mFace[iface].status == EBlockedFace;
+        }
+    }
+
+    // Updates blocked edges and face status
+    for(auto it = mFace.begin(); it != mFace.end(); ++it)
+    {
+        int aux = 0;
+        TPZVec<int> loc_edges(2); // the edges already removed - if >2 should give a DebugStop.
+        //Loops over the edges of a face
+        for (auto iedge : it->second.edge_connect)
+        {
+            if (mEdge[iedge].status == ERemovedEdge){
+                loc_edges[aux] = iedge;
+                aux++;
+            }
+        }
+        // Now checks how many edges have been removed
+        switch (aux)
+        {
+            case 0:
+                it->second.status = EFreeFace;
+                break;
+            case 1:
+                it->second.status = ECryticalFace;
+                break;
+            case 2:
+                //Blocks the third edge
+                for (auto iedge : it->second.edge_connect){
+                    if (iedge != loc_edges[0] && iedge != loc_edges[1]){
+                        mEdge[iedge].status = EBlockedEdge;
+                        break;
+                    }
+                }
+                it->second.status = EFortunateFace; // it has an edge blocked.
+                break;
+            default:
+                DebugStop();
+                break;
+        }
+    }
+}
+
 
 template <class TVar>
 bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
@@ -146,21 +291,21 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
     const auto nnodes = gmesh->NNodes();
 
     // 1 - Vertex Data Structure
-    TPZVec<Vertex> mVertex(gmesh->NNodes());
+    TPZVec<VertexFilter> mVertex(gmesh->NNodes());
     // 2 - Edge Data Structure
-    std::map<int,Edge> mEdge;
+    std::map<int,EdgeFilter> mEdge;
     // 3 - Face Data Structure
-    std::map<int,Face> mFace;
+    std::map<int,FaceFilter> mFace;
+    // 4 - The free edges and their corresponding free vertices
+    std::map<int,std::set<int>> freeEdges;
 
-    InitDataStructures(gmesh,mVertex,mEdge,mFace);
+    InitDataStructures(gmesh,mVertex,mEdge,mFace,freeEdges);
 
-    /**
+     /**
         The i-th is true if the i-th node has already been dealt with.
     */
     TPZVec<bool> done_vertices(nnodes, false);
-    TPZVec<int> removed_edges(nnodes, 0);
-
-
+    const int edgeDim{1};
     /* We need to keep ONE edge, globally speaking*/
     done_vertices[0] = true;
 
@@ -168,176 +313,99 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
         Contains all the connects marked for removal. It is expected
         that all the connects are associated with edges.
     */
-    std::set<int64_t> removed_connects;
+    // ATTENTION!! IT IS NOT BEEING CURRENTLY USED, BUT CAN BE UPDATED AT THE END OF THE ALGORITHM
+    std::set<int64_t> removed_edges; 
 
-    /**
-        Contains coplanar connects (to removed_connects) that should not be removed.
-    */
-    std::set<int> no_remove;
-
-    const int edgeDim{1};
-    auto nElements = gmesh->NElements();
-
+    // while there is a vertex not treated
+    auto count = std::count(done_vertices.begin(), done_vertices.end(), false);
     
+    //ATENTION! Needs to perform an update before entering the loop since we want to keep node 0.
+    //It is just to mark it as treated, and update the edge information
 
-    //Loop over the elements
-    for (auto gel : gmesh->ElementVec()){
-    
-        //Only tetrahedra is considered in the algorithm
-        if (gel->Dimension() < 3) continue;
+    while (count > 0)
+    {    
+        // Choose the node to be treated
+        int64_t treatNode = ChooseNode(mVertex);
+
+        // Choose the edge to be removed: the edge with min number of faces (but can be another criterium)
+        int64_t remEdge = ChooseEdge(treatNode,mVertex,mEdge);
+      
+        // Update the node status
+        mVertex[treatNode].status = true;
+        done_vertices[treatNode] = true; // used just for the counter... can be changed/removed later
+        mVertex[treatNode].removed_edge = remEdge;
+        mEdge[remEdge].vertex_treated = treatNode;
+
+        // Updates the free edges in a vertex
+        UpdateVertexFreeEdges(treatNode,remEdge,mVertex,freeEdges);
+
+        // Update the edge status 
+        mEdge[remEdge].status = ERemovedEdge;
+
+        // Updates the edges (if some needs to be blocked) and faces status.
+        UpdateEdgeAndFaceStatus(remEdge,mEdge,mFace);
+
         
-        const auto nEdges = gel->NSides(edgeDim);
-        const auto firstEdge = gel->FirstSide(edgeDim);
-        const auto firstFace = firstEdge + nEdges;
-        const auto index = gel->Index();
-        const auto ncorner = gel->NCornerNodes();
-
-        // Number of faces removed
-        TPZManVector<int> nface_removed(4,0);
-        // Edge blocked - 1 if it can't be removed
-        TPZManVector<int> block_edges(6,0);
-
-        //First - check which edges have already been treated and relates them to the element faces
-        for(auto ie = firstEdge; ie < firstFace; ie++){
-            
-            TPZGeoElSide edge(gel,ie);
-            const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
-
-            // checks if the edge has already been treated
-            if (removed_connects.find(con) != removed_connects.end()) {
-                
-                // Gets all the element faces containing the edge ie
-                TPZStack<TPZGeoElSide> gelsides;
-                gel->AllHigherDimensionSides(ie,2,gelsides);
-                
-                // Increment the faces with the edge ie 
-                for (int iside = 0; iside < gelsides.size(); iside++)
-                {
-                    int face = gelsides[iside].Side() - firstFace;
-                    nface_removed[face]++;
-                    if (nface_removed[face] > 2){
-                        DebugStop();
-                    }
-                }//iside
-            }//if connect has been treated
-        }//edges
-
-        //Second - Blocks the remaining edge in
-        for(auto ie = firstEdge; ie < firstFace; ie++){
-            
-            TPZGeoElSide edge(gel,ie);
-            const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
-
-            // Gets all the element faces containing the edge ie
-            TPZStack<TPZGeoElSide> gelsides;
-            gel->AllHigherDimensionSides(ie,2,gelsides);
-            
-            // Blocks remaining edge in the faces with 2 edges already treated
-            for (int iside = 0; iside < gelsides.size(); iside++)
+        //Update freeEdges structure
+        freeEdges.erase(remEdge);
+        for(auto it = freeEdges.begin(); it != freeEdges.end(); ++it)
+        {
+            for (auto iNode : it->second)
             {
-                int face = gelsides[iside].Side() - firstFace;
-                // If 2 edges were removed, block the third edge;
-                // If 3 edges were removed - forbiden! DebugStop();
-                // Do nothing otherwise.
-                if (nface_removed[face] == 2) {
-                    block_edges[ie-firstEdge]=1;
-                    //this connect should not be removed in the next elements too.
-                    // no_remove.insert(con); 
-                } else if (nface_removed[face] > 2){
-                    DebugStop();
-                }
-            }//iside
-        }//edge
-
-        //Third - Removes a connect, if possible. Loops over the corner nodes
-        for (int icorner = 0; icorner < ncorner; icorner++)
-        {            
-            // If the node has been treated, go to the next one
-            auto inode = gel->NodeIndex(icorner);
-            if (done_vertices[inode]) {
-                continue;
-            }
-
-            // Gets the edges with the corner node
-            TPZStack<TPZGeoElSide> cornerEdges;
-            gel->AllHigherDimensionSides(icorner,1,cornerEdges);
-
-            // Loops over the edges with the corner
-            for (int iedge = 0; iedge < cornerEdges.size(); iedge++)
-            {
-                int edge = cornerEdges[iedge].Side() - ncorner;
-                const auto con = gel->Reference()->ConnectIndex(edge);
-
-                // /* Checks if the connect can be removed*/
-                // if (no_remove.find(con) != no_remove.end()) {
-                //     done_vertices[inode] = true;
-                //     break;
-                // }
-
-                // If the edge has already been removed or it is blocked, go to the next one
-                if(removed_connects.find(con) != removed_connects.end()) {
-                    done_vertices[inode] = true;
+                if (iNode == treatNode){
+                    it->second.erase(iNode);
                     break;
                 }
-                if(block_edges[edge] == 1) continue;
-                
-                // Else, remove the edge
-                removed_connects.insert(con);
-                done_vertices[inode] = true;
-
-                // Gets the faces with the edge
-                TPZStack<TPZGeoElSide> gelsides;
-                gel->AllHigherDimensionSides(edge+ncorner,2,gelsides);
-                
-                for (int iface = 0; iface < gelsides.size(); iface++)
-                {
-                    //Increment the face counter with the edge
-                    int face = gelsides[iface].Side() - firstFace;
-                    nface_removed[face]++;
-                    if (nface_removed[face] > 2){
-                        DebugStop();
-                    }
-                    // If the counter is 2, then block the remaining edge
-                    if (nface_removed[face] == 2) {
-                        
-                        TPZStack<int> smallsides;
-                        gel->LowerDimensionSides(face+firstFace,smallsides);
-
-                        for (size_t isize = 0; isize < smallsides.size(); isize++)
-                        {
-                            int side = smallsides[isize];
-                            if (side < ncorner) continue;
-                            
-                            block_edges[side-ncorner] = 1;
-                            // no_remove.insert(gel->Reference()->ConnectIndex(side-ncorner));
-                        }                       
-                    }   
-                }//iside
-            }//iedge
-        }//icorner
-    }//gel
-
-    bool check_all_vertices{true};
-    for(auto v : done_vertices){
-        check_all_vertices = check_all_vertices && v;
-        if(!v){
-            break;
+            }
         }
+        
+        // Update number of free edges:
+        for(auto it = freeEdges.begin(); it != freeEdges.end(); ++it)
+        {
+            if (it->second.size() == 0)
+            {
+                freeEdges.erase(it->first);
+            }
+        }
+        
+        //Print for checking
+        // std::cout << "freeEdges.size() " << freeEdges.size()<<std::endl;
+        // for(auto it = freeEdges.cbegin(); it != freeEdges.cend(); ++it)
+        // {
+        //     std::cout <<  "freeEdges = " << it->first <<  ", free vertices = ";
+        //     for (auto rem : it->second)
+        //     {
+        //         std::cout << rem << " " ;
+        //     }
+        //     std::cout << std::endl;
+        // }
+
+        //Count the number of nodes not treated
+        count = std::count(done_vertices.begin(), done_vertices.end(), false);
+
+
+    }//while
+    
+
+    for (size_t i = 0; i < nnodes; i++)
+    {
+        if (mVertex[i].status) removed_edges.insert(mVertex[i].removed_edge);       
     }
     
-    std::cout << "Removed (" << removed_connects.size() << ") = ";
-    for (auto rem : removed_connects)
+
+    std::cout << "Removed (" << removed_edges.size() << ") = ";
+    for (auto rem : removed_edges)
     {
         std::cout << rem << " " ;
     }
     std::cout << std::endl;
 
-    std::cout << "No_remove (" << no_remove.size() << ") = ";
-    for (auto rem : no_remove)
-    {
-        std::cout << rem << " " ;
-    }
-    std::cout << std::endl;
+    // std::cout << "No_remove (" << no_remove.size() << ") = ";
+    // for (auto rem : no_remove)
+    // {
+    //     std::cout << rem << " " ;
+    // }
+    // std::cout << std::endl;
 
     std::cout << "Done_vertices (" << done_vertices.size() << ") = ";
     for (auto rem : done_vertices)
@@ -353,7 +421,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
         int count = 0;
         for (auto rem : mVertex[i].edge_connect)
         {
-            if (removed_connects.find(rem) != removed_connects.end()){
+            if (removed_edges.find(rem) != removed_edges.end()){
                 std::cout << "{" << rem << "} " ;
                 count++;
             } else {
@@ -362,7 +430,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             
         }
         std::cout <<";             " << count << " edge(s) removed" << std::endl;
-        if (count == 0 && i != 0) std::cout << "PROBLEM! Node " << i << " did not removed an edge!\n" ;
+        // if (count == 0 && i != 0) std::cout << "PROBLEM! Node " << i << " did not removed an edge!\n" ;
         
     }
     
@@ -373,7 +441,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
     //     const auto all_edges = vertex_edge_connects[iv];
     //     bool local_check{false};
     //     for(auto edge: all_edges){
-    //     if(removed_connects.find(edge) == removed_connects.end()){
+    //     if(removed_edges.find(edge) == removed_edges.end()){
     //         local_check = true;
     //         break;
     //     }
@@ -385,7 +453,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
     
     activeEquations.Resize(0);
     for (int iCon = 0; iCon < cmesh->NConnects(); iCon++) {
-        if (removed_connects.find(iCon) == removed_connects.end()) {
+        if (removed_edges.find(iCon) == removed_edges.end()) {
         auto &con = cmesh->ConnectVec()[iCon];
         if (con.HasDependency()){
             continue;
@@ -422,7 +490,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             const auto con = edge.Element()->Reference()->ConnectIndex(ie-firstEdge);
 
             /* checks if edge has been treated already */
-            if (removed_connects.find(con) != removed_connects.end()) {
+            if (removed_edges.find(con) != removed_edges.end()) {
                 aux++;
                 local_removed.insert(con);
                 local_index[ie-firstEdge] = true;
@@ -456,8 +524,8 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
 
     }
 
-    if (removed_connects.size() != nnodes-1){
-        std::cout << "Removed " << removed_connects.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
+    if (removed_edges.size() != nnodes-1){
+        std::cout << "Removed " << removed_edges.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
         DebugStop();
     }
     
