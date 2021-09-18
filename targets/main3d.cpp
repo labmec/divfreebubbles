@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
 TPZLogger::InitializePZLOG();
 #endif
     
-    // //read mesh from gmsh
+    //read mesh from gmsh
     // TPZGeoMesh *gmesh;
     // gmesh = new TPZGeoMesh();
     // {
@@ -134,9 +134,9 @@ TPZLogger::InitializePZLOG();
     // }
     
     //for now this should suffice
-    const int xdiv = 1;
-    const int ydiv = 1;
-    const int zdiv = 1;
+    const int xdiv = 3;
+    const int ydiv = 3;
+    const int zdiv = 3;
     const MMeshType meshType = MMeshType::ETetrahedral;
     const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
@@ -226,8 +226,8 @@ TPZLogger::InitializePZLOG();
         meshvectorNew[0] = cmeshfluxNew;
         meshvectorNew[1] = cmeshpressureNew;      
         auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-        std::cout << "MULTIPHYSICS \n";
-        util.PrintCMeshConnects(cmeshNew);
+        // std::cout << "MULTIPHYSICS \n";
+        // util.PrintCMeshConnects(cmeshNew);
         // Group and condense the elements
         // createSpace.Condense(cmeshNew);
         std::string multiphysicsFile = "MultiPhysicsMeshNew";

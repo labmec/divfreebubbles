@@ -1,5 +1,5 @@
 //
-// Created by Jeferson Fernandes on 16/09/21.
+// A filter to HCurl spaces.
 //
 
 #ifndef HCURL_EQUATION_FILTER_H
@@ -12,7 +12,7 @@
 #include "pzstack.h"
 #include <TPZVTKGeoMesh.h>
 
-template<class T>
+template <class T>
 class TPZVec;
 
 class TPZCompMesh;
@@ -21,17 +21,23 @@ class TPZCompElSide;
 class TPZInterpolatedElement;
 class TPZGeoEl;
 
-template<class T, int N>
+template <class T, int N>
 class TPZStack;
 
 template <class TVar>
-class TPZHCurlEquationFilter {
-
+class TPZHCurlEquationFilter
+{
+public:
+    enum EdgeStatusType {EFreeEdge,ERemovedEdge,EBlockedEdge};
+    enum FaceStatusType {EFreeFace,ECryticalFace,EBlockedFace,EFortunateFace};
+    
 private:
+    const int edgeDim{1};
+
     // DATA STRUCTURES
     // 1 - VERTEX DATA STRUCTURE
     struct VertexFilter
-    {   
+    {
         // The edges connected to a vertex
         std::set<int> edge_connect;
         // The number of free edges, i.e, not removed in a vertex
@@ -43,7 +49,7 @@ private:
     };
 
     // 2 - EDGE DATA STRUCTURE
-    enum EdgeStatusType {EFreeEdge, ERemovedEdge, EBlockedEdge};
+    
     struct EdgeFilter
     {
         //The edge index
@@ -59,27 +65,39 @@ private:
         //If it was removed, which is the vertex associated
         int64_t vertex_treated;
     };
-    
+
     // 3 - FACE DATA STRUCTURE
-    enum FaceStatusType {EFreeFace, ECryticalFace, EBlockedFace, EFortunateFace};
+    
     struct FaceFilter
     {
         //The face index
         int64_t index;
 
         //The connects of a face
-        // TPZVec<int> edge_connect(const int size = 3);
         std::set<int> edge_connect;
-        
+
         //Face status:
         //  0 - free: 0 edges removed
         //  1 - crytical: 1 edge removed
         //  2 - blocked: 2 edges removed
         //  3 - fortunate: 1 edge blocked
-        FaceStatusType status = EFreeFace;  
+        FaceStatusType status = EFreeFace;
+
+        // int64_t UpdateFace(int removedEdge, std::set<int> faceEdges){
+
+        //     return -1 = nao bloquead, senão connect index do edge bloqueado.
+        // };
     };
 
-  
+    // 1 - Vertex Data Structure
+    std::map<int, VertexFilter> mVertex;
+    // 2 - Edge Data Structure
+    std::map<int, EdgeFilter> mEdge;
+    // 3 - Face Data Structure
+    std::map<int, FaceFilter> mFace;
+    // 4 - The free edges and their corresponding free vertices
+    std::map<int, std::set<int>> freeEdgesToNodes;
+
 public:
     /**
          @brief Removes some equations associated with edges to ensure that
@@ -90,17 +108,15 @@ public:
         2 if a vertex had all the adjacent edges removed.
     */
     bool FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh, TPZVec<int64_t> &activeEquations);
-    
-    void InitDataStructures(TPZGeoMesh* gmesh, TPZVec<VertexFilter> &mVertex, 
-                            std::map<int,EdgeFilter> &mEdge,std::map<int,FaceFilter> &mFace, 
-                            std::map<int,std::set<int>> &freeEdges);
 
-    int64_t ChooseNode(TPZVec<VertexFilter> &mVertex);
+    void InitDataStructures(TPZGeoMesh *gmesh);
 
-    int64_t ChooseEdge(int64_t &treatNode, TPZVec<VertexFilter> &mVertex, std::map<int,EdgeFilter> &mEdge);
+    int64_t ChooseNode();
 
-    void UpdateVertexFreeEdges(int64_t &treatNode, int64_t &remEdge, TPZVec<VertexFilter> &mVertex, std::map<int,std::set<int>> &freeEdges);
+    int64_t ChooseEdge(int64_t &treatNode);
 
-    void UpdateEdgeAndFaceStatus(int64_t &remEdge, std::map<int,EdgeFilter> &mEdge, std::map<int,FaceFilter> &mFace);
+    void UpdateVertexFreeEdges(int64_t &treatNode, int64_t &remEdge);
+
+    void UpdateEdgeAndFaceStatus(int64_t &remEdge);
 };
 #endif

@@ -104,9 +104,9 @@ void TestEdgeFiltering(TPZGeoMesh* gmesh, const int &volId, const int &bcId)
 
     TPZVec<int64_t> activeEqs;
     
-    TPZHCurlEquationFilter<STATE> *filter;
+    TPZHCurlEquationFilter<STATE> filter;
 
-    if(filter->FilterEdgeEquations(cmesh, activeEqs)){
+    if(filter.FilterEdgeEquations(cmesh, activeEqs)){
         return;
     }
 

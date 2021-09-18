@@ -117,11 +117,11 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     matskl.SetNumThreads(nThreads);
 
     //-----------------------
-    TPZHCurlEquationFilter<TVar> *filter;
+    TPZHCurlEquationFilter<TVar> filter;
 
     TPZVec<int64_t> activeEqs;
   
-    if(filter->FilterEdgeEquations(cmesh, activeEqs)){
+    if(filter.FilterEdgeEquations(cmesh, activeEqs)){
         return;
     }
     const int neqs = activeEqs.size();
