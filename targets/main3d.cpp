@@ -134,9 +134,9 @@ TPZLogger::InitializePZLOG();
     // }
     
     //for now this should suffice
-    const int xdiv = 3;
-    const int ydiv = 3;
-    const int zdiv = 3;
+    const int xdiv = 2;
+    const int ydiv = 2;
+    const int zdiv = 2;
     const MMeshType meshType = MMeshType::ETetrahedral;
     const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 

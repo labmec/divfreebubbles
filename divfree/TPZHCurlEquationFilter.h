@@ -27,9 +27,7 @@ class TPZStack;
 template <class TVar>
 class TPZHCurlEquationFilter
 {
-public:
-    enum EdgeStatusType {EFreeEdge,ERemovedEdge,EBlockedEdge};
-    enum FaceStatusType {EFreeFace,ECryticalFace,EBlockedFace,EFortunateFace};
+   
     
 private:
     const int edgeDim{1};
@@ -49,7 +47,7 @@ private:
     };
 
     // 2 - EDGE DATA STRUCTURE
-    
+    enum EdgeStatusType {EFreeEdge,ERemovedEdge,EBlockedEdge};
     struct EdgeFilter
     {
         //The edge index
@@ -67,7 +65,7 @@ private:
     };
 
     // 3 - FACE DATA STRUCTURE
-    
+    enum FaceStatusType {EFreeFace,ECryticalFace,EBlockedFace,EFortunateFace};
     struct FaceFilter
     {
         //The face index
@@ -90,13 +88,13 @@ private:
     };
 
     // 1 - Vertex Data Structure
-    std::map<int, VertexFilter> mVertex;
+    std::map<int64_t, VertexFilter> mVertex;
     // 2 - Edge Data Structure
-    std::map<int, EdgeFilter> mEdge;
+    std::map<int64_t, EdgeFilter> mEdge;
     // 3 - Face Data Structure
-    std::map<int, FaceFilter> mFace;
+    std::map<int64_t, FaceFilter> mFace;
     // 4 - The free edges and their corresponding free vertices
-    std::map<int, std::set<int>> freeEdgesToNodes;
+    std::map<int64_t, std::set<int64_t>> freeEdgesToNodes;
 
 public:
     /**
@@ -118,5 +116,9 @@ public:
     void UpdateVertexFreeEdges(int64_t &treatNode, int64_t &remEdge);
 
     void UpdateEdgeAndFaceStatus(int64_t &remEdge);
+
+    void CheckNodes();
+
+    void CheckFaces();
 };
 #endif
