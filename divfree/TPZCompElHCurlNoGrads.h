@@ -26,7 +26,7 @@ public:
    */
   int NConnectShapeF(int connect, int order) const override;
   //! Fills data.fMasterDirections, data.fVecShapeIndex and data.fShapeType.
-  void InitMaterialData(TPZMaterialData &data) override;
+  void InitMaterialData(TPZMaterialData &data, TSHAPE &shapedata) override;
   //! Computes data.phi and data.curlphi to be used in the integration points.
   void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override{
     ComputeRequiredDataT(data,qsi);

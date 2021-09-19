@@ -41,8 +41,8 @@ void TPZCompElHCurlNoGrads<TSHAPE>::AdjustConnects()
 }
   
 template<class TSHAPE>
-void TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(TPZMaterialData &data){
-	TPZIntelGen<TSHAPE>::InitMaterialData(data);
+void TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(TPZMaterialData &data, TSHAPE &shapedata){
+	TPZIntelGen<TSHAPE>::InitMaterialData(data,shapedata);
   data.fMasterDirections = this->fMasterDirections;
 
   /*
@@ -354,7 +354,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeCurl(TPZMaterialData &data)
 
 #include <pzshapetriang.h>
 #include <pzshapetetra.h>
-
+#include <pzgenericshape.h>
 
 #define IMPLEMENTHCURLNOGRADS(TSHAPE)                           \
                                                                 \
@@ -369,7 +369,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeCurl(TPZMaterialData &data)
   TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT<CSTATE>(  \
     TPZMaterialDataT<CSTATE> &data, TPZVec<REAL> &qsi);
 
-IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTriang)
-IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTetra)
+IMPLEMENTHCURLNOGRADS(TPZGenericShapeH1<pzshape::TPZShapeTriang>)
+IMPLEMENTHCURLNOGRADS(TPZGenericShapeH1<pzshape::TPZShapeTetra>)
 
 #undef IMPLEMENTHCURLNOGRADS
