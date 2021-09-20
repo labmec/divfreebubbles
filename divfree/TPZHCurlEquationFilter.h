@@ -34,6 +34,7 @@ private:
 
     // DATA STRUCTURES
     // 1 - VERTEX DATA STRUCTURE
+    enum VertexStatusType {ENotTreatedVertex, ETreatedVertex};
     struct VertexFilter
     {
         // The edges connected to a vertex
@@ -42,8 +43,8 @@ private:
         int64_t free_edges;
         // Edge associated removed
         int64_t removed_edge;
-        // The vertex status: false - free; true - removed
-        bool status = false;
+        // The vertex status: false - not treated; true - treated
+        VertexStatusType status = ENotTreatedVertex;
     };
 
     // 2 - EDGE DATA STRUCTURE
@@ -93,8 +94,8 @@ private:
     std::map<int64_t, EdgeFilter> mEdge;
     // 3 - Face Data Structure
     std::map<int64_t, FaceFilter> mFace;
-    // 4 - The free edges and their corresponding free vertices
-    std::map<int64_t, std::set<int64_t>> freeEdgesToNodes;
+    // 4 - The number of free and the corresponding treated nodes
+    std::map<int64_t, std::set<int64_t>,std::greater<int>> freeEdgesToTreatedNodes;
 
 public:
     /**
@@ -109,16 +110,12 @@ public:
 
     void InitDataStructures(TPZGeoMesh *gmesh);
 
-    int64_t ChooseNode();
-
-    int64_t ChooseEdge(int64_t &treatNode);
-
-    void UpdateVertexFreeEdges(int64_t &treatNode, int64_t &remEdge);
+    void ChooseNodeAndEdge(int64_t &treatNode, int64_t &remEdge);
 
     void UpdateEdgeAndFaceStatus(int64_t &remEdge);
 
-    void CheckNodes();
-
     void CheckFaces();
+
+    void FirstEdge();
 };
 #endif

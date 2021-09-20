@@ -99,7 +99,7 @@ void TestEdgeFiltering(TPZGeoMesh* gmesh, const int &volId, const int &bcId)
     TPZAutoPointer<TPZStructMatrix> strmtrx =
         new TPZFStructMatrix<STATE>(cmesh);
     
-    constexpr int nThreads{0};
+    constexpr int nThreads{10};
     strmtrx->SetNumThreads(nThreads);
 
     TPZVec<int64_t> activeEqs;

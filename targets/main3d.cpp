@@ -117,31 +117,31 @@ TPZLogger::InitializePZLOG();
 #endif
     
     //read mesh from gmsh
-    // TPZGeoMesh *gmesh;
-    // gmesh = new TPZGeoMesh();
-    // {
-    //     TPZGmshReader reader;
-    //     // essa interface permite voce mapear os nomes dos physical groups para
-    //     // o matid que voce mesmo escolher
-    //     TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-    //     stringtoint[3]["Domain"] = 1;
-    //     stringtoint[2]["Surfaces"] = 2;
-    //     // stringtoint[0]["Point"] = 3;
-    //     reader.SetDimNamePhysical(stringtoint);
-    //     reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
-    //     std::ofstream out("gmesh.vtk");
-    //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
-    // }
+    TPZGeoMesh *gmesh;
+    gmesh = new TPZGeoMesh();
+    {
+        TPZGmshReader reader;
+        // essa interface permite voce mapear os nomes dos physical groups para
+        // o matid que voce mesmo escolher
+        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+        stringtoint[3]["Domain"] = 1;
+        stringtoint[2]["Surfaces"] = 2;
+        // stringtoint[0]["Point"] = 3;
+        reader.SetDimNamePhysical(stringtoint);
+        reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
+        std::ofstream out("gmesh.vtk");
+        TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
+    }
     
-    //for now this should suffice
-    const int xdiv = 2;
-    const int ydiv = 2;
-    const int zdiv = 2;
-    const MMeshType meshType = MMeshType::ETetrahedral;
-    const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+    // //for now this should suffice
+    // const int xdiv = 3;
+    // const int ydiv = 3;
+    // const int zdiv = 3;
+    // const MMeshType meshType = MMeshType::ETetrahedral;
+    // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
-    TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
 
     TPZKernelHdivUtils<STATE> util;
