@@ -74,19 +74,20 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                         TPZGeoElBC gelPHyb(gelPresHSide, fEPressureHyb);
                     }
                 } 
-            }
+            }//domain Hybrid
 
             //Creates interface and wrap geometric elements for hybridized BC
             if (matIdBC.find(neighbour.Element()->MaterialId()) != matIdBC.end()){
                 TPZGeoElBC gelbcWrap(geoside, fEWrap);
-                TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),2);
+                TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),gelbcWrap.CreatedElement()->NSides()-1);
                 TPZGeoElBC gelbc(gelWrapSide, fEInterface);
                 // gelbcWrap.CreatedElement()->ResetReference();
                 // gelbc.CreatedElement()->ResetReference();
+                // gel->ResetReference();
             }
         }
 
-        //Creates a point for each hybrizides volumetric finite element
+        //Creates a point for each hybrizided volumetric finite element
         if (domainHyb){
             TPZGeoElSide geosidePoint(gel,0);
             TPZGeoElBC gelbcPoint(geosidePoint, fEPont);

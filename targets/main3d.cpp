@@ -90,18 +90,7 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
     gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 };
-auto exactSolError = [](const TPZVec<REAL> &loc,
-    TPZVec<STATE>&u,
-    TPZFMatrix<STATE>&gradU){
-    const auto &x=loc[0];
-    const auto &y=loc[1];
-    const auto &z=loc[2];
 
-    u[0] = 1;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 0.;//-(3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = 0.;//-(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = 0.;//-(x*x*x*y - y*y*y*x);
-};
 
 enum EMatid  {ENone, EDomain, ESurfaces, EPont, EWrap, EIntface, EPressureHyb};
 
@@ -109,7 +98,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{3};
-    constexpr int pOrder{1};
+    constexpr int pOrder{2};
       
 
 #ifdef PZ_LOG
@@ -126,9 +115,9 @@ TPZLogger::InitializePZLOG();
         TPZManVector<std::map<std::string,int>,4> stringtoint(4);
         stringtoint[3]["Domain"] = 1;
         stringtoint[2]["Surfaces"] = 2;
-        // stringtoint[0]["Point"] = 3;
+        // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
+        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -140,8 +129,8 @@ TPZLogger::InitializePZLOG();
     // const MMeshType meshType = MMeshType::ETetrahedral;
     // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
-    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+    // // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
 
     TPZKernelHdivUtils<STATE> util;
@@ -156,20 +145,20 @@ TPZLogger::InitializePZLOG();
     //     std::set<int> matIdNeumannHdiv;
         
     //     //Flux mesh
-    //     cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+    //     cmeshflux = FluxCMesh(dim,pOrder-1,matIdVecHdiv,gmesh);
 
     //     //Pressure mesh
-    //     cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+    //     cmeshpressure = PressureCMesh(dim,pOrder-1,matIdVecHdiv,gmesh);
 
     //     //Multiphysics mesh
     //     TPZManVector< TPZCompMesh *, 2> meshvector(2);
     //     meshvector[0] = cmeshflux;
     //     meshvector[1] = cmeshpressure;
-    //     TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
+    //     TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder-1,matIdVecHdiv,meshvector,gmesh);
         
     //     //Solve Multiphysics
     //     TPZLinearAnalysis an(cmesh,true);
-    //     util.SolveProblemDirect(an,cmesh);
+    //     util.SolveProblemDirect(an,cmesh,false);
     //     std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
         
     //     //Print results
@@ -188,11 +177,11 @@ TPZLogger::InitializePZLOG();
         TPZCompMesh * cmeshflux = 0;
         TPZCompMesh * cmeshpressure = 0;    
 
-        //Insert here the BC material id's to be hybridized
-        std::set<int> matBCHybrid={};
+        //Insert here the BC material id's to be hybridized 
+        std::set<int> matBCHybrid={ESurfaces};
         //Insert here the type of all boundary conditions
-        std::set<int> matIDNeumann{};
-        std::set<int> matIDDirichlet{ESurfaces};
+        std::set<int> matIDNeumann{ESurfaces};
+        std::set<int> matIDDirichlet{};
         /// All bc's mat ID's
         std::set<int> matBC;
         std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
@@ -205,19 +194,19 @@ TPZLogger::InitializePZLOG();
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.SetPOrder(pOrder);
         createSpace.Initialize();
-        // util.PrintGeoMesh(gmesh);
+        util.PrintGeoMesh(gmesh);
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-        // std::cout << "FLUX \n";
-        // util.PrintCMeshConnects(cmeshfluxNew);
+        std::cout << "FLUX \n";
+        util.PrintCMeshConnects(cmeshfluxNew);
         std::string fluxFile = "FluxCMesh";
         util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-        // std::cout << "PRESSURE \n";
-        // util.PrintCMeshConnects(cmeshpressureNew);
+        std::cout << "PRESSURE \n";
+        util.PrintCMeshConnects(cmeshpressureNew);
         std::string pressureFile = "PressureCMesh";
         util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
@@ -226,8 +215,8 @@ TPZLogger::InitializePZLOG();
         meshvectorNew[0] = cmeshfluxNew;
         meshvectorNew[1] = cmeshpressureNew;      
         auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-        // std::cout << "MULTIPHYSICS \n";
-        // util.PrintCMeshConnects(cmeshNew);
+        std::cout << "MULTIPHYSICS \n";
+        util.PrintCMeshConnects(cmeshNew);
         // Group and condense the elements
         // createSpace.Condense(cmeshNew);
         std::string multiphysicsFile = "MultiPhysicsMeshNew";
@@ -235,14 +224,14 @@ TPZLogger::InitializePZLOG();
 
         // Solve the problem
         TPZLinearAnalysis anNew(cmeshNew,false);
-        createSpace.Solve(anNew, cmeshNew, true); 
+        createSpace.Solve(anNew, cmeshNew, true, true); 
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
-
+        
         anNew.SetExact(exactSol,solOrder);
         //Print results
         util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-        anNew.SetExact(exactSolError,solOrder);
+        anNew.SetExact(exactSol,solOrder);
 
         std::ofstream out4("mesh_MDFB.txt");
         anNew.Print("nothing",out4);
@@ -251,49 +240,6 @@ TPZLogger::InitializePZLOG();
         util.ComputeError(anNew,anPostProcessFileMDFB);
     }
 
-
-    // {
-    //     TPZCompMesh * cmeshflux = 0;
-    //     cmeshflux = FluxCMeshCurl(dim,pOrder,gmesh);
-
-    //     constexpr bool reorderEqs{true};
-    //     TPZLinearAnalysis an(cmeshflux, reorderEqs);
-        
-    //     TPZAutoPointer<TPZStructMatrix> strmtrx =
-    //         new TPZFStructMatrix<STATE>(cmeshflux);
-        
-    //     constexpr int nThreads{0};
-    //     strmtrx->SetNumThreads(nThreads);
-
-    //     TPZVec<int64_t> activeEqs;
-        
-    //     if(util.FilterEdgeEquations(cmeshflux, activeEqs)){
-    //         DebugStop();
-    //     }
-
-    //     const int neqs = activeEqs.size();
-        
-    //     strmtrx->EquationFilter().SetActiveEquations(activeEqs);
-
-    //     an.SetStructuralMatrix(strmtrx);
-
-    //     TPZStepSolver<STATE> step;
-
-    //     step.SetDirect(ECholesky);
-    //     an.SetSolver(step);
-
-    //     an.Assemble();
-
-    //     // TPZLinearAnalysis anNew(cmeshflux,false);
-    //     // createSpace.Solve(anNew, cmeshflux, true); 
-    //     // std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;
-    //     // std::cout << "Solution = \n" << std::endl;
-    //     // anNew.Solution();
-        
-
-    //     // anNew.SetExact(exactSol,solOrder);
-
-    // }
   
     return 0;
 }

@@ -67,11 +67,11 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
 
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct)
+void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct, bool filterEquations)
 {
     if (direct)
     {
-        util->SolveProblemDirect(an,cmesh);
+        util->SolveProblemDirect(an,cmesh,filterEquations);
     } else {
         util->SolveProblemIterative(an,cmesh);
     }
@@ -90,7 +90,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
 
     //Inserts Null Materials
     std::set<int> allMat={};
-    // if (fSpaceType == ENone) allMat = fConfig.fBCMatId;
     //Just the BC's not hybridized
     set_symmetric_difference(fConfig.fBCMatId.begin(), fConfig.fBCMatId.end(), fConfig.fBCHybridMatId.begin(), fConfig.fBCHybridMatId.end(), inserter(allMat, allMat.begin()));
     allMat.insert(fConfig.fDomain);
@@ -119,6 +118,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
 
         if (type == EPoint){
             if (fSpaceType != ENone) continue;
+            if (fDimension == 3) continue;
             new TPZIntelGen<TPZShapePoint>(*cmesh,gel,index);
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
@@ -147,7 +147,11 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 nullmat->SetDimension(2);
             } else if (fDimension == 3){
+                if (fSpaceType != ENone) continue;
+                if (allMat.find(matid) == allMat.end()) continue;
+
                 new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
+                // new TPZCompElHCurlNoGrads<TPZShapeTriang>(*cmesh,gel,index);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 // nullmat->SetDimension(2);
@@ -202,8 +206,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         }
     }    
 
-    cmesh->SetAllCreateFunctionsHCurl();
-    cmesh->AutoBuild();
     cmesh->ExpandSolution();
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();

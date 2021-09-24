@@ -126,10 +126,10 @@ TPZLogger::InitializePZLOG();
     TPZKernelHdivUtils<STATE> util;
 
     //Insert here the BC material id's to be hybridized
-    std::set<int> matBCHybrid={};
+    std::set<int> matBCHybrid={ERight,ETop,EBottom,ELeft};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{};
-    std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
+    std::set<int> matIDNeumann{ERight,ETop,EBottom,ELeft};
+    std::set<int> matIDDirichlet{};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
@@ -142,37 +142,37 @@ TPZLogger::InitializePZLOG();
     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
     createSpace.SetPOrder(pOrder+1);
     createSpace.Initialize();
-    // util.PrintGeoMesh(gmesh);
+    util.PrintGeoMesh(gmesh);
 
     //Flux mesh
     TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-    // std::cout << "FLUX \n";
-    // util.PrintCMeshConnects(cmeshfluxNew);
-    // std::string fluxFile = "FluxCMesh";
-    // util.PrintCompMesh(cmeshfluxNew,fluxFile);
+    std::cout << "FLUX \n";
+    util.PrintCMeshConnects(cmeshfluxNew);
+    std::string fluxFile = "FluxCMesh";
+    util.PrintCompMesh(cmeshfluxNew,fluxFile);
 
     //Pressure mesh
     TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-    // std::cout << "PRESSURE \n";
-    // util.PrintCMeshConnects(cmeshpressureNew);
-    // std::string pressureFile = "PressureCMesh";
-    // util.PrintCompMesh(cmeshpressureNew,pressureFile);
+    std::cout << "PRESSURE \n";
+    util.PrintCMeshConnects(cmeshpressureNew);
+    std::string pressureFile = "PressureCMesh";
+    util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
     //Multiphysics mesh
     TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
     meshvectorNew[0] = cmeshfluxNew;
     meshvectorNew[1] = cmeshpressureNew;      
     auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-    // std::cout << "MULTIPHYSICS \n";
-    // util.PrintCMeshConnects(cmeshNew);
+    std::cout << "MULTIPHYSICS \n";
+    util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
     createSpace.Condense(cmeshNew);
-    // std::string multiphysicsFile = "MultiPhysicsMeshNew";
-    // util.PrintCompMesh(cmeshNew,multiphysicsFile);
+    std::string multiphysicsFile = "MultiPhysicsMeshNew";
+    util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
     // Solve the problem
     TPZLinearAnalysis anNew(cmeshNew,false);
-    createSpace.Solve(anNew, cmeshNew, true);
+    createSpace.Solve(anNew, cmeshNew, true, false);
 
     anNew.SetExact(exactSol,solOrder);
     //Print results

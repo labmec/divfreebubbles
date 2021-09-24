@@ -255,7 +255,7 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvec
     cmesh->SetDimModel(dim);
     auto mat = new TPZMixedDarcyFlow(1, dim);
     
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     cmesh->InsertMaterialObject(mat);
     
     //Boundary Conditions

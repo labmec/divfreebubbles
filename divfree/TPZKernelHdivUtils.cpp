@@ -109,7 +109,7 @@ void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string &fil
 
 // Util to solve the arising linear sistem by means of a direct method
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
+void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations)
 {
     //sets number of threads to be used by the solver
     constexpr int nThreads{0};
@@ -117,17 +117,19 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     matskl.SetNumThreads(nThreads);
 
     //-----------------------
-    TPZHCurlEquationFilter<TVar> filter;
+    if (filterEquations){    
+        TPZHCurlEquationFilter<TVar> filter;
 
-    TPZVec<int64_t> activeEqs;
-  
-    if(filter.FilterEdgeEquations(cmesh, activeEqs)){
-        return;
-    }
-    const int neqs = activeEqs.size();
+        TPZVec<int64_t> activeEqs;
     
-    matskl.EquationFilter().SetActiveEquations(activeEqs);
-
+        if(filter.FilterEdgeEquations(cmesh, activeEqs)){
+            return;
+        }
+        const int neqs = activeEqs.size();
+        
+        matskl.EquationFilter().SetActiveEquations(activeEqs);
+        std::cout << "Active equations = " << activeEqs.size() << std::endl;
+    }
     //----------------------
 
     an.SetStructuralMatrix(matskl);

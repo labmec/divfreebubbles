@@ -150,7 +150,7 @@ TPZLogger::InitializePZLOG();
 
     // Solve the problem
     TPZLinearAnalysis anNew(cmeshNew,false);
-    createSpace.Solve(anNew, cmeshNew, true);
+    createSpace.Solve(anNew, cmeshNew, true, false);
 
     std::cout << "Number of equations2 = " << cmeshNew->NEquations() << std::endl;
     std::cout << "Number of equations3 = " << anNew.Mesh()->NEquations() << std::endl;

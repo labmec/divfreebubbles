@@ -86,7 +86,7 @@ public:
      * @param cmesh 
      * @param direct = true if direct solver, false if iterative solver
      */
-    void Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct);
+    void Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct, bool filterEquation);
 
     /**
      * @brief Performs the static condensation

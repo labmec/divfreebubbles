@@ -289,10 +289,10 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
         mEdge[remEdge].vertex_treated = treatNode;
 
         // Updates the edges (if some needs to be blocked) and faces status.
-        UpdateEdgeAndFaceStatus(remEdge);
+        // UpdateEdgeAndFaceStatus(remEdge);
         
         // Checks if all edges of a face have been removed
-        CheckFaces();
+        // CheckFaces();
 
         treated_nodes++;
         
@@ -309,12 +309,12 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             removed_edges.insert(mVertex[i].removed_edge);
         }
     }
-    // std::cout << "Removed (" << removed_edges.size() << ") = ";
-    // for (auto rem : removed_edges)
-    // {
-    //     std::cout << rem << " " ;
-    // }
-    // std::cout << std::endl;
+    std::cout << "Removed (" << removed_edges.size() << ") = ";
+    for (auto rem : removed_edges)
+    {
+        std::cout << rem << " " ;
+    }
+    std::cout << std::endl;
 
     bool check_all_vertices{true};
     for(auto iv = 0; iv < nnodes; iv++){

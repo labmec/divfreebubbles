@@ -487,7 +487,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     cmesh->SetDefaultOrder(pOrder);
     cmesh->SetDimModel(dim);
     auto mat = new TPZMixedDarcyFlow(EDomain, dim);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
@@ -554,7 +554,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, std::set<int> 
 
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlow(EDomain, dim);
-    mat->SetPermeabilityFunction(1.);
+    mat->SetConstantPermeability(1.);
     cmesh->InsertMaterialObject(mat);
     mat -> SetBigNumber(1.e10);
     
