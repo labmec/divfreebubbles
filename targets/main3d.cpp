@@ -123,14 +123,14 @@ TPZLogger::InitializePZLOG();
     }
     
     // //for now this should suffice
-    // const int xdiv = 3;
-    // const int ydiv = 3;
-    // const int zdiv = 3;
+    // const int xdiv = 1;
+    // const int ydiv = 1;
+    // const int zdiv = 1;
     // const MMeshType meshType = MMeshType::ETetrahedral;
     // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
-    // // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
 
     TPZKernelHdivUtils<STATE> util;
@@ -178,16 +178,16 @@ TPZLogger::InitializePZLOG();
         TPZCompMesh * cmeshpressure = 0;    
 
         //Insert here the BC material id's to be hybridized 
-        std::set<int> matBCHybrid={ESurfaces};
+        std::set<int> matBCHybrid={};
         //Insert here the type of all boundary conditions
-        std::set<int> matIDNeumann{ESurfaces};
-        std::set<int> matIDDirichlet{};
+        std::set<int> matIDNeumann{};
+        std::set<int> matIDDirichlet{ESurfaces};
         /// All bc's mat ID's
         std::set<int> matBC;
         std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
         /// Creates the approximation space - Set the type of domain hybridization
-        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
@@ -202,7 +202,7 @@ TPZLogger::InitializePZLOG();
         util.PrintCMeshConnects(cmeshfluxNew);
         std::string fluxFile = "FluxCMesh";
         util.PrintCompMesh(cmeshfluxNew,fluxFile);
-
+        
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
         std::cout << "PRESSURE \n";

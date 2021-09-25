@@ -52,13 +52,14 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                 {
                     TPZGeoElBC gelbcWrap(geoside, fEWrap);
                                 
-                    TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),2);
+                    TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),gelbcWrap.CreatedElement()->NSides()-1);
                     // // CRIA OS ELEMENTOS GEOMÉTRICOS WRAP E INTERFACE
                     TPZGeoElBC gelbc(gelWrapSide, fEInterface); // AQUI CRIA O ELEMENTO DE INTERFACE GEOMÉTRICO
                     
                     bool flag = false;
                     TPZGeoElSide sidePresHyb;
                     auto ncorner = gel->NCornerNodes();
+                    auto sideaux = gelbcWrap.CreatedElement()->NSides()-1;
 
                     //Checks if the geometric element for the hybridized pressure already exists, otherwise creates it
                     for (int k = ncorner; k < nsides-1; k++)
@@ -66,11 +67,11 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                         TPZGeoElSide geosideNeig(neighbour.Element(),k);
                         if (geosideNeig.Element()->Neighbour(k).Element()->MaterialId()==fEWrap) {
                             flag = true;
-                            sidePresHyb = geosideNeig.Element()->Neighbour(2).Element()->Neighbour(2).Element()->Neighbour(2);
+                            sidePresHyb = geosideNeig.Element()->Neighbour(sideaux).Element()->Neighbour(sideaux).Element()->Neighbour(sideaux);
                         }
                     }
                     if (flag==false){
-                        TPZGeoElSide gelPresHSide(gelbc.CreatedElement(),2);
+                        TPZGeoElSide gelPresHSide(gelbc.CreatedElement(),gelbc.CreatedElement()->NSides()-1);
                         TPZGeoElBC gelPHyb(gelPresHSide, fEPressureHyb);
                     }
                 } 
@@ -89,8 +90,10 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
 
         //Creates a point for each hybrizided volumetric finite element
         if (domainHyb){
-            TPZGeoElSide geosidePoint(gel,0);
-            TPZGeoElBC gelbcPoint(geosidePoint, fEPont);
+            if (dim < 3){
+                TPZGeoElSide geosidePoint(gel,0);
+                TPZGeoElBC gelbcPoint(geosidePoint, fEPont);
+            }
         // }
             for (int side = 0; side < nsides; side++) {
                 TPZGeoElSide gelside(gel,side);

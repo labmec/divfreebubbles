@@ -261,54 +261,66 @@ void TPZHCurlEquationFilter<TVar>::FirstEdge()
 */
 template <class TVar>
 bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMesh> cmesh,
-                    TPZVec<int64_t> &activeEquations)
+                    TPZVec<int64_t> &activeEquations, bool &domainHybridization)
 {
 
     cmesh->LoadReferences();
-    const auto gmesh = cmesh->Reference();    
-    const auto nnodes = gmesh->NNodes();
-    
-    //Initialize the data structures
-    InitDataStructures(gmesh);
+    const auto gmesh = cmesh->Reference();  
+    auto nnodes = gmesh->NNodes();
 
-    // Choose the first edge to be removed
-    FirstEdge();
-    
-    // Always starts with 1 nodes treated + 1 node which edge will not be removed
-    int64_t treated_nodes = 2;
-
-    // While there is a node to be treated
-    while (treated_nodes < nnodes)
-    {
-        // - Escolher um nó do mapa
-        int64_t treatNode, remEdge;
-        ChooseNodeAndEdge(treatNode,remEdge);
-
-        mVertex[treatNode].removed_edge = remEdge;
-        mVertex[treatNode].status = ETreatedVertex;
-        mEdge[remEdge].vertex_treated = treatNode;
-
-        // Updates the edges (if some needs to be blocked) and faces status.
-        // UpdateEdgeAndFaceStatus(remEdge);
-        
-        // Checks if all edges of a face have been removed
-        // CheckFaces();
-
-        treated_nodes++;
-        
-    }//while
-    
-
-    std::set<int64_t> removed_edges; 
+    std::set<int64_t> removed_edges;
     TPZVec<bool> done_vertices(nnodes, false);
 
-    for (size_t i = 0; i < nnodes; i++)//skip the first node since it is not associated to a removed edge
+    if (domainHybridization)
     {
-        if (mVertex[i].status == ETreatedVertex) {
-            done_vertices[i] = true;
-            removed_edges.insert(mVertex[i].removed_edge);
+        done_vertices = true;
+        for (auto cel:cmesh->ElementVec())
+        {
+            if (cel->Reference()->Dimension() != 3) continue;
+            removed_edges.insert(cel->ConnectIndex(0));
+            removed_edges.insert(cel->ConnectIndex(1));
+            removed_edges.insert(cel->ConnectIndex(5));
+        }      
+    } else {
+        //Initialize the data structures
+        InitDataStructures(gmesh);
+
+        // Choose the first edge to be removed
+        FirstEdge();
+
+        // Always starts with 1 nodes treated + 1 node which edge will not be removed
+        int64_t treated_nodes = 2;
+
+        // While there is a node to be treated
+        while (treated_nodes < nnodes)
+        {
+            // - Escolher um nó do mapa
+            int64_t treatNode, remEdge;
+            ChooseNodeAndEdge(treatNode,remEdge);
+
+            mVertex[treatNode].removed_edge = remEdge;
+            mVertex[treatNode].status = ETreatedVertex;
+            mEdge[remEdge].vertex_treated = treatNode;
+
+            // Updates the edges (if some needs to be blocked) and faces status.
+            UpdateEdgeAndFaceStatus(remEdge);
+            
+            // Checks if all edges of a face have been removed
+            CheckFaces();
+
+            treated_nodes++;
+            
+        }//while
+
+        for (size_t i = 0; i < nnodes; i++)//skip the first node since it is not associated to a removed edge
+        {
+            if (mVertex[i].status == ETreatedVertex) {
+                done_vertices[i] = true;
+                removed_edges.insert(mVertex[i].removed_edge);
+            }
         }
     }
+    
     std::cout << "Removed (" << removed_edges.size() << ") = ";
     for (auto rem : removed_edges)
     {
@@ -316,32 +328,35 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
     }
     std::cout << std::endl;
 
-    bool check_all_vertices{true};
-    for(auto iv = 0; iv < nnodes; iv++){
-        bool v = true;
-        if (mVertex[iv].status != ETreatedVertex) v = false;
-        check_all_vertices = check_all_vertices && v;
-        if(!v){
-        break;
-        }
-    }
-    if (!check_all_vertices) DebugStop();
- 
-    bool check_edges_left{true};
-    for(auto iv = 0; iv < nnodes; iv++){
-        const auto all_edges = mVertex[iv].edge_connect;
-        bool local_check{false};
-        for(auto edge: all_edges){
-            if(removed_edges.find(edge) == removed_edges.end()){
-                local_check = true;
-                break;
+    if (!domainHybridization){
+        bool check_all_vertices{true};
+        for(auto iv = 0; iv < nnodes; iv++){
+            bool v = true;
+            if (mVertex[iv].status != ETreatedVertex) v = false;
+            check_all_vertices = check_all_vertices && v;
+            if(!v){
+            break;
             }
         }
-        check_edges_left = local_check && check_edges_left;
+        if (!check_all_vertices) DebugStop();
+     
+        bool check_edges_left{true};
+        for(auto iv = 0; iv < nnodes; iv++){
+            const auto all_edges = mVertex[iv].edge_connect;
+            bool local_check{false};
+            for(auto edge: all_edges){
+                if(removed_edges.find(edge) == removed_edges.end()){
+                    local_check = true;
+                    break;
+                }
+            }
+            check_edges_left = local_check && check_edges_left;
+        }
+
+        if (!check_edges_left) DebugStop();
     }
 
-    if (!check_edges_left) DebugStop();
-    
+
     activeEquations.Resize(0);
     for (int iCon = 0; iCon < cmesh->NConnects(); iCon++) {
         if (removed_edges.find(iCon) == removed_edges.end()) {
@@ -364,10 +379,10 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
         }
     }
     
-    if (removed_edges.size() != nnodes-1){
-        std::cout << "Removed " << removed_edges.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
-        DebugStop();
-    }
+    // if (removed_edges.size() != nnodes-1){
+    //     std::cout << "Removed " << removed_edges.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
+    //     DebugStop();
+    // }
     
 
     return 0;

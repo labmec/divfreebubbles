@@ -109,7 +109,7 @@ void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string &fil
 
 // Util to solve the arising linear sistem by means of a direct method
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations)
+void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
 {
     //sets number of threads to be used by the solver
     constexpr int nThreads{0};
@@ -122,7 +122,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
 
         TPZVec<int64_t> activeEqs;
     
-        if(filter.FilterEdgeEquations(cmesh, activeEqs)){
+        if(filter.FilterEdgeEquations(cmesh, activeEqs, domainHybridization)){
             return;
         }
         const int neqs = activeEqs.size();

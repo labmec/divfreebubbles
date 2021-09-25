@@ -71,7 +71,9 @@ void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * 
 {
     if (direct)
     {
-        util->SolveProblemDirect(an,cmesh,filterEquations);
+        bool domainHybridization = false;
+        if (fSpaceType != ENone) domainHybridization = true;
+        util->SolveProblemDirect(an,cmesh,filterEquations,domainHybridization);
     } else {
         util->SolveProblemIterative(an,cmesh);
     }
@@ -169,32 +171,49 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         if (fSpaceType == ENone) continue;//No hybridization
         if (gel->Dimension() != fDimension) continue;
         //Creates point
-        TPZGeoElSide gelside(gel,0);
-        TPZGeoElSide neighbour = gelside.Neighbour();
+        if (fDimension == 2){
+            TPZGeoElSide gelside(gel,0);
+            TPZGeoElSide neighbour = gelside.Neighbour();
 
-        if (neighbour.Element()->MaterialId() == fConfig.fPoint){
-            new TPZIntelGen<TPZShapePoint>(*cmesh,neighbour.Element(),index);
-            TPZMaterial *mat = cmesh->FindMaterial(fConfig.fPoint);
-            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            if (neighbour.Element()->MaterialId() == fConfig.fPoint){
+                new TPZIntelGen<TPZShapePoint>(*cmesh,neighbour.Element(),index);
+                TPZMaterial *mat = cmesh->FindMaterial(fConfig.fPoint);
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            }
         }
+
+        
 
         for (int side=gel->NCornerNodes(); side<gel->NSides()-1; side++){
             TPZGeoElSide gelside(gel,side);
             TPZGeoElSide neighbour = gelside.Neighbour();
+            if (gelside.Dimension() != gel->Dimension()-1) continue;
 
             if (neighbour.Element()->MaterialId() == fConfig.fWrap){
-                new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
-                TPZMaterial *mat = cmesh->FindMaterial(fConfig.fWrap);
-                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-                nullmat->SetDimension(1);
-                // neighbour.Element()->ResetReference();
-            } else {
-                if (allMat.find(neighbour.Element()->MaterialId()) != allMat.end()){
+                if (fDimension == 2){
                     new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
-                    TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
+                    TPZMaterial *mat = cmesh->FindMaterial(fConfig.fWrap);
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                     nullmat->SetDimension(1);
-                    // neighbour.Element()->ResetReference();
+                } else if (fDimension == 3){
+                    new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index);
+                    TPZMaterial *mat = cmesh->FindMaterial(fConfig.fWrap);
+                    TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                    nullmat->SetDimension(2);
+                }
+            } else {
+                if (allMat.find(neighbour.Element()->MaterialId()) != allMat.end()){
+                    if (fDimension == 2){
+                        new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
+                        TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
+                        TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                        nullmat->SetDimension(1);
+                    } else if (fDimension == 3) {
+                        new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index);
+                        TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
+                        TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                        nullmat->SetDimension(2);
+                    }
                 }
             }
         }

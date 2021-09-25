@@ -69,7 +69,7 @@ public:
      * @param an 
      * @param cmesh 
      */
-    void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations); 
+    void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domanHybridization); 
 
     /**
      * @brief Prints the results of a multiphysics mesh to a .vtk file

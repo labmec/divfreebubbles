@@ -126,7 +126,7 @@ TPZLogger::InitializePZLOG();
     TPZKernelHdivUtils<STATE> util;
 
     //Insert here the BC material id's to be hybridized
-    std::set<int> matBCHybrid={ERight,ETop,EBottom,ELeft};
+    std::set<int> matBCHybrid={};
     //Insert here the type of all boundary conditions
     std::set<int> matIDNeumann{ERight,ETop,EBottom,ELeft};
     std::set<int> matIDDirichlet{};
@@ -135,7 +135,7 @@ TPZLogger::InitializePZLOG();
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
 
     //Setting material ids
     createSpace.fConfig.fDomain = EDomain;
