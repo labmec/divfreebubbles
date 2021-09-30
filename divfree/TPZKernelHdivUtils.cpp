@@ -139,13 +139,6 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
     an.SetSolver(step);
 
-    // std::string fluxFile = "FluxCMesh";
-    // // this->PrintCompMesh(cmesh,fluxFile);
-    // std::filebuf fb;
-    // fb.open ("test.txt",std::ios::out);
-    // std::ostream os(&fb);
-    // an.Print(fluxFile,os);
-
     //assembles the system
     an.Assemble();
 

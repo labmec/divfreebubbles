@@ -173,10 +173,15 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
         TPZGeoEl *gelIntface = gel->Neighbour(2).Element();
         if (gelIntface->MaterialId() != fEInterface) DebugStop();
         
+        // std::cout << "WRAP " << gel->Index() << ", normal left = " << celneigh.Element()->Reference()->NormalOrientation(6)
+        //                                      << ", normal right = " << celside.Element()->Reference()->NormalOrientation(6)
+        //                                      << std::endl;
+
         // Creates Multiphysics Interface element
         int64_t index;
         TPZMultiphysicsInterfaceElement *intf = new TPZMultiphysicsInterfaceElement(*cmesh,gelIntface,index,celneigh,celside);
     }
+
 
 }
 

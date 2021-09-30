@@ -230,6 +230,10 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     cmesh->ComputeNodElCon();
     cmesh->LoadReferences();
 
+    if (fDimension == 3){
+        OrientFaces(cmesh);
+    }
+
     if (fSpaceType == ESemiHybrid){
         hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     }
@@ -351,24 +355,93 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
 template<class TVar>
 void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
 {   
-    for(auto gel : fGeoMesh->ElementVec())
-    {
-        if (gel->Dimension() < 3) continue;
+    // for(auto gel : fGeoMesh->ElementVec())
+    // {
+    //     if (gel->Dimension() < 3) continue;
         
-        //For tetrahedra only, loop over the surface sides
-        for (int side = 10; side < 14; side++){
-            TPZGeoElSide gelside(gel,side);
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            //Neighbour material id
-            auto Nmatid = neighbour.Element()->MaterialId();
+    //     //For tetrahedra only, loop over the surface sides
+    //     for (int side = 10; side < 14; side++){
+    //         TPZGeoElSide gelside(gel,side);
+    //         TPZGeoElSide neighbour = gelside.Neighbour();
+    //         //Neighbour material id
+    //         auto Nmatid = neighbour.Element()->MaterialId();
 
-            /*  If the boundary has BC, delete the neighbour GeoElement and  
-                create another one from TPZGeoElBC with the same material id
-            */
-            if (fConfig.fBCMatId.find(Nmatid) == fConfig.fBCMatId.end()) continue;
-            fGeoMesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
-            TPZGeoElBC gelbcWrap(gelside, Nmatid);
+    //         /*  If the boundary has BC, delete the neighbour GeoElement and  
+    //             create another one from TPZGeoElBC with the same material id
+    //         */
+    //         if (fConfig.fBCMatId.find(Nmatid) == fConfig.fBCMatId.end()) continue;
+    //         fGeoMesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
+    //         TPZGeoElBC gelbcWrap(gelside, Nmatid);
            
+    //     }
+    // }
+
+    
+}
+
+template<class TVar>
+void TPZApproxSpaceKernelHdiv<TVar>::OrientFaces(TPZCompMesh * cmesh)
+{
+    //Allowed face permultations for tetrahedra
+    static constexpr int permTetra[12][3] =
+    {
+        {0,1,2}, {1,2,0}, {2,0,1},// face 0
+        {4,3,0}, {3,0,4}, {0,4,3},// face 1
+        {5,4,1}, {4,1,5}, {1,5,4},// face 2
+        {2,3,5}, {3,5,2}, {5,2,3},// face 3
+    };
+
+    cmesh->LoadReferences();
+    // Para cada elemento geométrico tetraedrico
+    for (auto cel : cmesh->ElementVec())
+    {
+        auto gel = cel->Reference();
+        if (gel->Dimension() != 3) continue;
+        auto nsides = gel->NSides();
+
+        //Para cada lado que possua como vizinho um elemento Wrap
+        for (int iside = 10; iside < nsides-1; iside++)
+        {
+            TPZGeoElSide geoside(gel,iside);
+            TPZGeoElSide neighbour = geoside.Neighbour();
+
+            std::cout << "Neighbour orientation: " << neighbour.Element()->Index() 
+                                                   << ", material = " << neighbour.Element()->MaterialId() 
+                                                   <<  ", normal = " << gel->NormalOrientation(iside) 
+                                                   << " ,i = " << iside << std::endl;
+            //Side 0
+            TPZVec<int> sidePerm(3);
+            sidePerm[0] = neighbour.Element()->Reference()->ConnectIndex(0);
+            sidePerm[1] = neighbour.Element()->Reference()->ConnectIndex(1);
+            sidePerm[2] = neighbour.Element()->Reference()->ConnectIndex(2);
+            
+            // std::cout << "Nieghbour connect = ";
+            // for (int i = 0; i < neighbour.Element()->Reference()->NConnects(); i++)
+            // {
+            //     std::cout << neighbour.Element()->Reference()->ConnectIndex(i) << " " ;   
+            // }
+            // std::cout << std::endl;
+
+            bool flag = false;
+            for (int i = 0; i < 12; i++)
+            {
+                // std::cout << "sidePer = " << sidePerm << std::endl;
+                if (sidePerm[0] == cel->ConnectIndex(permTetra[i][0]) && 
+                    sidePerm[1] == cel->ConnectIndex(permTetra[i][1]) && 
+                    sidePerm[2] == cel->ConnectIndex(permTetra[i][2])) flag = true;
+            }
+            
+            if (flag){
+                std::cout << "Side " << iside << " OK!" << std::endl;
+                
+                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
+                intel->SetSideOrient(iside,1);
+                
+            } else {
+                std::cout << "Side " << iside << " NOT OK!" << std::endl;
+                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
+                intel->SetSideOrient(iside,-1);
+            }           
         }
     }
 }

@@ -379,11 +379,12 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
         }
     }
     
-    // if (removed_edges.size() != nnodes-1){
-    //     std::cout << "Removed " << removed_edges.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
-    //     DebugStop();
-    // }
-    
+    if (!domainHybridization){
+        if (removed_edges.size() != nnodes-1){
+            std::cout << "Removed " << removed_edges.size() << "/" << nnodes-1 << " allowed connects."  << std::endl;
+            DebugStop();
+        }
+    } 
 
     return 0;
 }

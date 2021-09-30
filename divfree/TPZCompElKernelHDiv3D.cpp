@@ -32,7 +32,11 @@ using namespace std;
 template<class TSHAPE>
 TPZCompElKernelHDiv3D<TSHAPE>::TPZCompElKernelHDiv3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
 TPZRegisterClassId(&TPZCompElKernelHDiv3D::ClassId), TPZCompElHCurlNoGrads<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1) {
-
+    int firstside = TSHAPE::NSides-TSHAPE::NFacets-1;
+    for(int side = firstside ; side < TSHAPE::NSides-1; side++ )
+    {
+        fSideOrient[side-firstside] = this->Reference()->NormalOrientation(side);
+    }
 }
 
 template<class TSHAPE>
@@ -57,12 +61,75 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
 
     data.fDeformedDirections=data.curlphi;
 
+    std::cout << "SIDE orient = " << fSideOrient << std::endl;
+
     data.phi.Resize(nshape,3);
     for (int i = 0; i < data.phi.Rows(); i++){
 		data.phi(i,0) = 1.;
         data.phi(i,1) = 1.;
         data.phi(i,2) = 1.;
 	}
+    
+    // if (fSideOrient[0] < 0){
+    //     int ish = data.fVecShapeIndex[0].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[1].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[2].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;        
+    // }
+
+    // if (fSideOrient[1] < 0){
+    //     int ish = data.fVecShapeIndex[0].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[4].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[3].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;        
+    // }
+
+    // if (fSideOrient[2] < 0){
+    //     int ish = data.fVecShapeIndex[1].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[4].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[5].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;        
+    // }
+
+    // if (fSideOrient[3] < 0){
+    //     int ish = data.fVecShapeIndex[2].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[3].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;
+    //     ish = data.fVecShapeIndex[5].second;
+    //     data.phi(ish,0) = -1.;
+    //     data.phi(ish,1) = -1.;
+    //     data.phi(ish,2) = -1.;        
+    // }
+
 	for (int i = 0; i < data.dphix.Rows(); i++)
         for (int j = 0; j < data.dphix.Cols(); j++)
     	    	data.dphix(i,j) = 1.;
@@ -94,8 +161,6 @@ void TPZCompElKernelHDiv3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 	// 	data.fVecShapeIndex[i] = std::make_pair(i,1);
     // }
     
-    
-   
 }
 
 /**
