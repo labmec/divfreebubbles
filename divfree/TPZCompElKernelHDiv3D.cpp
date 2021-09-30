@@ -61,7 +61,7 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
 
     data.fDeformedDirections=data.curlphi;
 
-    std::cout << "SIDE orient = " << fSideOrient << std::endl;
+    // std::cout << "SIDE orient = " << fSideOrient << std::endl;
 
     data.phi.Resize(nshape,3);
     for (int i = 0; i < data.phi.Rows(); i++){
