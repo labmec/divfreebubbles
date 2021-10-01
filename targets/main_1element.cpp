@@ -26,6 +26,7 @@
 #include "TPZCompElKernelHdivBC.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
+#include "TPZCompElH1.h"
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *FluxCMeshDFB(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
@@ -316,7 +317,7 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMes
                 TPZGeoElSide neighbour = gelside.Neighbour();
 
                 if (neighbour.Element()->MaterialId() == EPont){
-                    new TPZIntelGen<TPZShapePoint>(*cmesh,neighbour.Element(),index);
+                    new TPZCompElH1<TPZShapePoint>(*cmesh,neighbour.Element(),index);
                     TPZMaterial *mat = cmesh->FindMaterial(EPont);
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 }

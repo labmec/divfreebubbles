@@ -32,14 +32,14 @@ using namespace std;
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1) {
+TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1) {
 
 }
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, const TPZCompElKernelHDiv<TSHAPE> &copy) :
 TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId),
-TPZIntelGen<TSHAPE>(mesh,copy)
+TPZCompElH1<TSHAPE>(mesh,copy)
 {
 	this-> fPreferredOrder = copy.fPreferredOrder;
     this->fConnectIndexes = copy.fConnectIndexes;
@@ -51,14 +51,14 @@ TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh,
 									             std::map<int64_t,int64_t> & gl2lcConMap,
 									             std::map<int64_t,int64_t> & gl2lcElMap) :
 TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId),
-TPZIntelGen<TSHAPE>(mesh,copy,gl2lcConMap,gl2lcElMap){
+TPZCompElH1<TSHAPE>(mesh,copy,gl2lcConMap,gl2lcElMap){
 
 }
 
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::~TPZCompElKernelHDiv(){
-    this->~TPZIntelGen<TSHAPE>();
+    this->~TPZCompElH1<TSHAPE>();
 }
  
 
@@ -311,35 +311,4 @@ template class TPZCompElKernelHDiv<TPZShapePrism>;
 template class TPZCompElKernelHDiv<TPZShapePiram>;
 template class TPZCompElKernelHDiv<TPZShapeCube>;
 
-TPZCompEl * CreateKernelHDivPointEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-    return new TPZCompElKernelHDiv< TPZShapePoint>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-    return new TPZCompElKernelHDiv< TPZShapeLinear>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeQuad>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeTriang >(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeCube >(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapePrism>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapePiram >(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeTetra >(mesh,gel,index);
-}
 

@@ -8,7 +8,7 @@
 
 #include "pzelctemp.h"
 #include "TPZOneShapeRestraint.h"
-
+#include "TPZCompElH1.h"
 
 /**
  * @brief This class implements a "generic" computational element to HDiv scope. \ref CompElement "Computational Element"
@@ -19,7 +19,7 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDiv : public TPZIntelGen<TSHAPE> {
+class TPZCompElKernelHDiv : public TPZCompElH1<TSHAPE> {
 
     /// vector which defines whether the normal is outward or not
     TPZManVector<int, TSHAPE::NFacets> fSideOrient;
@@ -131,37 +131,6 @@ template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::SetCreateFunctions(TPZCompMesh* mesh) {
     mesh->SetAllCreateFunctionsContinuous();
 }
-
-
-#include "pzrefquad.h"
-#include "pzshapequad.h"
-#include "pzgeoquad.h"
-#include "tpzquadrilateral.h"
-
-/** @brief Creates computational point element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivPointEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational linear element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational quadrilateral element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational triangular element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational cube element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational prismal element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational pyramidal element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational tetrahedral element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-
-TPZCompEl * CreateRefKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 
 
 #endif

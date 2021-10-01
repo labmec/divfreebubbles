@@ -10,19 +10,19 @@
 
 template<class TSHAPE>
 TPZCompElKernelHDivBC<TSHAPE>::TPZCompElKernelHDivBC(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDivBC::ClassId), TPZIntelGen<TSHAPE>(mesh,gel,index)  {
+TPZRegisterClassId(&TPZCompElKernelHDivBC::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index)  {
 
 }
 
 template<class TSHAPE>
 TPZCompElKernelHDivBC<TSHAPE>::~TPZCompElKernelHDivBC(){
-    this->~TPZIntelGen<TSHAPE>();
+    this->~TPZCompElH1<TSHAPE>();
 }
 
 template<class TSHAPE>
 void TPZCompElKernelHDivBC<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
-	TPZIntelGen<TSHAPE>::InitMaterialData(data);
+	TPZCompElH1<TSHAPE>::InitMaterialData(data);
 
     int nshape = this->NShapeF();
     data.fVecShapeIndex.Resize(nshape);
@@ -37,7 +37,7 @@ void TPZCompElKernelHDivBC<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> 
 
     bool needsol = data.fNeedsSol;
     data.fNeedsSol = true;
-    TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);
+    TPZCompElH1<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
     
     TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());

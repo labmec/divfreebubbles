@@ -21,6 +21,7 @@
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
 #include "TPZMixedDarcyFlowHybrid.h"
+#include "TPZCompElH1.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -121,7 +122,8 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         if (type == EPoint){
             if (fSpaceType != ENone) continue;
             if (fDimension == 3) continue;
-            new TPZIntelGen<TPZShapePoint>(*cmesh,gel,index);
+            //NEW CompElH1.
+            new TPZCompElH1<TPZShapePoint>(*cmesh,gel,index);
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             // nullmat->SetDimension(0);
@@ -175,11 +177,11 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             TPZGeoElSide gelside(gel,0);
             TPZGeoElSide neighbour = gelside.Neighbour();
 
-            if (neighbour.Element()->MaterialId() == fConfig.fPoint){
-                new TPZIntelGen<TPZShapePoint>(*cmesh,neighbour.Element(),index);
-                TPZMaterial *mat = cmesh->FindMaterial(fConfig.fPoint);
-                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-            }
+            // if (neighbour.Element()->MaterialId() == fConfig.fPoint){
+            //     new TPZIntelGen<TPZShapePoint>(*cmesh,neighbour.Element(),index);
+            //     TPZMaterial *mat = cmesh->FindMaterial(fConfig.fPoint);
+            //     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            // }
         }
 
         
