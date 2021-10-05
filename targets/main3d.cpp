@@ -85,14 +85,14 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 1.;//(3.*x*x*y*z - y*y*y*z);
+    u[0] = z;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
     gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
+    gradU(2,0) = 1.;//(x*x*x*y - y*y*y*x);
 };
 
 
-enum EMatid  {ENone, EDomain, ESurfaces, EPont, EWrap, EIntface, EPressureHyb};
+enum EMatid  {ENone, EDomain, ES1, ES2, ES3, ES4, EPont, EWrap, EIntface, EPressureHyb};
 
 int main(int argc, char* argv[])
 {
@@ -117,7 +117,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/2tetra.msh",gmesh);
+        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -178,10 +178,10 @@ TPZLogger::InitializePZLOG();
         TPZCompMesh * cmeshpressure = 0;    
 
         //Insert here the BC material id's to be hybridized 
-        std::set<int> matBCHybrid={};
+        std::set<int> matBCHybrid={ES1,ES2,ES3,ES4};
         //Insert here the type of all boundary conditions
-        std::set<int> matIDNeumann{};
-        std::set<int> matIDDirichlet{ESurfaces};
+        std::set<int> matIDNeumann{ES1,ES2,ES3,ES4};
+        std::set<int> matIDDirichlet{};
         /// All bc's mat ID's
         std::set<int> matBC;
         std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
@@ -330,29 +330,29 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
 {
     gmesh->ResetReference();
     auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
-    cmesh->SetDefaultOrder(pOrder);
-    cmesh->SetDimModel(dim);
-    TPZMixedDarcyFlow* mat = new TPZMixedDarcyFlow(EDomain, dim);
-    mat->SetConstantPermeability(1.);
+    // cmesh->SetDefaultOrder(pOrder);
+    // cmesh->SetDimModel(dim);
+    // TPZMixedDarcyFlow* mat = new TPZMixedDarcyFlow(EDomain, dim);
+    // mat->SetConstantPermeability(1.);
     
-    cmesh->InsertMaterialObject(mat);
-    mat -> SetBigNumber(1.e10);
+    // cmesh->InsertMaterialObject(mat);
+    // mat -> SetBigNumber(1.e10);
         
-    //Boundary Conditions
-    TPZFMatrix<STATE> val1(1,1,1.);
-    TPZManVector<STATE> val2(1,0.);
-    auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
-    BCond0->SetForcingFunctionBC(exactSol);
-    cmesh->InsertMaterialObject(BCond0);
+    // //Boundary Conditions
+    // TPZFMatrix<STATE> val1(1,1,1.);
+    // TPZManVector<STATE> val2(1,0.);
+    // auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
+    // BCond0->SetForcingFunctionBC(exactSol);
+    // cmesh->InsertMaterialObject(BCond0);
 
-    TPZManVector<int> active(2,1);
-    cmesh->BuildMultiphysicsSpace(active, meshvector);
-    cmesh->SetAllCreateFunctionsMultiphysicElem();
-    cmesh->AdjustBoundaryElements();
-    cmesh->CleanUpUnconnectedNodes();
+    // TPZManVector<int> active(2,1);
+    // cmesh->BuildMultiphysicsSpace(active, meshvector);
+    // cmesh->SetAllCreateFunctionsMultiphysicElem();
+    // cmesh->AdjustBoundaryElements();
+    // cmesh->CleanUpUnconnectedNodes();
 
-    TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
-    TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
+    // TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
+    // TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
 
     // // Prints Multiphysics mesh
     // std::ofstream myfile("MultiPhysicsMesh.txt");
@@ -421,47 +421,47 @@ TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh)
     gmesh->ResetReference();
     TPZCompMesh *cmesh = new TPZCompMesh(gmesh);
 
-    cmesh->SetDefaultOrder(pOrder);
-    cmesh->SetDimModel(dim);
+    // cmesh->SetDefaultOrder(pOrder);
+    // cmesh->SetDimModel(dim);
 
-    //insert volumetric material
-    auto volMat = new TPZMatCurlDotCurl(EDomain);
-    cmesh->InsertMaterialObject(volMat);
-    //insert boundary material
-    const int bcType = 0;//dirichlet
-    TPZFNMatrix<1, STATE> val1(1, 1, 1);
-    TPZManVector<STATE,1> val2(1, 0.);
-    auto bcMat = volMat->CreateBC(volMat, ESurfaces, bcType, val1, val2);
-    cmesh->InsertMaterialObject(bcMat);
+    // //insert volumetric material
+    // auto volMat = new TPZMatCurlDotCurl(EDomain);
+    // cmesh->InsertMaterialObject(volMat);
+    // //insert boundary material
+    // const int bcType = 0;//dirichlet
+    // TPZFNMatrix<1, STATE> val1(1, 1, 1);
+    // TPZManVector<STATE,1> val2(1, 0.);
+    // auto bcMat = volMat->CreateBC(volMat, ESurfaces, bcType, val1, val2);
+    // cmesh->InsertMaterialObject(bcMat);
     
-    //Creates computational elements
-    int64_t nel = gmesh->NElements();
-    for (int64_t el = 0; el < nel; el++) {
-        TPZGeoEl *gel = gmesh->Element(el);
-        if(!gel) DebugStop();
-        gel->ResetReference();   
-        const MElementType type = gel->Type();
-        const auto matid = gel->MaterialId();
-        int64_t index;
-        switch(type){
-        case ETriangle:
-        new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel,index);
-        break;
-        case ETetraedro:
-        new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel,index);
-        break;
-        default:
-        const auto elName =  MElementType_Name(type);
-        // CAPTURE(elName);
-        // CHECK(false);
-        PZError<<__PRETTY_FUNCTION__
-                <<"\n type not yet supported. Aborting..."<<std::endl;
-        DebugStop();
-        }
-    }
-    cmesh->SetAllCreateFunctionsHCurl();
-    cmesh->AutoBuild();
-    cmesh->CleanUpUnconnectedNodes();
+    // //Creates computational elements
+    // int64_t nel = gmesh->NElements();
+    // for (int64_t el = 0; el < nel; el++) {
+    //     TPZGeoEl *gel = gmesh->Element(el);
+    //     if(!gel) DebugStop();
+    //     gel->ResetReference();   
+    //     const MElementType type = gel->Type();
+    //     const auto matid = gel->MaterialId();
+    //     int64_t index;
+    //     switch(type){
+    //     case ETriangle:
+    //     new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel,index);
+    //     break;
+    //     case ETetraedro:
+    //     new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel,index);
+    //     break;
+    //     default:
+    //     const auto elName =  MElementType_Name(type);
+    //     // CAPTURE(elName);
+    //     // CHECK(false);
+    //     PZError<<__PRETTY_FUNCTION__
+    //             <<"\n type not yet supported. Aborting..."<<std::endl;
+    //     DebugStop();
+    //     }
+    // }
+    // cmesh->SetAllCreateFunctionsHCurl();
+    // cmesh->AutoBuild();
+    // cmesh->CleanUpUnconnectedNodes();
 
     return cmesh;
 }

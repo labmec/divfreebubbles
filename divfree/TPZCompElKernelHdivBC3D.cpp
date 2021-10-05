@@ -19,6 +19,7 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
 	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
 
+    
     // int nshape = this->NShapeF();    
     // int64_t size = nshape*3;//(TSHAPE::Dimension);
     // data.fVecShapeIndex.Resize(size);
@@ -41,14 +42,28 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
     // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
     // TPZFMatrix<REAL> &dphi = data.dphix;
     // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
-
+    
+    data.phi.Zero();
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = -data.curlphi(0,i);// * data.normal[i];
+		data.phi(i,0) = -data.curlphi(0,i) * fSideOrient;
 	  }
     }
 
+    // std::cout << "Phi = " << data.phi << std::endl;
+    // std::cout << "ELEMENT MATERIAL ID = " << this->Reference()->MaterialId() << std::endl; 
+
 }//void
+
+template<class TSHAPE>
+void TPZCompElKernelHDivBC3D<TSHAPE>::SetSideOrient(int orient){
+    fSideOrient = orient;
+}
+
+template<class TSHAPE>
+int TPZCompElKernelHDivBC3D<TSHAPE>::GetSideOrient(){
+    return fSideOrient;
+}
 
 
 

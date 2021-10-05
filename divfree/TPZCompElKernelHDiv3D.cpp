@@ -64,71 +64,37 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
     // std::cout << "SIDE orient = " << fSideOrient << std::endl;
 
     data.phi.Resize(nshape,3);
+    REAL val = 1.;
+    // if (fSideOrient[2] < 0) {
+    //     val = -1.;
+    // }
     for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = 1.;
-        data.phi(i,1) = 1.;
-        data.phi(i,2) = 1.;
+		data.phi(i,0) = val;
+        data.phi(i,1) = val;
+        data.phi(i,2) = val;
 	}
-    
-    // if (fSideOrient[0] < 0){
-    //     int ish = data.fVecShapeIndex[0].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[1].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[2].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;        
-    // }
-
-    // if (fSideOrient[1] < 0){
-    //     int ish = data.fVecShapeIndex[0].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[4].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[3].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;        
-    // }
 
     // if (fSideOrient[2] < 0){
-    //     int ish = data.fVecShapeIndex[1].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[4].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[5].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;        
+    //     // std::set<int> ish = {0,1,3,4,7,8,11};
+    //     std::set<int> ish = {1,2,3,5,8,9,12};
+    //     // std::set<int> ish = {0,4,6,7};
+    //     // std::set<int> ish = {0,1,2,4,5,6,10};
+    //     // std::set<int> ish = {0,2,3,6,7,9,13};
+    //     // std::set<int> ish = {5,8,9};
+    //     for (auto k:ish)
+    //     {
+    //         data.phi(k,0) = -1.;
+    //         data.phi(k,1) = -1.;
+    //         data.phi(k,2) = -1.;
+    //         data.fDeformedDirections(0,k) *= -1.;
+    //         data.fDeformedDirections(1,k) *= -1.;
+    //         data.fDeformedDirections(2,k) *= -1.;
+    //         data.curlphi(0,k) *= -1.;
+    //         data.curlphi(1,k) *= -1.;
+    //         data.curlphi(2,k) *= -1.;
+    //     }    
     // }
 
-    // if (fSideOrient[3] < 0){
-    //     int ish = data.fVecShapeIndex[2].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[3].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;
-    //     ish = data.fVecShapeIndex[5].second;
-    //     data.phi(ish,0) = -1.;
-    //     data.phi(ish,1) = -1.;
-    //     data.phi(ish,2) = -1.;        
-    // }
 
 	for (int i = 0; i < data.dphix.Rows(); i++)
         for (int j = 0; j < data.dphix.Cols(); j++)

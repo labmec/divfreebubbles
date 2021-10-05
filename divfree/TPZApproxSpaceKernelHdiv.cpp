@@ -61,7 +61,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false);
     }
 
-    // if (fDimension == 3) CreateOrientedBoundaryElements();
+    if (fDimension == 3) CreateOrientedBoundaryElements();
     
 }
 
@@ -153,10 +153,8 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 if (allMat.find(matid) == allMat.end()) continue;
 
                 new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
-                // new TPZCompElHCurlNoGrads<TPZShapeTriang>(*cmesh,gel,index);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-                // nullmat->SetDimension(2);
                 if (matid == fConfig.fWrap){
                     gel->ResetReference();
                 }
@@ -355,26 +353,26 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
 template<class TVar>
 void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
 {   
-    // for(auto gel : fGeoMesh->ElementVec())
-    // {
-    //     if (gel->Dimension() < 3) continue;
+    for(auto gel : fGeoMesh->ElementVec())
+    {
+        if (gel->Dimension() < 3) continue;
         
-    //     //For tetrahedra only, loop over the surface sides
-    //     for (int side = 10; side < 14; side++){
-    //         TPZGeoElSide gelside(gel,side);
-    //         TPZGeoElSide neighbour = gelside.Neighbour();
-    //         //Neighbour material id
-    //         auto Nmatid = neighbour.Element()->MaterialId();
+        //For tetrahedra only, loop over the surface sides
+        for (int side = 10; side < 14; side++){
+            TPZGeoElSide gelside(gel,side);
+            TPZGeoElSide neighbour = gelside.Neighbour();
+            //Neighbour material id
+            auto Nmatid = neighbour.Element()->MaterialId();
 
-    //         /*  If the boundary has BC, delete the neighbour GeoElement and  
-    //             create another one from TPZGeoElBC with the same material id
-    //         */
-    //         if (fConfig.fBCMatId.find(Nmatid) == fConfig.fBCMatId.end()) continue;
-    //         fGeoMesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
-    //         TPZGeoElBC gelbcWrap(gelside, Nmatid);
+            /*  If the boundary has BC, delete the neighbour GeoElement and  
+                create another one from TPZGeoElBC with the same material id
+            */
+            if (fConfig.fBCMatId.find(Nmatid) == fConfig.fBCMatId.end()) continue;
+            fGeoMesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
+            TPZGeoElBC gelbcWrap(gelside, Nmatid);
            
-    //     }
-    // }
+        }
+    }
 
     
 }
@@ -399,50 +397,39 @@ void TPZApproxSpaceKernelHdiv<TVar>::OrientFaces(TPZCompMesh * cmesh)
         if (gel->Dimension() != 3) continue;
         auto nsides = gel->NSides();
 
-        //Para cada lado que possua como vizinho um elemento Wrap
-        for (int iside = 10; iside < nsides-1; iside++)
+        //Only Tetrahedra - these are the sides with wrong orientation
+        std::set<int> sides = {10,13};
+        for (auto iside:sides)
+        {            
+            TPZGeoElSide geoside(gel,iside);
+            TPZGeoElSide neighbour = geoside.Neighbour();
+            std::cout << " MATID = " << neighbour.Element()->MaterialId() << std::endl;
+            TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
+            if (intel) intel->SetSideOrient(-1);
+
+            TPZInterpolatedElement *intel2 = dynamic_cast<TPZInterpolatedElement *> (cel);
+            intel2->SetSideOrient(iside,-1);   
+        }
+
+        std::set<int> sides2 = {11,12};
+        for (auto iside:sides2)
         {
             TPZGeoElSide geoside(gel,iside);
             TPZGeoElSide neighbour = geoside.Neighbour();
 
-            std::cout << "Neighbour orientation: " << neighbour.Element()->Index() 
-                                                   << ", material = " << neighbour.Element()->MaterialId() 
-                                                   <<  ", normal = " << gel->NormalOrientation(iside) 
-                                                   << " ,i = " << iside << std::endl;
-            //Side 0
-            TPZVec<int> sidePerm(3);
-            sidePerm[0] = neighbour.Element()->Reference()->ConnectIndex(0);
-            sidePerm[1] = neighbour.Element()->Reference()->ConnectIndex(1);
-            sidePerm[2] = neighbour.Element()->Reference()->ConnectIndex(2);
-            
-            // std::cout << "Nieghbour connect = ";
-            // for (int i = 0; i < neighbour.Element()->Reference()->NConnects(); i++)
-            // {
-            //     std::cout << neighbour.Element()->Reference()->ConnectIndex(i) << " " ;   
-            // }
-            // std::cout << std::endl;
+            if (neighbour.Element()->MaterialId() != fConfig.fWrap) continue;
+            // std::cout << " MATID = " << neighbour.Element()->MaterialId() << std::endl;
+            // TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
+            // if (intel) intel->SetSideOrient(1);
 
-            bool flag = false;
-            for (int i = 0; i < 12; i++)
-            {
-                // std::cout << "sidePer = " << sidePerm << std::endl;
-                if (sidePerm[0] == cel->ConnectIndex(permTetra[i][0]) && 
-                    sidePerm[1] == cel->ConnectIndex(permTetra[i][1]) && 
-                    sidePerm[2] == cel->ConnectIndex(permTetra[i][2])) flag = true;
-            }
-            
-            if (flag){
-                std::cout << "Side " << iside << " OK!" << std::endl;
-                
-                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
-                intel->SetSideOrient(iside,1);
-                
-            } else {
-                std::cout << "Side " << iside << " NOT OK!" << std::endl;
-                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
-                intel->SetSideOrient(iside,-1);
-            }           
+            // std::cout << "NNMatid = " << neighbour.Neighbour().Element()->MaterialId() << std::endl;
+            // TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel2 = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Neighbour().Element()->Reference());
+            // if (intel) intel2->SetSideOrient(-1);
+
+            TPZInterpolatedElement *intel2 = dynamic_cast<TPZInterpolatedElement *> (cel);
+            intel2->SetSideOrient(iside,-1);   
         }
+        
     }
 }
 

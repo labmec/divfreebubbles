@@ -25,6 +25,9 @@
 template<class TSHAPE>
 class TPZCompElKernelHDivBC3D : public TPZCompElHCurlNoGrads<TSHAPE>  {
 
+private:
+    int fSideOrient = 1;
+
 public:
 	    
 	TPZCompElKernelHDivBC3D();
@@ -34,6 +37,11 @@ public:
     virtual void InitMaterialData(TPZMaterialData &data) override;
 
     void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;
+    
+    void SetSideOrient(int orient);
+
+    int GetSideOrient();
+
 	
 };
 

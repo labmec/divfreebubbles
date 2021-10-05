@@ -116,6 +116,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
     data.fNeedsSol = false;
     TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);//in this method, Shape will be called
     data.fNeedsSol = needsSol;
+    
   }
 
   this->ComputeDeformedDirections(data);    

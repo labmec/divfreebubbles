@@ -185,6 +185,8 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
     REAL u_D = 0;
     REAL normflux = 0.;
 
+    
+
     if (bc.HasForcingFunctionBC()) {
         TPZManVector<STATE> res(3);
         TPZFNMatrix<9, STATE> gradu(3, 1);
@@ -209,7 +211,19 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
             normflux *= (-1.);
         } else if (bc.Type() == 1 || bc.Type() == 2) {
             v2 = -normflux;
-            if (phrp > 0) v2 = gradu(0,0)*dataAux.axes(0,1) - gradu(1,0)*dataAux.axes(0,0);
+            if (phrp > 0){
+                if (dim == 2){
+                    v2 = gradu(0,0)*dataAux.axes(0,1) - gradu(1,0)*dataAux.axes(0,0);
+                } else if (dim == 3){
+                    //Normal vector
+                    TPZManVector<STATE> normal(3);
+                    normal[0] = dataAux.axes(0,1)*dataAux.axes(1,2) - dataAux.axes(0,2)*dataAux.axes(1,1);
+                    normal[1] = dataAux.axes(0,2)*dataAux.axes(1,0) - dataAux.axes(0,0)*dataAux.axes(1,2);
+                    normal[2] = dataAux.axes(0,0)*dataAux.axes(1,1) - dataAux.axes(0,1)*dataAux.axes(1,0);
+                    //v2 = gradu \cdot normal
+                    v2 = gradu(0,0)*normal[0] + gradu(1,0)*normal[1] + gradu(2,0)*normal[2];   
+                }
+            } 
             if (bc.Type() == 2) {
                 v2 = -res[0] + v2 / v1;
             }
