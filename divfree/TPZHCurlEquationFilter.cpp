@@ -274,10 +274,14 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
     if (domainHybridization)
     {
         done_vertices = true;
-        for (auto cel:cmesh->ElementVec())
-        {
-            // if (!cel->Reference()) continue;
-            if (cel->Reference()->Dimension() != 3) continue;
+        for (auto cel : cmesh->ElementVec())
+        {   
+            if (!cel) continue;
+            cel->LoadElementReference();
+            auto gel = cel->Reference();
+            if (!gel) continue;
+            int dimg = gel->Dimension();
+            if (gel->Dimension() != 3) continue;
             removed_edges.insert(cel->ConnectIndex(0));
             removed_edges.insert(cel->ConnectIndex(1));
             removed_edges.insert(cel->ConnectIndex(5));

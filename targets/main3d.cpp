@@ -117,7 +117,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
+        reader.GeometricGmshMesh4("../mesh/2tetra.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
