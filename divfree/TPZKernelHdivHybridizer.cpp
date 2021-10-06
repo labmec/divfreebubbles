@@ -126,7 +126,14 @@ void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int
             if (gel->SideDimension(side) != dim-1) continue;
             TPZGeoElSide gelside(gel,side);
             if (gelside.HasNeighbour(matBCId)) continue;
-            int64_t cIndex = cel->ConnectIndex(side);
+            int ncorner = cel->Reference()->NCornerNodes();
+            int64_t cIndex;
+            if (dim == 2){
+                cIndex = cel->ConnectIndex(side);
+            } else if (dim == 3){
+                cIndex = cel->ConnectIndex(side-ncorner);
+            }
+
             TPZGeoElSide neighbour = gelside.Neighbour();
 
             while (neighbour != gelside)
@@ -136,7 +143,13 @@ void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int
                 {
                     // TPZGeoElBC gelbc(gelWrapSide, fEInterface);
                     // cel->SetConnectIndex(neighbour.Side(),cIndex);
-                    neighcel->SetConnectIndex(neighbour.Side(),cIndex);
+                    if (dim == 2){
+                        neighcel->SetConnectIndex(neighbour.Side(),cIndex);
+                    } else if (dim == 3){
+                        int ncornerNeig = neighcel->Reference()->NCornerNodes();
+                        neighcel->SetConnectIndex(neighbour.Side()-ncornerNeig,cIndex);
+                    }
+
                 }
                 neighbour=neighbour.Neighbour();
             }

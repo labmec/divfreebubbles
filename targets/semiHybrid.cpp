@@ -128,14 +128,14 @@ TPZLogger::InitializePZLOG();
     //Insert here the BC material id's to be hybridized
     std::set<int> matBCHybrid={};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{ERight,ETop,EBottom,ELeft};
-    std::set<int> matIDDirichlet{};
+    std::set<int> matIDNeumann{};
+    std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
 
     //Setting material ids
     createSpace.fConfig.fDomain = EDomain;
@@ -166,7 +166,7 @@ TPZLogger::InitializePZLOG();
     std::cout << "MULTIPHYSICS \n";
     util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
-    createSpace.Condense(cmeshNew);
+    // createSpace.Condense(cmeshNew);
     std::string multiphysicsFile = "MultiPhysicsMeshNew";
     util.PrintCompMesh(cmeshNew,multiphysicsFile);
 

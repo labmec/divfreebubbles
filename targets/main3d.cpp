@@ -85,10 +85,10 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = z;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = 1.;//(x*x*x*y - y*y*y*x);
+    u[0] = x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = (x*x*x*y - y*y*y*x);
 };
 
 
@@ -117,7 +117,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/1tetra.msh",gmesh);
+        reader.GeometricGmshMesh4("../mesh/cube.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -178,16 +178,16 @@ TPZLogger::InitializePZLOG();
         TPZCompMesh * cmeshpressure = 0;    
 
         //Insert here the BC material id's to be hybridized 
-        std::set<int> matBCHybrid={ES1,ES2,ES3,ES4};
+        std::set<int> matBCHybrid={};
         //Insert here the type of all boundary conditions
-        std::set<int> matIDNeumann{ES1,ES2,ES3,ES4};
-        std::set<int> matIDDirichlet{};
+        std::set<int> matIDNeumann{};
+        std::set<int> matIDDirichlet{ES1,ES2,ES3,ES4};
         /// All bc's mat ID's
         std::set<int> matBC;
         std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
         /// Creates the approximation space - Set the type of domain hybridization
-        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;

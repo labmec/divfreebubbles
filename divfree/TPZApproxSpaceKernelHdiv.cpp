@@ -273,6 +273,10 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
     cmesh->AutoBuild(matIdVec);
     
     if (fSpaceType == ESemiHybrid){
+        std::cout << "Matid " << std::endl;
+        for (auto const &i: fConfig.fBCHybridMatId) {
+            std::cout << i << " ";
+        }
         hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
     }
 

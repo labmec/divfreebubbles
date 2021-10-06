@@ -1,5 +1,5 @@
-a = 50;
-layers = 1;
+a = 0.5;
+layers = 5;
 
 Point(1) = {0, 0, 0, a};
 Point(2) = {1, 0, 0, a};
