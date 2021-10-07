@@ -410,8 +410,6 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
          we remove k(k-1)/2.
          so:
          (k-1)*(k+1)-k*(k-1)/2 = (k-1)(k+2)/2.
-
-         as a first test, we only remove from phi_fe hcurl functions
       */
       const auto nfacefuncs =  (order - 1) * (order+2) / 2;
 
