@@ -187,6 +187,9 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
       }
     }
     else{//internal connect (3D element only)
+      if constexpr (TSHAPE::Type() == ETetraedro){
+        return (order-1)*(order-2)*(2*order+3)/6;
+      }
       return 0;
       // int count = 0;
       // //first we count the face-based interior functions \phi^{K,F}
