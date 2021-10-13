@@ -35,7 +35,7 @@ void TPZL2ProjectionCS<TVar>::Contribute(const TPZVec<TPZMaterialDataT<TVar>> &d
                                        TPZFMatrix<TVar> &ek, TPZFMatrix<TVar> &ef){
 	
     TPZMaterialDataT<TVar>  data = datavec[0];
-	const int nshape = data.phi.Rows();
+	const int nshape =ek.Rows();// data.phi.Rows();
     const int nvars = fNStateVars;
     TPZManVector<TVar,10> solLoc(fSol);
     if(this->HasForcingFunction()){
@@ -56,6 +56,7 @@ void TPZL2ProjectionCS<TVar>::Contribute(const TPZVec<TPZMaterialDataT<TVar>> &d
             ef(posI,0) += weight*fScale*phi.GetVal(i,0)*solLoc[ivi];
 		}//ivi
 	}//for i
+
 }
 
 template<class TVar>

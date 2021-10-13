@@ -74,7 +74,8 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                         TPZGeoElSide gelPresHSide(gelbc.CreatedElement(),gelbc.CreatedElement()->NSides()-1);
                         TPZGeoElBC gelPHyb(gelPresHSide, fEPressureHyb);
                     }
-                } 
+                }
+
             }//domain Hybrid
 
             //Creates interface and wrap geometric elements for hybridized BC
@@ -94,7 +95,16 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                 TPZGeoElSide geosidePoint(gel,0);
                 TPZGeoElBC gelbcPoint(geosidePoint, fEPont);
             }
-        // }
+            // For the static condensation in 3D
+            if (type==ETetraedro){
+                TPZGeoElSide geoside1(gel,4);//The same edges removed in the equation filter
+                TPZGeoElSide geoside2(gel,5);
+                TPZGeoElSide geoside3(gel,9);
+                TPZGeoElBC gelPHyb1(geoside1,fEEdgeRemove);
+                TPZGeoElBC gelPHyb2(geoside2,fEEdgeRemove);
+                TPZGeoElBC gelPHyb3(geoside3,fEEdgeRemove);
+            }
+
             for (int side = 0; side < nsides; side++) {
                 TPZGeoElSide gelside(gel,side);
                 gelside.Element()->ResetReference();
@@ -200,6 +210,12 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
 
 void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC)
 {
+    for (auto i:matIdBC)
+    {
+        std::cout << " " << i ;
+    }
+    
+    
     int64_t nel = cmesh->NElements();
     elementgroup.Resize(nel, -1);
     elementgroup.Fill(-1);
@@ -282,11 +298,14 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
 
     int64_t nel = cmesh->NElements();
     TPZVec<int64_t> groupnumber(nel,-1);
+
+    auto aux=matIdBC;
+    aux.insert(fEEdgeRemove);
     /// compute a groupnumber associated with each element
-    AssociateElements(cmesh,groupnumber,matIdBC);
+    AssociateElements(cmesh,groupnumber,aux);
 
     std::map<int64_t, TPZElementGroup *> groupmap;
-    //    std::cout << "Groups of connects " << groupindex << std::endl;
+       std::cout << "Groups of connects " << groupnumber << std::endl;
     for (int64_t el = 0; el<nel; el++) {
         int64_t groupnum = groupnumber[el];
 
@@ -339,6 +358,33 @@ void TPZKernelHdivHybridizer::SemiHybridizePressure(TPZCompMesh *cmesh, int pOrd
 
         if(!intel) DebugStop();
         intel->PRefine(pOrder-1);
+    }
+    
+    cmesh->ExpandSolution();
+
+}
+
+
+void TPZKernelHdivHybridizer::EdgeRemove(TPZCompMesh *cmesh)
+{
+    
+
+    int64_t nel = cmesh->NElements();
+    cmesh->Reference()->ResetReference();
+    for(int64_t el=0; el<nel; el++)
+    {
+        TPZCompEl *cel = cmesh->Element(el);
+        if(!cel) continue;
+        auto gel = cel->Reference();
+        int matid = gel->MaterialId();
+        auto nconnects = cel->NConnects();
+        
+        if (matid != fEEdgeRemove) continue;
+
+        auto *intel = dynamic_cast<TPZCompElDisc *>(cel);
+    
+        if(!intel) DebugStop();
+        intel->PRefine(0);
     }
     
     cmesh->ExpandSolution();

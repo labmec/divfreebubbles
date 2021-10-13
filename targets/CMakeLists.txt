@@ -12,3 +12,6 @@ target_link_libraries(semiHybrid PRIVATE divfree)
 
 add_executable(3d main3d.cpp)
 target_link_libraries(3d PRIVATE divfree)
+
+add_executable(SHIterative SHIterative.cpp)
+target_link_libraries(SHIterative PRIVATE divfree)

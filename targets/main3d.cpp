@@ -85,14 +85,14 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = (x*x*x*y - y*y*y*x);
+    u[0] = z;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = 1.;//(x*x*x*y - y*y*y*x);
 };
 
 
-enum EMatid  {ENone, EDomain, ES1, ES2, ES3, ES4, EPont, EWrap, EIntface, EPressureHyb};
+enum EMatid  {ENone, EDomain, ES1, ES2, ES3, ES4, EPont, EWrap, EIntface, EPressureHyb, EEdgeRemove};
 
 int main(int argc, char* argv[])
 {
@@ -192,6 +192,7 @@ TPZLogger::InitializePZLOG();
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
+        // createSpace.SetEdgeRemove(EEdgeRemove);
         createSpace.SetPOrder(pOrder);
         createSpace.Initialize();
         util.PrintGeoMesh(gmesh);

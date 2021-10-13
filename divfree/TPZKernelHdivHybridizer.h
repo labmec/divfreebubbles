@@ -41,6 +41,8 @@ struct TPZKernelHdivHybridizer {
     int fEPont = -7;
     // Domain material id
     int fEDomain = 1;
+    // Edge Remove material id
+    int fEEdgeRemove = -6;
     // number of state variables
     int fNState = 1;
 
@@ -78,6 +80,9 @@ struct TPZKernelHdivHybridizer {
         fEDomain = Domain;
 
     }
+    void SetEdgeRemove(int edge){
+        fEEdgeRemove = edge;
+    }
     
     /**
      * @brief Updates the wrap element's neighbour to perform a domain semi-hybridization, i.e, 
@@ -98,6 +103,8 @@ struct TPZKernelHdivHybridizer {
      * @param matBCId = BC material id's 
      */
     void SemiHybridizePressure(TPZCompMesh *cmesh, int pOrder, std::set<int> &matBCId);
+    void EdgeRemove(TPZCompMesh *cmesh);
+
 
     /**
      * @brief Create the Multiphysics Interface Elements after all wrap, interface 

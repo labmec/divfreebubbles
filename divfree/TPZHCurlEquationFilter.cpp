@@ -286,6 +286,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             removed_edges.insert(cel->ConnectIndex(1));
             removed_edges.insert(cel->ConnectIndex(5));
         }      
+   
     } else {
         //Initialize the data structures
         InitDataStructures(gmesh);
@@ -325,6 +326,9 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             }
         }
     }
+    
+    // ver esse exemplo que deu certo a condensação estática.
+    // removed_edges.insert({0, 1, 2,3,4,5, 6, 7, 8, 9,  11, 12,13,14,15, 16, 17, 18, 19, 20, 21,27,29});
     
     std::cout << "Removed (" << removed_edges.size() << ") = ";
     for (auto rem : removed_edges)

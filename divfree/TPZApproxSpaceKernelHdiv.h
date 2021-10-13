@@ -143,6 +143,9 @@ public:
         /// Lagrange Multiplier Material ID
         int fLagrange = -1;
 
+        /// Edge to be removed Material ID
+        int fEdgeRemove = -1;
+
         /// Hybridized Boundary conditions material ID's
         std::set<int> fBCHybridMatId = {};
         
@@ -180,6 +183,10 @@ public:
         fConfig.fPoint = Point;
         fConfig.fBCHybridMatId = matBChybrid;
         fConfig.fBCMatId = matBC;
+    }
+
+    void SetEdgeRemove(int edge){
+        fConfig.fEdgeRemove = edge;
     }
 
     void CreateOrientedBoundaryElements();

@@ -21,6 +21,7 @@
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
 #include "TPZMixedDarcyFlowHybrid.h"
+#include "TPZCompElDisc.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -55,6 +56,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
     if (fSpaceType != ENone)
     {
         hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
+        hybridizer.SetEdgeRemove(fConfig.fEdgeRemove);
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,true);
     } else {
         hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
@@ -97,12 +99,15 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     allMat.insert(fConfig.fDomain);
     allMat.insert(fConfig.fPoint);
     allMat.insert(fConfig.fWrap);
+    allMat.insert(fConfig.fEdgeRemove);
+
 
     for (std::set<int>::iterator it=allMat.begin(); it!=allMat.end(); ++it)
     {
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
         cmesh->InsertMaterialObject(mat);
         mat->SetDimension(fDimension);
+        if (*it == fConfig.fEdgeRemove) mat->SetDimension(1);
         mat->SetBigNumber(1.e10);
     } 
 
@@ -126,6 +131,12 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             // nullmat->SetDimension(0);
         } else if (type == EOned){
+            if (matid==fConfig.fEdgeRemove && fConfig.fEdgeRemove > 0){
+                TPZCompElDisc* disc = new TPZCompElDisc(*cmesh,gel,index);
+                TPZMaterial *mat = cmesh->FindMaterial(matid);
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                nullmat->SetDimension(1);
+            }
             if (fSpaceType != ENone) continue;
             if (allMat.find(matid) == allMat.end()) continue;
             
@@ -178,9 +189,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 TPZMaterial *mat = cmesh->FindMaterial(fConfig.fPoint);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             }
-        }
-
-        
+        }      
 
         for (int side=gel->NCornerNodes(); side<gel->NSides()-1; side++){
             TPZGeoElSide gelside(gel,side);
@@ -236,6 +245,37 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     }
 
+    //Set the connect as equal to the removed edge
+    cmesh->LoadReferences();
+    int count = 0;
+    for (auto cel : cmesh->ElementVec())
+    {
+        cel->LoadElementReference();
+        auto gel = cel->Reference();
+        if (gel->Dimension() != 1) continue;
+        if (gel->MaterialId() != fConfig.fEdgeRemove) continue;
+        
+        cel->SetgOrder(0);
+        TPZGeoElSide geoside(gel,2);
+        TPZGeoElSide neighbour = geoside.Neighbour();
+
+        while (neighbour.Element()->MaterialId() != fConfig.fDomain){
+            neighbour = neighbour.Neighbour();
+        }
+        
+        //Descobrir qual o connect de aresta vizinha ao elemento 1D, que será removida
+        auto s = neighbour.Side() - 4;
+        TPZGeoElSide neigh(neighbour.Element(),s);
+        auto neigh2 = neigh.Neighbour();
+        auto index = neighbour.Element()->Reference()->ConnectIndex(s);
+        
+        cel->SetConnectIndex(0,index);
+       
+    }
+    
+    // hybridizer.EdgeRemove(cmesh);
+
+
     return cmesh;
 }
 
@@ -280,6 +320,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
         hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
     }
 
+    
     for(auto &newnod : cmesh->ConnectVec())
     {
         newnod.SetLagrangeMultiplier(1);
@@ -325,6 +366,12 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
         TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 1, val1, val2);
         BCond->SetForcingFunctionBC(exactSol);
         cmesh->InsertMaterialObject(BCond);
+    }
+
+    if (fConfig.fEdgeRemove > 0){
+        TPZL2ProjectionCS<> *matEdge = new TPZL2ProjectionCS<>(fConfig.fEdgeRemove,0,1);
+        matEdge->SetScaleFactor(1.e10);
+        cmesh->InsertMaterialObject(matEdge);
     }
 
     auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
