@@ -12,6 +12,7 @@
 #include "pzshapequad.h"
 #include "pzgeoquad.h"
 #include "tpzquadrilateral.h"
+#include "TPZCompElH1.h"
 
 
 /**
@@ -23,7 +24,7 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDivBC : public TPZIntelGen<TSHAPE>  {
+class TPZCompElKernelHDivBC : public TPZCompElH1<TSHAPE>  {
 
 public:
 	    

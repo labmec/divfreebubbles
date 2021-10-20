@@ -35,14 +35,14 @@ public:
   void ComputeRequiredData(TPZMaterialDataT<CSTATE> &data, TPZVec<REAL> &qsi) override{
     ComputeRequiredDataT(data,qsi);
   }
-  //! Fills data.sol and data.curlsol.
-  void ReallyComputeSolution(TPZMaterialDataT<STATE>& data) override{
-    ReallyComputeSolutionT(data);
-  }
-  //! Fills data.sol and data.curlsol.
-  void ReallyComputeSolution(TPZMaterialDataT<CSTATE>& data) override{
-    ReallyComputeSolutionT(data);
-  }
+//   //! Fills data.sol and data.curlsol.
+//   void ReallyComputeSolution(TPZMaterialDataT<STATE>& data) override{
+//     ReallyComputeSolutionT(data);
+//   }
+//   //! Fills data.sol and data.curlsol.
+//   void ReallyComputeSolution(TPZMaterialDataT<CSTATE>& data) override{
+//     ReallyComputeSolutionT(data);
+//   }
 protected:
   //! Adjusts the number of shape functions and block size of the connects.
   void AdjustConnects();

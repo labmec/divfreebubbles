@@ -116,7 +116,6 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
     data.fNeedsSol = false;
     TPZIntelGen<TSHAPE>::ComputeRequiredData(data,qsi);//in this method, Shape will be called
     data.fNeedsSol = needsSol;
-    
   }
 
   this->ComputeDeformedDirections(data);    
@@ -139,13 +138,13 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
   }
 }
 
-template<class TSHAPE>
-template<class TVar>
-void TPZCompElHCurlNoGrads<TSHAPE>::ReallyComputeSolutionT(TPZMaterialDataT<TVar> &data)
-{
-    this->ComputeSolutionHCurlT(data.phi, data.curlphi,
-                         data.sol, data.curlsol);
-}
+// template<class TSHAPE>
+// template<class TVar>
+// void TPZCompElHCurlNoGrads<TSHAPE>::ReallyComputeSolutionT(TPZMaterialDataT<TVar> &data)
+// {
+//     this->ComputeSolutionHCurlT(data.phi, data.curlphi,
+//                          data.sol, data.curlsol);
+// }
 
 
 template<class TSHAPE>
@@ -171,7 +170,6 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
       return 1;
     }
     else if(side < TSHAPE::NCornerNodes + nEdges + nFaces){//face connect
-    //   return 0;
       switch(TSHAPE::Type(side)){
       case ETriangle://triangular face
         /**
@@ -189,6 +187,9 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
       }
     }
     else{//internal connect (3D element only)
+      if constexpr (TSHAPE::Type() == ETetraedro){
+        return (order-1)*(order-2)*(2*order+3)/6;
+      }
       return 0;
       // int count = 0;
       // //first we count the face-based interior functions \phi^{K,F}
@@ -411,8 +412,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
          since there are (k-1)(k-2)/2 functions per face in a face with order k,
          we remove k(k-1)/2.
          so:
-         (k-1)*(k+1)-k*(k-1)/2.
-         as a first test, we only remove from phi_fe hcurl functions
+         (k-1)*(k+1)-k*(k-1)/2 = (k-1)(k+2)/2.
       */
       const auto nfacefuncs =  (order - 1) * (order+2) / 2;
 
@@ -436,8 +436,8 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
       /**
          there are already 2(k-1) filtered functions. we discarded (k-1).
          so that means we need more (k-1)(k-2)/2 functions, because
-         2(k-1) + (k-1)(k-2)/2. than means we can take exactly 
-         half of the phi_fi functions. 
+         2(k-1) + (k-1)(k-2)/2 = (k-1)(k+2)/2. 
+         That means we can take exactly half of the phi_fi functions. 
          for each k, there are 2(k-2) phi_fi func. so...
       **/
       auto firstVfiK = firstSideShape + 3*(order-1);
@@ -460,6 +460,67 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
   }
   
   if constexpr (dim < 3) return;
+
+  if constexpr (TSHAPE::Type() == ETetraedro){
+    const auto icon = nEdges + nFaces;
+    const auto order = conOrders[icon];
+    const auto firstSideShape = firstHCurlFunc[icon];
+    /**
+         we remove one internal function for each h1 internal function of order k+1
+         since there are (k-1)(k-2)(k-3)/6 functions in a h1 element with order k,
+         we remove k(k-1)(k-2)/6.
+         so:
+         (k-1)(k-2)(k+1)/2 - k(k-1)(k-2)/6 = (k-1)(k-2)(2k+3)/6.
+         since we will remove k(k-1)(k-2)/6, for each k we remove (k-1)(k-2)/2 funcs.
+         we have two kinds of internal functions. phi_kf and phi_ki.
+         func        k                   k-1                 new funcs
+         phi_kf      2(k-1)(k-2)         2(k-2)(k-3)         4(k-2)
+         phi_ki      (k-1)(k-2)(k-3)/2   (k-2)(k-3)(k-4)/2   3(k-2)(k-3)/2
+         
+         that means that if we remove, for each k, (k-2) phi_kf 
+         (for instance, all phi_kf associated with a given face),
+         we need to remove (k-1)(k-2)/2 - (k-2) = (k-2)(k-3)/2
+         which is exactly one third of the phi_ki.
+         
+      */
+
+    const auto nintfuncs =  (order - 1) * (order-2) * (2*order+ 3) / 6;
+
+    auto fcount = filteredFuncs.size();
+    filteredFuncs.Resize(fcount+nintfuncs);
+
+    /**
+       we will iterate over the phi_kf hcurl functions.
+    */
+    auto firstVkf = firstSideShape;
+    for(auto ik = 3; ik <= order; ik++){
+      //we chose to remove all the functions for a given face
+      const auto newvkf = 4*(ik-2);
+      for(auto ifunc = ik-2; ifunc < newvkf; ifunc++){
+        filteredFuncs[fcount] = firstVkf+ifunc;
+        fcount++;
+      }
+      //we skip to the higher order ones
+      firstVkf += newvkf;
+    }
+
+    /**
+       we now iterate over the phi_ki hcurl functions
+    */
+    const auto nvkf = 2*(order-1)*(order-2);
+    auto firstVki = firstSideShape + nvkf;
+    for(auto ik = 4; ik <= order; ik++){
+      //we chose to remove all the functions for a given direction
+      const auto newvki = 3*(ik-2)*(ik-3)/2;
+      for(auto ifunc = 0; ifunc < newvki; ifunc++){
+        if(ifunc%3 == 0) continue;
+        filteredFuncs[fcount] = firstVki+ifunc;
+        fcount++;
+      }
+      //we skip to the higher order ones
+      firstVkf += newvki;
+    }
+  }
 }
 
 #include <pzshapetriang.h>
@@ -477,22 +538,9 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
     TPZMaterialDataT<STATE> &data,TPZVec<REAL> &qsi);           \
   template void                                                 \
   TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT<CSTATE>(  \
-    TPZMaterialDataT<CSTATE> &data, TPZVec<REAL> &qsi);         \
-  template void                                                 \
-  TPZCompElHCurlNoGrads<TSHAPE>::ReallyComputeSolutionT<STATE>( \
-    TPZMaterialDataT<STATE> &data);                             \
-  template void                                                 \
-  TPZCompElHCurlNoGrads<TSHAPE>::ReallyComputeSolutionT<CSTATE>(\
-    TPZMaterialDataT<CSTATE> &data);
+    TPZMaterialDataT<CSTATE> &data, TPZVec<REAL> &qsi);
 
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTriang)
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTetra)
-
-// template class TPZRestoreClass< TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>>;
-// template class TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>;
-// template class TPZRestoreClass< TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>>;
-// template class TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>;
-
-// TPZCompElHCurlNoGrads
 
 #undef IMPLEMENTHCURLNOGRADS

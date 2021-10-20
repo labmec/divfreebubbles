@@ -8,6 +8,7 @@
 
 #include "pzelctemp.h"
 #include "TPZOneShapeRestraint.h"
+#include "TPZCompElH1.h"
 
 
 /**
@@ -19,7 +20,7 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDiv : public TPZIntelGen<TSHAPE> {
+class TPZCompElKernelHDiv : public TPZCompElH1<TSHAPE> {
 
     /// vector which defines whether the normal is outward or not
     TPZManVector<int, TSHAPE::NFacets> fSideOrient;

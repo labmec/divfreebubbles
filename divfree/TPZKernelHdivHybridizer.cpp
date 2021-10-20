@@ -305,7 +305,7 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
     AssociateElements(cmesh,groupnumber,aux);
 
     std::map<int64_t, TPZElementGroup *> groupmap;
-       std::cout << "Groups of connects " << groupnumber << std::endl;
+    //    std::cout << "Groups of connects " << groupnumber << std::endl;
     for (int64_t el = 0; el<nel; el++) {
         int64_t groupnum = groupnumber[el];
 
@@ -330,7 +330,7 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
         TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);
         if (elgr) {
             TPZCondensedCompEl *cond = new TPZCondensedCompEl(elgr);
-            cond->SetKeepMatrix(false);
+            cond->SetKeepMatrix(true);
         }
     }
 

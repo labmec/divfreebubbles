@@ -133,10 +133,16 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     //----------------------
 
     an.SetStructuralMatrix(matskl);
+    
 
     ///Setting a direct solver
     TPZStepSolver<STATE> step;
     step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    // TPZStepSolver<STATE> jac;
+    // REAL tol = 1.e-30;
+    // jac.SetJacobi(100,tol,0);
+    // jac.ShareMatrix(step);
+
     an.SetSolver(step);
 
     //assembles the system
