@@ -62,50 +62,61 @@ int main(int argc, char* argv[]){
     //................. Read mesh from gmsh ................................
     TPZGeoMesh* gmesh = new TPZGeoMesh();
     string filename = MESHDIR;
-    bool is2fracCase = 1;
-    if (is2fracCase) {
-        // This case has two rectangular intersection fractures
-        // And hybridize the intersection
-        filename + "Case2FracSimple.msh";
+    int caseSim = 2;
+    switch (caseSim) {
+        case 0:
+            //        filename = "../mesh/Case2FracSimple.msh";
+            //        filename = "../mesh/flemisch2lf_3frac_bug.msh";
+            filename + "flemisch3_2frac.msh";
+            break;
+        case 1:
+            filename + "Case1FracSimple.msh";
+            break;
+        case 2:
+            filename + "1element.msh";
+            break;
+            
+        default:
+            break;
+
     }
-    else{
-        // This case has just two elements and we only
-        // hybridize the interface between them
-        filename = "Case1FracSimple.msh";
-    }
+
     readGeoMesh(filename,gmesh);
     
     //.................................Hdiv.................................
     //Flux mesh
-    TPZCompMesh * cmeshflux = FluxCMesh(dim,pOrder,gmesh);
-    
-    //Pressure mesh
-    TPZCompMesh * cmeshpressure= PressureCMesh(dim,pOrder,gmesh);
+    const bool isRunHdiv = true;
+    if (isRunHdiv) {
+        TPZCompMesh * cmeshflux = FluxCMesh(dim,pOrder,gmesh);
         
-    //Multiphysics mesh
-    TPZManVector< TPZCompMesh *, 2> meshvector(2);
-    meshvector[0] = cmeshflux;
-    meshvector[1] = cmeshpressure;
-    
-    TPZHybridizeHDiv hybridizer(meshvector);
-    HybridizeIntersection(hybridizer, meshvector);
-    
-    // Multiphysics mesh AND create interface elements at the requested intersection
-    TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,meshvector,gmesh,hybridizer);
-    
-//    ofstream outmult("multimesh.txt");
-//    cmesh->Print(outmult);
-    
-    //Solve Multiphysics
-    TPZLinearAnalysis an(cmesh,true);
-    SolveProblemDirect(an,cmesh);
-    
-//    cmesh->UpdatePreviousState(-1.); NS: When do I need this??????
-    TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-    
-    //Print results
-    PrintResultsMultiphysic(dim,meshvector,an,cmesh);
-    
+        //Pressure mesh
+        TPZCompMesh * cmeshpressure= PressureCMesh(dim,pOrder,gmesh);
+            
+        //Multiphysics mesh
+        TPZManVector< TPZCompMesh *, 2> meshvector(2);
+        meshvector[0] = cmeshflux;
+        meshvector[1] = cmeshpressure;
+        
+        TPZHybridizeHDiv hybridizer(meshvector);
+        HybridizeIntersection(hybridizer, meshvector);
+        
+        // Multiphysics mesh AND create interface elements at the requested intersection
+        TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,meshvector,gmesh,hybridizer);
+        
+    //    ofstream outmult("multimesh.txt");
+    //    cmesh->Print(outmult);
+        
+        //Solve Multiphysics
+        TPZLinearAnalysis an(cmesh,true);
+        SolveProblemDirect(an,cmesh);
+        
+    //    cmesh->UpdatePreviousState(-1.); NS: When do I need this??????
+        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
+        
+        //Print results
+        PrintResultsMultiphysic(dim,meshvector,an,cmesh);
+    }
+
     //..................................H1..................................
     // //Creates H1 problem
     TPZCompMesh * cmeshH1 = CMeshH1(dim,pOrder,gmesh);
@@ -259,9 +270,9 @@ TPZCompMesh *MultiphysicCMesh(int dim, int pOrder, TPZVec<TPZCompMesh *> meshvec
     cmesh->InsertMaterialObject(mat);
     
     //Boundary Conditions
-    TPZFMatrix<STATE> val1(1,1,1.);
+    TPZFMatrix<STATE> val1(1,1,0.);
     TPZManVector<STATE> val2(1,0.);
-    TPZManVector<STATE> val4(1,4.);
+    TPZManVector<STATE> val4(1,1.);
     auto * BCond0 = mat->CreateBC(mat, ENoflux, 1, val1, val2);
     auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
     auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
@@ -352,6 +363,16 @@ void PrintResultsMultiphysic(int dim, TPZVec<TPZCompMesh *> meshvector, TPZLinea
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
 
+auto exactSol = [](const TPZVec<REAL> &loc,
+  TPZVec<STATE>&u,
+  TPZFMatrix<STATE>&gradU){
+  const auto &x=loc[0];
+  const auto &y=loc[1];
+  u[0]= 1-x;
+  gradU(0,0) = 0.;
+//  gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+};
+
 TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh)
 {
     
@@ -370,6 +391,9 @@ TPZCompMesh *CMeshH1(int dim, int pOrder, TPZGeoMesh *gmesh)
     auto * BCond = mat->CreateBC(mat, ENoflux, 1, val1, val2);
     auto * BCond1 = mat->CreateBC(mat, EOutlet, 0, val1, val2);
     auto * BCond2 = mat->CreateBC(mat, EInlet, 0, val1, val4);
+    BCond->SetForcingFunctionBC(exactSol);
+    BCond1->SetForcingFunctionBC(exactSol);
+    BCond2->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond2);
@@ -407,8 +431,33 @@ void readGeoMesh(string& filename, TPZGeoMesh* gmesh) {
     dim_name_and_physical_tagFine[1]["outlet"] = EOutlet;
     dim_name_and_physical_tagFine[1]["noflux"] = ENoflux;
     dim_name_and_physical_tagFine[1]["intersection"] = EIntersection;
+    
+    // For flemisch case 2
+//    dim_name_and_physical_tagFine[2]["Fracture10"] = EDomain;
+//    dim_name_and_physical_tagFine[1]["BCfrac0"] = EInlet;
+//    dim_name_and_physical_tagFine[1]["BCfrac1"] = EInlet;
+//    dim_name_and_physical_tagFine[1]["BCfrac2"] = EInlet;
+//    dim_name_and_physical_tagFine[1]["fracIntersection_0_1"] = EIntersection;
+//    dim_name_and_physical_tagFine[1]["fracIntersection_0_2"] = EIntersection;
+    
+    // For flemisch case 3
+    dim_name_and_physical_tagFine[2]["Fracture14"] = EDomain;
+    dim_name_and_physical_tagFine[2]["Fracture17"] = EDomain;
+    dim_name_and_physical_tagFine[1]["BCfrac0"] = EInlet;
+    dim_name_and_physical_tagFine[1]["BCfrac1"] = EInlet;
+    dim_name_and_physical_tagFine[1]["fracIntersection_0_1"] = EIntersection;
+    
+    // For 1 element case
+    dim_name_and_physical_tagFine[2]["Surface"] = EDomain;
+    dim_name_and_physical_tagFine[1]["Bottom"] = ENoflux;
+    dim_name_and_physical_tagFine[1]["Right"] = EOutlet;
+    dim_name_and_physical_tagFine[1]["Top"] = ENoflux;
+    dim_name_and_physical_tagFine[1]["Left"] = EInlet;
+//    stringtoint[0]["Point"] = 6;
+//    stringtoint[1]["Top2"] = 7;
+
     reader.SetDimNamePhysical(dim_name_and_physical_tagFine);
-    reader.GeometricGmshMesh4(filename,gmesh);
+    reader.GeometricGmshMesh4(filename,gmesh,false);
     gmesh->SetDimension(2);
     ofstream outvtk("geoMesh.vtk");
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, outvtk);
