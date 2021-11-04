@@ -18,8 +18,8 @@ Line(5) = {7, 2};
 Line(6) = {2, 6};
 Line(7) = {2, 4};
 
-nh = 21; ph = 1; 
-nv = 26; pv = 1.15; pa = 1;
+nh = 11; ph = 1; 
+nv = 11; pv = 1.15; pa = 1;
 Transfinite Curve {1, 2, 7} = nh Using Progression ph;
 Transfinite Curve {4,6} = nv Using Progression 1/pv;
 Transfinite Curve {3,5} = nv Using Progression pv;

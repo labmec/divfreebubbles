@@ -167,6 +167,14 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+
+                // TPZGeoElSide geosidePoint(gel,2);
+                // TPZGeoElBC gelbcPoint(geosidePoint, fConfig.fPoint);
+                // new TPZCompElH1<TPZShapePoint>(*cmesh,gelbcPoint.CreatedElement(),index);
+                // TPZMaterial *matPoint = cmesh->FindMaterial(fConfig.fPoint);
+                // TPZNullMaterial<> *nullmatPoint = dynamic_cast<TPZNullMaterial<> *>(matPoint);
+                
+                nullmat->SetDimension(2);
                 if (matid == fConfig.fWrap){
                     gel->ResetReference();
                 }
@@ -237,6 +245,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
     cmesh->LoadReferences();
+    
 
     if (fDimension == 3){
         OrientFaces(cmesh);
@@ -247,32 +256,32 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     }
 
     //Set the connect as equal to the removed edge
-    cmesh->LoadReferences();
-    int count = 0;
-    for (auto cel : cmesh->ElementVec())
-    {
-        cel->LoadElementReference();
-        auto gel = cel->Reference();
-        if (gel->Dimension() != 1) continue;
-        if (gel->MaterialId() != fConfig.fEdgeRemove) continue;
+    // cmesh->LoadReferences();
+    // int count = 0;
+    // for (auto cel : cmesh->ElementVec())
+    // {
+    //     cel->LoadElementReference();
+    //     auto gel = cel->Reference();
+    //     if (gel->Dimension() != 1) continue;
+    //     if (gel->MaterialId() != fConfig.fEdgeRemove) continue;
         
-        cel->SetgOrder(0);
-        TPZGeoElSide geoside(gel,2);
-        TPZGeoElSide neighbour = geoside.Neighbour();
+    //     cel->SetgOrder(0);
+    //     TPZGeoElSide geoside(gel,2);
+    //     TPZGeoElSide neighbour = geoside.Neighbour();
 
-        while (neighbour.Element()->MaterialId() != fConfig.fDomain){
-            neighbour = neighbour.Neighbour();
-        }
+    //     while (neighbour.Element()->MaterialId() != fConfig.fDomain){
+    //         neighbour = neighbour.Neighbour();
+    //     }
         
-        //Descobrir qual o connect de aresta vizinha ao elemento 1D, que será removida
-        auto s = neighbour.Side() - 4;
-        TPZGeoElSide neigh(neighbour.Element(),s);
-        auto neigh2 = neigh.Neighbour();
-        auto index = neighbour.Element()->Reference()->ConnectIndex(s);
+    //     //Descobrir qual o connect de aresta vizinha ao elemento 1D, que será removida
+    //     auto s = neighbour.Side() - 4;
+    //     TPZGeoElSide neigh(neighbour.Element(),s);
+    //     auto neigh2 = neigh.Neighbour();
+    //     auto index = neighbour.Element()->Reference()->ConnectIndex(s);
         
-        cel->SetConnectIndex(0,index);
+    //     cel->SetConnectIndex(0,index);
        
-    }
+    // }
     
     // hybridizer.EdgeRemove(cmesh);
 
@@ -432,15 +441,6 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
 template<class TVar>
 void TPZApproxSpaceKernelHdiv<TVar>::OrientFaces(TPZCompMesh * cmesh)
 {
-    //Allowed face permultations for tetrahedra
-    static constexpr int permTetra[12][3] =
-    {
-        {0,1,2}, {1,2,0}, {2,0,1},// face 0
-        {4,3,0}, {3,0,4}, {0,4,3},// face 1
-        {5,4,1}, {4,1,5}, {1,5,4},// face 2
-        {2,3,5}, {3,5,2}, {5,2,3},// face 3
-    };
-
     cmesh->LoadReferences();
     // Para cada elemento geométrico tetraedrico
     for (auto cel : cmesh->ElementVec())

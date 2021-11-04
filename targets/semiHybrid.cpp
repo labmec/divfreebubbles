@@ -113,7 +113,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 6;
         stringtoint[1]["Top2"] = 7;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/1element.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -135,7 +135,7 @@ TPZLogger::InitializePZLOG();
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
 
     //Setting material ids
     createSpace.fConfig.fDomain = EDomain;
@@ -166,7 +166,7 @@ TPZLogger::InitializePZLOG();
     std::cout << "MULTIPHYSICS \n";
     util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
-    createSpace.Condense(cmeshNew);
+    // createSpace.Condense(cmeshNew);
     std::string multiphysicsFile = "MultiPhysicsMeshNew";
     util.PrintCompMesh(cmeshNew,multiphysicsFile);
 

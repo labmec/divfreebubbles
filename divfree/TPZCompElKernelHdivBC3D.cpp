@@ -7,6 +7,9 @@
 #include "TPZMaterialData.h"
 #include "TPZMaterialDataT.h"
 
+#ifdef PZ_LOG
+static TPZLogger logger("pz.strmatrix");
+#endif
 
 template<class TSHAPE>
 TPZCompElKernelHDivBC3D<TSHAPE>::TPZCompElKernelHDivBC3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
@@ -43,6 +46,7 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
     // TPZFMatrix<REAL> &dphi = data.dphix;
     // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
     
+
     data.phi.Zero();
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
@@ -50,8 +54,18 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
 	  }
     }
 
-    // std::cout << "Phi = " << data.phi << std::endl;
-    // std::cout << "ELEMENT MATERIAL ID = " << this->Reference()->MaterialId() << std::endl; 
+#ifdef PZ_LOG
+    if (logger.isDebugEnabled())
+    {
+        std::stringstream sout;
+        //	this->Print(sout);
+        sout << "\nVecshape = " << data.fVecShapeIndex << std::endl;
+        sout << "MASTER = " << data.fMasterDirections << std::endl;
+        sout << "Phi = " << data.phi << std::endl;
+        LOGPZ_DEBUG(logger,sout.str())
+        
+    }
+#endif
 
 }//void
 
@@ -65,6 +79,56 @@ int TPZCompElKernelHDivBC3D<TSHAPE>::GetSideOrient(){
     return fSideOrient;
 }
 
+// template<class TSHAPE>
+// int TPZCompElKernelHDivBC3D<TSHAPE>::NConnectShapeF(int icon, int order) const{
+  
+//         const int side = icon;// + TSHAPE::NCornerNodes;
+//     // #ifdef PZDEBUG
+//     // if (side < TSHAPE::NCornerNodes || side >= TSHAPE::NSides) {
+//     //     DebugStop();
+//     // }
+//     // #endif
+//     if(order == 0) {
+//         PZError<<__PRETTY_FUNCTION__
+//             <<"\nERROR: polynomial order not compatible.\nAborting..."
+//             <<std::endl;
+//         DebugStop();
+//         return 0;
+//     }
+//     const auto nFaces = TSHAPE::Dimension < 2 ? 0 : TSHAPE::NumSides(2);
+//     const auto nEdges = TSHAPE::NumSides(1);
+//     const int nShapeF = [&](){
+//         if (side < TSHAPE::NCornerNodes + nEdges) {//edge connect
+//         return 1;
+//         }
+//         else if(side < TSHAPE::NCornerNodes + nEdges + nFaces){//face connect
+//         switch(TSHAPE::Type(side)){
+//         case ETriangle://triangular face
+//             /**
+//              we remove one internal function for each h1 face function of order k+1
+//             since there are (k-1)(k-2)/2 functions per face in a face with order k,
+//             we remove k(k-1)/2.
+//             so:
+//             (k-1)*(k+1)-k*(k-1)/2
+//             */
+//             return (order - 1) * (order+2) / 2;
+//         default:
+//             PZError<<__PRETTY_FUNCTION__<<" error. Not yet implemented"<<std::endl;
+//             DebugStop();
+//             return 0;
+//         }
+//         }
+//         else{//internal connect (3D element only)
+//         if constexpr (TSHAPE::Type() == ETetraedro){
+//             return (order-1)*(order-2)*(2*order+3)/6;
+//         }
+//         return 0;
+//         }
+//     }();
+//     return nShapeF;
+
+
+// }
 
 
 
@@ -90,7 +154,7 @@ using namespace pztopology;
 
 // #include "tpzpoint.h"
 // #include "tpzline.h"
-// #include "tpzquadrilateral.h"
+#include "tpzquadrilateral.h"
 #include "tpztriangle.h"
 
 // #include "TPZCompElHCurl.h"
@@ -98,7 +162,5 @@ using namespace pztopology;
 using namespace pzgeom;
 using namespace pzshape;
 
-// template class TPZCompElKernelHDivBC3D<TPZShapePoint>;
-// template class TPZCompElKernelHDivBC3D<TPZShapeLinear>;
 template class TPZCompElKernelHDivBC3D<TPZShapeTriang>;
 // template class TPZCompElKernelHDivBC3D<TPZShapeQuad>;

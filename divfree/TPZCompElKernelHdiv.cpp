@@ -4,103 +4,29 @@
  */
 
 #include "TPZCompElKernelHdiv.h"
-#include "TPZCompElKernelHdivBC.h"
-#include "pzcmesh.h"
-#include "pzquad.h"
-#include "pzgeoel.h"
-#include "TPZMaterial.h"
-#include "TPZMatSingleSpace.h"
-#include "pzlog.h"
-#include "pzgeoquad.h"
-#include "TPZShapeDisc.h"
-#include "TPZCompElDisc.h"
+#include "TPZMaterialData.h"
 #include "TPZMaterialDataT.h"
-#include "pzshapepiram.h"
-#include "tpzline.h"
-#include "tpztriangle.h"
-
-
-#include "pzshtmat.h"
+#include "TPZShapeHDivKernel2D.h"
+#include <TPZCompElHCurl.h>
+#include "pzcmesh.h"
 
 #ifdef PZ_LOG
-static TPZLogger logger("pz.mesh.TPZCompElKernelHDiv");
-static TPZLogger loggerdiv("pz.mesh.tpzinterpolatedelement.divide");
+static TPZLogger logger("pz.strmatrix");
 #endif
-
-using namespace std;
-
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1) {
-
+TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index)  {
+       
 }
 
-template<class TSHAPE>
-TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, const TPZCompElKernelHDiv<TSHAPE> &copy) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId),
-TPZCompElH1<TSHAPE>(mesh,copy)
-{
-	this-> fPreferredOrder = copy.fPreferredOrder;
-    this->fConnectIndexes = copy.fConnectIndexes;
-}
-
-template<class TSHAPE>
-TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh,
-									             const TPZCompElKernelHDiv<TSHAPE> &copy,
-									             std::map<int64_t,int64_t> & gl2lcConMap,
-									             std::map<int64_t,int64_t> & gl2lcElMap) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId),
-TPZCompElH1<TSHAPE>(mesh,copy,gl2lcConMap,gl2lcElMap){
-
-}
-
-
-template<class TSHAPE>
-TPZCompElKernelHDiv<TSHAPE>::~TPZCompElKernelHDiv(){
-    this->~TPZCompElH1<TSHAPE>();
-}
- 
-
-template<class TSHAPE>
-template<class TVar>
-void TPZCompElKernelHDiv<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &data,
-                                                TPZVec<REAL> &qsi){
-
-    bool needsol = data.fNeedsSol;
-    data.fNeedsSol = true;
-    TPZCompElH1<TSHAPE>::ComputeRequiredData(data,qsi);
-    data.fNeedsSol = needsol;
-
-    TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
-    TPZFMatrix<REAL> &dphi = data.dphix;;
-    TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
-
-
-
-    for (int i = 0; i < data.dphix.Cols(); i++){
-        if (data.dphix.Rows()>1){
-            data.fDeformedDirections(0,i) =  dphix(1,i);
-            data.fDeformedDirections(1,i) = -dphix(0,i);
-        }
-    }
-
-    for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = 1.;
-	}
-	// for (int i = 0; i < data.dphix.Rows(); i++)
-    //     for (int j = 0; j < data.dphix.Cols(); j++)
-    // 	    	data.dphix(i,j) = 1.;
-
-}//void
 
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
-	data.fNeedsSol = true;
 	TPZCompElH1<TSHAPE>::InitMaterialData(data);
 
-	int nshape = this->NShapeF();
+    int nshape = this->NShapeF();
     // int64_t numvec = TSHAPE::Dimension*TSHAPE::NSides;
     data.fMasterDirections.Resize(3, nshape);
 	for (int i = 0; i < 3; i++)
@@ -114,38 +40,111 @@ void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 		data.fVecShapeIndex[i] = std::make_pair(i,1);
     }
     data.fDeformedDirections.Resize(3,nshape);
-   
 }
 
-/**
- * @brief It returns the normal orientation of the reference element by the side.
- * Only side that has dimension larger than zero and smaller than me.
- * @param side: side of the reference elemen
- */
+
 template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::GetSideOrient(int side){
+void TPZCompElKernelHDiv<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi,TPZMaterialData &data){
 
-    int firstside = TSHAPE::NSides-TSHAPE::NFacets-1;
-    if (side < firstside || side >= TSHAPE::NSides - 1) {
-        DebugStop();
+    bool needsol = data.fNeedsSol;
+    data.fNeedsSol = true;
+    data.fNeedsSol = needsol;
+    TPZCompElH1<TSHAPE>::ComputeShape(qsi,data);
+
+    TPZShapeData &shapedata = data;
+    TPZFMatrix<REAL> auxPhi;
+    TPZShapeHDivKernel2D<TSHAPE>::Shape(qsi, shapedata, auxPhi, data.divphi);
+
+    TPZFMatrix<REAL> gradx, aux2(3,auxPhi.Cols());
+    this->Reference()->GradX(qsi,gradx);
+
+    const auto nCorner = TSHAPE::NCornerNodes;
+    for (int i = 0; i < nCorner; i++)
+    {
+        TPZConnect &c = this->Connect(i);
+        auto nshape = c.NShape();
+        int a = 0;
     }
-    return fSideOrient[side-firstside];
-}
 
-/**
- * @brief It set the normal orientation of the element by the side.
- * Only side that has dimension equal to my dimension minus one.
- * @param side: side of the reference elemen
- */
+    aux2.Zero();
+    gradx.MultAdd(auxPhi,data.phi,aux2,1/data.detjac,0);
+    // std::cout << "AUX2 " << aux2 << std::endl;
+    data.fDeformedDirections = aux2;
+
+    data.phi.Resize(auxPhi.Cols(),3);
+    data.phi = 1.;
+    // data.phi.Transpose(&aux2);
+    // std::cout << "PHI = " << data.phi << std::endl;
+// #ifdef PZ_LOG
+//     if (logger.isDebugEnabled())
+//     {
+//         std::stringstream sout;
+//         //	this->Print(sout);
+//         // sout << "\nVecshape = " << data.fVecShapeIndex << std::endl;
+//         // sout << "MASTER = " << data.fMasterDirections << std::endl;
+//         sout << "\nPhi = " << data.phi << std::endl;
+//         LOGPZ_DEBUG(logger,sout.str())
+        
+//     }
+// #endif
+
+}//void
+
 template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::SetSideOrient(int side, int sideorient){
-
-    int firstside = TSHAPE::NSides-TSHAPE::NFacets-1;
-    if (side < firstside || side >= TSHAPE::NSides - 1) {
-        DebugStop();
-    }
-    fSideOrient[side-firstside] = sideorient;
+void TPZCompElKernelHDiv<TSHAPE>::SetSideOrient(int orient){
+    fSideOrient = orient;
 }
+
+template<class TSHAPE>
+int TPZCompElKernelHDiv<TSHAPE>::GetSideOrient(){
+    return fSideOrient;
+}
+
+// template<class TSHAPE>
+// int TPZCompElKernelHDiv<TSHAPE>::NConnectShapeF(int icon, int order) const{
+  
+//     //Adapted from CurlNoGrads
+//     const int side = icon;
+//     if(order == 0) {
+//         PZError<<__PRETTY_FUNCTION__
+//             <<"\nERROR: polynomial order not compatible.\nAborting..."
+//             <<std::endl;
+//         DebugStop();
+//         return 0;
+//     }
+//     const auto nFaces = TSHAPE::Dimension < 2 ? 0 : TSHAPE::NumSides(2);
+//     const auto nEdges = TSHAPE::NumSides(1);
+//     const int nShapeF = [&](){
+//         if (side < TSHAPE::NCornerNodes + nEdges) {//edge connect
+//         return 1;
+//         }
+//         else if(side < TSHAPE::NCornerNodes + nEdges + nFaces){//face connect
+//         switch(TSHAPE::Type(side)){
+//             case ETriangle://triangular face
+//                 /**
+//                  we remove one internal function for each h1 face function of order k+1
+//                 since there are (k-1)(k-2)/2 functions per face in a face with order k,
+//                 we remove k(k-1)/2.
+//                 so:
+//                 (k-1)*(k+1)-k*(k-1)/2
+//                 */
+//                 return (order - 1) * (order+2) / 2;
+//             default:
+//                 PZError<<__PRETTY_FUNCTION__<<" error. Not yet implemented"<<std::endl;
+//                 DebugStop();
+//                 return 0;
+//             }
+//         }
+//         else{//internal connect (3D element only)
+//             DebugStop();
+//             return 0;
+//         }
+//     }();
+//     return nShapeF;
+
+
+// }
+
 
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>:: Solution(TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol)
@@ -246,10 +245,6 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TV
     // data.sol[0][2] = 0.;
 }
 
-
-
-#include "pzshapecube.h"
-#include "TPZRefCube.h"
 #include "pzshapelinear.h"
 #include "TPZRefLinear.h"
 #include "pzrefquad.h"
@@ -258,15 +253,6 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TV
 #include "pzshapetriang.h"
 #include "pzreftriangle.h"
 #include "pzgeotriangle.h"
-#include "pzshapeprism.h"
-#include "pzrefprism.h"
-#include "pzgeoprism.h"
-#include "pzshapetetra.h"
-#include "pzreftetrahedra.h"
-#include "pzgeotetrahedra.h"
-#include "pzshapepiram.h"
-#include "pzrefpyram.h"
-#include "pzgeopyramid.h"
 #include "pzrefpoint.h"
 #include "pzgeopoint.h"
 #include "pzshapepoint.h"
@@ -275,71 +261,19 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<TV
 #include "pzgraphel1dd.h"
 #include "pztrigraphd.h"
 #include "pzgraphelq3dd.h"
-#include "tpzgraphelprismmapped.h"
-#include "tpzgraphelpyramidmapped.h"
 #include "tpzgraphelt2dmapped.h"
 
 using namespace pztopology;
 
-#include "tpzpoint.h"
-#include "tpzline.h"
+// #include "tpzpoint.h"
+// #include "tpzline.h"
 #include "tpzquadrilateral.h"
 #include "tpztriangle.h"
-#include "tpzcube.h"
-#include "tpztetrahedron.h"
-#include "tpzprism.h"
 
-#include "pzelchdivbound2.h"
+// #include "TPZCompElHCurl.h"
 
 using namespace pzgeom;
 using namespace pzshape;
 
-
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapeLinear>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapeTriang>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapeQuad>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapeCube>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapeTetra>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapePrism>>;
-template class TPZRestoreClass< TPZCompElKernelHDiv<TPZShapePiram>>;
-
-template class TPZCompElKernelHDiv<TPZShapeLinear>;
 template class TPZCompElKernelHDiv<TPZShapeTriang>;
 template class TPZCompElKernelHDiv<TPZShapeQuad>;
-template class TPZCompElKernelHDiv<TPZShapeTetra>;
-template class TPZCompElKernelHDiv<TPZShapePrism>;
-template class TPZCompElKernelHDiv<TPZShapePiram>;
-template class TPZCompElKernelHDiv<TPZShapeCube>;
-
-// TPZCompEl * CreateKernelHDivPointEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-//     return new TPZCompElKernelHDiv< TPZShapePoint>(mesh,gel,index);
-// }
-
-TPZCompEl * CreateKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-    return new TPZCompElKernelHDiv< TPZShapeLinear>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeQuad>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeTriang >(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeCube >(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapePrism>(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapePiram >(mesh,gel,index);
-}
-
-TPZCompEl * CreateKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index) {
-	return new TPZCompElKernelHDiv< TPZShapeTetra >(mesh,gel,index);
-}
-

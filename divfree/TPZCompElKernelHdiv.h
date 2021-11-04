@@ -3,12 +3,17 @@
  * @brief Contains declaration of TPZCompElHDiv class which implements a generic computational element (HDiv scope).
  */
 
-#ifndef TPZCOMPELKERNELHDIV_H
-#define TPZCOMPELKERNELHDIV_H
+#ifndef TPZCompElKernelHDiv_H
+#define TPZCompElKernelHDiv_H
 
 #include "pzelctemp.h"
-#include "TPZOneShapeRestraint.h"
+#include "TPZBndCond.h"
+#include "pzrefquad.h"
+#include "pzshapequad.h"
+#include "pzgeoquad.h"
+#include "tpzquadrilateral.h"
 #include "TPZCompElH1.h"
+#include "TPZCompElHCurl.h"
 
 
 /**
@@ -20,88 +25,35 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDiv : public TPZCompElH1<TSHAPE> {
+class TPZCompElKernelHDiv : public TPZCompElH1<TSHAPE>  {
 
-    /// vector which defines whether the normal is outward or not
-    TPZManVector<int, TSHAPE::NFacets> fSideOrient;
-    
-    /// Data structure which defines the restraints
-    std::list<TPZOneShapeRestraint> fRestraints;
+protected:
+  ///! Indexes of the connects associated with the elements
+  TPZManVector<int64_t,TSHAPE::NSides> fConnectIndexes =
+    TPZManVector<int64_t,TSHAPE::NSides>(TSHAPE::NSides,-1);
+private:
+
+    int fSideOrient = 1;
 
 public:
 	    
-	TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
+	TPZCompElKernelHDiv();
+    
+    TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
 	
-	TPZCompElKernelHDiv(TPZCompMesh &mesh, const TPZCompElKernelHDiv<TSHAPE> &copy);
-	
-	/**
-	 * @brief Constructor used to generate patch mesh... generates a map of connect index from
-	 * global mesh to clone mesh
-	 */
-	TPZCompElKernelHDiv(TPZCompMesh &mesh,
-				        const TPZCompElKernelHDiv<TSHAPE> &copy,
-				        std::map<int64_t,int64_t> & gl2lcConMap,
-				        std::map<int64_t,int64_t> & gl2lcElMap);
-	
-	TPZCompElKernelHDiv(){};
-	
-	virtual ~TPZCompElKernelHDiv();
-	
-	virtual TPZCompEl *Clone(TPZCompMesh &mesh) const  override {
-		return new TPZCompElKernelHDiv<TSHAPE> (mesh, *this);
-	}
-	
-    /** @brief Set create function in TPZCompMesh to create elements of this type */
-	virtual void SetCreateFunctions(TPZCompMesh *mesh) override;
-		
-	/** @brief Initialize a material data and its attributes based on element dimension, number
-	 * of state variables and material definitions */
-	virtual void InitMaterialData(TPZMaterialData &data) override;
+    virtual void InitMaterialData(TPZMaterialData &data) override;
 
-    //@{
-	/** @brief Compute and fill data with requested attributes */
-	void ComputeRequiredData(TPZMaterialDataT<STATE> &data,
-                             TPZVec<REAL> &qsi) override{
-        ComputeRequiredDataT(data,qsi);
-    }
-     void ComputeRequiredData(TPZMaterialDataT<CSTATE> &data,
-                              TPZVec<REAL> &qsi) override{
-        ComputeRequiredDataT(data,qsi);
-    }
-    //@}
-		
+    // void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;
+    void ComputeShape(TPZVec<REAL> &qsi,TPZMaterialData &data) override;
+    //  void ComputeShape(TPZVec<REAL> &intpoint, TPZMaterialData &data) override;
+    void SetSideOrient(int orient);
+
+    int GetSideOrient();
+
 	/** @brief Compute the solution for a given variable */
 	virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
 
-	/** @brief Returns the unique identifier for reading/writing objects to streams */
-    int ClassId() const override;
-
-    /**
-     * @brief It returns the normal orientation of the reference element by the side.
-     * Only side that has dimension larger than zero and smaller than me.
-     * @param side: side of the reference elemen
-     */
-    virtual int GetSideOrient(int side) override;
-    
-    /**
-     * @brief It set the normal orientation of the element by the side.
-     * Only side that has dimension equal to my dimension minus one.
-     * @param side: side of the reference elemen
-     */
-    virtual void SetSideOrient(int side, int sideorient) override;
-
-    /// the orientation of the face
-    int SideOrient(int face)
-    {
-#ifdef PZDEBUG
-        if (face < 0 || face >= TSHAPE::NFacets) {
-            DebugStop();
-        }
-#endif
-        return fSideOrient[face];
-    }
-	
-
+    // void AdjustConnects();
 
 protected:
 
@@ -118,51 +70,8 @@ protected:
     void ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data);
     template<class TVar>
     void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
+	
 };
-
-
-template<class TSHAPE>
-int TPZCompElKernelHDiv<TSHAPE>::ClassId() const{
-    return Hash("TPZCompElKernelHDiv") ^ TPZIntelGen<TSHAPE>::ClassId() << 1;
-}
-
-#include "pzcmesh.h"
-
-template<class TSHAPE>
-void TPZCompElKernelHDiv<TSHAPE>::SetCreateFunctions(TPZCompMesh* mesh) {
-    mesh->SetAllCreateFunctionsContinuous();
-}
-
-
-#include "pzrefquad.h"
-#include "pzshapequad.h"
-#include "pzgeoquad.h"
-#include "tpzquadrilateral.h"
-
-/** @brief Creates computational point element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivPointEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational linear element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational quadrilateral element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational triangular element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational cube element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational prismal element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational pyramidal element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-/** @brief Creates computational tetrahedral element for HDiv approximate space */
-TPZCompEl *CreateKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-
-TPZCompEl * CreateRefKernelHDivLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivPrismEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivPyramEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
-TPZCompEl * CreateRefKernelHDivTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh,int64_t &index);
 
 
 #endif

@@ -36,8 +36,7 @@ public:
 
     virtual void InitMaterialData(TPZMaterialData &data) override;
 
-    void ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi) override;
-	
+	void ComputeShape(TPZVec<REAL> &qsi,TPZMaterialData &data) override;
 };
 
 

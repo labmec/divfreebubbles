@@ -53,7 +53,7 @@ void TPZMatDivFreeBubbles<TVar>::ContributeBC(const TPZMaterialDataT<TVar> &data
 	
 	const auto &phi = data.phi;
     const auto &dphi = data.dphix;
-    const auto &dphi_ = data.dphi;
+    const auto &dphi_ = data.fDPhi;
 	const int phr = phi.Rows();
 
     if (dphi.Rows() != 1){

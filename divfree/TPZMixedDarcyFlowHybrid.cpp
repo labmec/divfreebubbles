@@ -140,9 +140,17 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         datavec[0].axes.Multiply(ivec, axesvec);
 
         REAL divwq = 0.;
-        for (int iloc = 0; iloc < fDim; iloc++) {
-            divwq += axesvec(iloc, 0) * dphiQ(iloc, ishapeind);
+        if (dphiQ.Cols()!=0){
+            for (int iloc = 0; iloc < fDim; iloc++) {
+                divwq += axesvec(iloc, 0) * dphiQ(iloc, ishapeind);
+            }
+        } else {
+            TPZShapeData dataaux = datavec[0];
+            for (int iloc = 0; iloc < fDim; iloc++) {
+                divwq += axesvec(iloc, 0) * dataaux.fDPhi(iloc, ishapeind);
+            }
         }
+
         for (int jp = 0; jp < phrp; jp++) {
 
             REAL fact = (-1.) * weight * phip(jp, 0) * divwq;

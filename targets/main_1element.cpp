@@ -26,6 +26,7 @@
 #include "TPZCompElKernelHdivBC.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
+#include "TPZCompElH1.h"
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *FluxCMeshDFB(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
@@ -82,7 +83,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 8;
         stringtoint[1]["BottomLine2"] = 9;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4(string(MESHDIR)+"newMesh.msh",gmesh);
+        reader.GeometricGmshMesh(string(MESHDIR)+"newMesh.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -105,11 +106,12 @@ TPZLogger::InitializePZLOG();
         meshvector[0] = cmeshflux;
         meshvector[1] = cmeshpressure;
         TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
+        std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
 
         //Solve Multiphysics
         TPZLinearAnalysis an(cmesh,true);
         SolveProblemDirect(an,cmesh);
-        std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
+        
         //Print results
         PrintResultsMultiphysic(dim,meshvector,an,cmesh);
 
@@ -316,7 +318,7 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMes
                 TPZGeoElSide neighbour = gelside.Neighbour();
 
                 if (neighbour.Element()->MaterialId() == EPont){
-                    new TPZIntelGen<TPZShapePoint>(*cmesh,neighbour.Element(),index);
+                    new TPZCompElH1<TPZShapePoint>(*cmesh,neighbour.Element(),index);
                     TPZMaterial *mat = cmesh->FindMaterial(EPont);
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 }

@@ -85,10 +85,10 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = z;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
+    u[0] = x;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 1.;//(3.*x*x*y*z - y*y*y*z);
     gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = 1.;//(x*x*x*y - y*y*y*x);
+    gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 };
 
 
@@ -117,7 +117,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/2tetra.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -187,7 +187,7 @@ TPZLogger::InitializePZLOG();
         std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
         /// Creates the approximation space - Set the type of domain hybridization
-        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;

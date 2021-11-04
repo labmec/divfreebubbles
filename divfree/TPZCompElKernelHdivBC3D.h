@@ -42,7 +42,7 @@ public:
 
     int GetSideOrient();
 
-	
+	// int NConnectShapeF(int icon, int order) const;
 };
 
 

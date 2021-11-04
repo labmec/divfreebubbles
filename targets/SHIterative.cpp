@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{3};
+    constexpr int pOrder{4};
       
 
 #ifdef PZ_LOG
@@ -99,7 +99,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 6;
         stringtoint[1]["Top2"] = 7;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4("../mesh/1element.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -257,9 +257,9 @@ TPZLogger::InitializePZLOG();
 
     matRed->SetF(rhsFull);
     
-    // matRed->K11Reduced(*K11Red,rhsFlux);
-    // std::ofstream out("out.txt");
-    // K11Red->Print("K11Red=",out,EMathematicaInput);
+    matRed->K11Reduced(*K11Red,rhsFlux);
+    std::ofstream out("out.txt");
+    K11Red->Print("K11Red=",out,EMathematicaInput);
     matRed->F1Red(rhsFlux);
     matRed->SetF(rhsFull);
      

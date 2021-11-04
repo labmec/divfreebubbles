@@ -6,7 +6,7 @@
 #include "TPZCompElKernelHdivBC.h"
 #include "TPZMaterialData.h"
 #include "TPZMaterialDataT.h"
-
+#include "TPZShapeHDivKernel2DBound.h"
 
 template<class TSHAPE>
 TPZCompElKernelHDivBC<TSHAPE>::TPZCompElKernelHDivBC(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
@@ -33,20 +33,20 @@ void TPZCompElKernelHDivBC<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 }
 
 template<class TSHAPE>
-void TPZCompElKernelHDivBC<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi){
+void TPZCompElKernelHDivBC<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi, TPZMaterialData &data){
 
     bool needsol = data.fNeedsSol;
     data.fNeedsSol = true;
-    TPZCompElH1<TSHAPE>::ComputeRequiredData(data,qsi);
     data.fNeedsSol = needsol;
-    
-    TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
-    TPZFMatrix<REAL> &dphi = data.dphix;
-    TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+    TPZCompElH1<TSHAPE>::ComputeShape(qsi,data);
+
+    TPZShapeData &shapedata = data;
+    TPZFMatrix<REAL> auxPhi;
+    TPZShapeHDivKernel2DBound<TSHAPE>::Shape(qsi, shapedata, auxPhi, data.divphi);
 
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = -dphi(0,i);
+		data.phi(i,0) = auxPhi(0,i)/data.detjac;
 	  }
     }
 
@@ -85,7 +85,7 @@ using namespace pztopology;
 using namespace pzgeom;
 using namespace pzshape;
 
-template class TPZCompElKernelHDivBC<TPZShapePoint>;
+// template class TPZCompElKernelHDivBC<TPZShapePoint>;
 template class TPZCompElKernelHDivBC<TPZShapeLinear>;
-template class TPZCompElKernelHDivBC<TPZShapeTriang>;
-template class TPZCompElKernelHDivBC<TPZShapeQuad>;
+// template class TPZCompElKernelHDivBC<TPZShapeTriang>;
+// template class TPZCompElKernelHDivBC<TPZShapeQuad>;

@@ -90,7 +90,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[1]["RightLine"] = 7;
         stringtoint[0]["Point"] = 8;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4(string(MESHDIR)+"newMesh.msh",gmesh);
+        reader.GeometricGmshMesh(string(MESHDIR)+"newMesh.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -102,16 +102,16 @@ TPZLogger::InitializePZLOG();
     TPZKernelHdivUtils<STATE> util;
 
     //Insert here the BC material id's to be hybridized
-    std::set<int> matBCHybrid={EInjection,EProduction,EBottom,ETop,ELeft,ERight};
+    std::set<int> matBCHybrid={EInjection,EProduction};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{EInjection,EProduction,EBottom,ETop,ELeft,ERight};
-    std::set<int> matIDDirichlet{};
+    std::set<int> matIDNeumann{EInjection,EProduction};
+    std::set<int> matIDDirichlet{EBottom,ETop,ELeft,ERight};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
 
     //Setting material ids
     createSpace.fConfig.fDomain = EDomain;
@@ -158,7 +158,7 @@ TPZLogger::InitializePZLOG();
     //Print results
     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-    anNew.SetExact(exactSolError,solOrder);
+    anNew.SetExact(exactSol,solOrder);
 
     std::ofstream out4("mesh_MDFB.txt");
     anNew.Print("nothing",out4);
