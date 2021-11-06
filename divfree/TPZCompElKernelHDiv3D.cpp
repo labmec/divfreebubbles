@@ -17,7 +17,8 @@
 #include "pzshapepiram.h"
 // #include "tpzline.h"
 #include "tpztriangle.h"
-
+#include "TPZShapeHDivKernel.h"
+#include "TPZShapeHDivConstant.h"
 
 #include "pzshtmat.h"
 
@@ -30,7 +31,7 @@ using namespace std;
 
 template<class TSHAPE>
 TPZCompElKernelHDiv3D<TSHAPE>::TPZCompElKernelHDiv3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index, int shapetype) :
-TPZRegisterClassId(&TPZCompElKernelHDiv3D::ClassId), TPZCompElHCurlNoGrads<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1) {
+TPZRegisterClassId(&TPZCompElKernelHDiv3D::ClassId), TPZCompElHCurlNoGrads<TSHAPE>(mesh,gel,index), fSideOrient(TSHAPE::NFacets,1), fShapeType(shapetype) {
     int firstside = TSHAPE::NSides-TSHAPE::NFacets-1;
     for(int side = firstside ; side < TSHAPE::NSides-1; side++ )
     {
@@ -48,10 +49,53 @@ template<class TSHAPE>
 template<class TVar>
 void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> &data,
                                                 TPZVec<REAL> &qsi){
-
+                                                
     bool needsol = data.fNeedsSol;
     data.fNeedsSol = true;
-    TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
+    if (fShapeType == ECurlNoGrads) {
+        TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
+    } else {
+        //Compute the element geometric data
+        TPZGeoEl * ref = this->Reference();
+        if (!ref){
+            PZError << "\nERROR AT " << __PRETTY_FUNCTION__ << " - this->Reference() == NULL\n";
+            return;
+        }
+
+        ref->Jacobian(qsi, data.jacobian, data.axes, data.detjac , data.jacinv);
+        ref->X(qsi, data.x);
+        data.xParametric = qsi;
+        
+        constexpr auto dim{TSHAPE::Dimension};
+        int nshape = 0;
+        if (fShapeType == EHDivKernel) nshape = TPZShapeHDivKernel<TSHAPE>::NHDivShapeF(data);
+        if (fShapeType == EHDivConstant) nshape = TPZShapeHDivConstant<TSHAPE>::NHDivShapeF(data);
+        
+        TPZFMatrix<REAL> phiAux(dim,nshape),divphiAux(nshape,1);
+
+        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+
+        TPZCompElHCurl<TSHAPE>::TransformCurl(phiAux, data.detjac, data.jacobian, data.curlphi);
+
+        const int ncorner = TSHAPE::NCornerNodes;
+        int nEdges = TSHAPE::NumSides(1);
+        const int nsides = TSHAPE::NSides;
+
+        // std::cout << "dphi" << data.fDPhi << std::endl;
+        // std::cout << "master" << data.fMasterDirections << std::endl;
+    
+        // std::cout << "data.curlphi = " << data.curlphi << std::endl;
+        // std::cout << "data.phi = " << data.phi << std::endl;
+
+        data.divphi = divphiAux;
+    
+        // data.phi = phiHCurl;
+        if (data.fNeedsSol) {
+            this->ReallyComputeSolution(data);
+        }
+    }
+    
     data.fNeedsSol = needsol;
 
     int nshape = this->NShapeF();
@@ -97,7 +141,21 @@ template<class TSHAPE>
 void TPZCompElKernelHDiv3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
 	data.fNeedsSol = true;
-	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
+	if (fShapeType == ECurlNoGrads) {
+        TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
+    } else {
+        //Init the material data of Hcurl
+        TPZCompElHCurl<TSHAPE>::InitMaterialData(data);
+        
+        TPZShapeData dataaux = data;
+        data.fVecShapeIndex=dataaux.fSDVecShapeIndex;
+        data.divphi.Resize(data.fVecShapeIndex.size(),1);
+        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
+        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::ComputeVecandShape(data);
+        
+        //setting the type of shape functions as vector shape functions
+        data.fShapeType = TPZMaterialData::EVecShape;
+    }
 
     data.fShapeType = data.EVecandShape;
     

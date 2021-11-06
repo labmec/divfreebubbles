@@ -136,7 +136,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
     data.xParametric = qsi;
     
 
-    TPZFMatrix<REAL> phiHCurl,phiHCurl2;
+    TPZFMatrix<REAL> phiHCurl;
     TPZFMatrix<REAL> unfiltCurl;
     constexpr auto dim{TSHAPE::Dimension};
     data.curlphi.Redim(2*dim - 3 > 0 ? 2*dim - 3 : 1, this->NShapeF());
@@ -150,18 +150,6 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
 
     TPZShapeHCurl<TSHAPE>::Shape(qsi,data,phiHCurl,unfiltCurl);
     
-    // if (this->Type() ==ETetraedro){
-    //     // data.fVecShapeIndex.Resize(40);
-    //     // auto &indexVecShape = data.fVecShapeIndex;
-    //     // indexVecShape.Resize(40);
-    //     // TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
-    //     phiHCurl2.Resize(dim,vecShapeIndex.size());
-    //     TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiHCurl2,unfiltCurl);
-    // }
-
-    // std::cout << "PHIHCURL = " << phiHCurl << std::endl;
-    // std::cout << "PHIHCURL2 = " << phiHCurl2 << std::endl;
-    //  std::cout << "data.curlphi1 " << data.curlphi << std::endl;
     TPZCompElHCurl<TSHAPE>::TransformShape(phiHCurl, data.detjac, data.jacinv, data.axes, data.phi);
     TPZCompElHCurl<TSHAPE>::TransformCurl(unfiltCurl, data.detjac, data.jacobian, data.curlphi);
 
@@ -230,16 +218,6 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
         }
         fcount++;
     } 
-
-    // std::cout << "master = " << data.fMasterDirections << std::endl;
-    // std::cout << "filtVecShape = " << filtVecShape << std::endl;
-    // std::cout << "PT = " << qsi << std::endl;
-    // std::cout << "phiHCurl = " << phiHCurl << std::endl;
-    // std::cout << "data.phi = " << data.phi << std::endl;
-    // std::cout << "data.curlphi " << data.curlphi << std::endl;
-
-
-    // this->ComputeCurl<dim>(data);
     
     // data.phi = phiHCurl;
     if (data.fNeedsSol) {
