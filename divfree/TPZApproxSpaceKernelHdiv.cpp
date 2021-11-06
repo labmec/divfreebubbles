@@ -32,8 +32,8 @@
 #include "pzshapetetra.h"
 
 template<class TVar>
-TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype) :
-            fSpaceType(spacetype), fGeoMesh(gmesh) {
+TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype, MShapeType shapetype) :
+            fSpaceType(spacetype), fShapeType(shapetype), fGeoMesh(gmesh) {
     fDimension = gmesh->Dimension();
 }
 
@@ -82,8 +82,6 @@ void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * 
     }
 }
 
-
-
 //Creates the flux mesh
 template<class TVar>
 TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
@@ -101,6 +99,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     allMat.insert(fConfig.fPoint);
     allMat.insert(fConfig.fWrap);
     allMat.insert(fConfig.fEdgeRemove);
+
 
 
     for (std::set<int>::iterator it=allMat.begin(); it!=allMat.end(); ++it)
@@ -150,10 +149,22 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             }
 
         } else if (type == EQuadrilateral){
-            new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
-            TPZMaterial *mat = cmesh->FindMaterial(matid);
-            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-            nullmat->SetDimension(2);
+            if (fDimension == 2){
+                new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
+                TPZMaterial *mat = cmesh->FindMaterial(matid);
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                nullmat->SetDimension(2);
+            } else if (fDimension == 3){
+                if (fSpaceType != ENone) continue;
+                if (allMat.find(matid) == allMat.end()) continue;
+                new TPZCompElKernelHDivBC3D<TPZShapeQuad>(*cmesh,gel,index,fShapeType);
+                TPZMaterial *mat = cmesh->FindMaterial(matid);
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);                
+                nullmat->SetDimension(2);
+                if (matid == fConfig.fWrap){
+                    gel->ResetReference();
+                }
+            }
         } else if(type == ETriangle) {
             if (fDimension == 2){
                 new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
@@ -163,24 +174,21 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             } else if (fDimension == 3){
                 if (fSpaceType != ENone) continue;
                 if (allMat.find(matid) == allMat.end()) continue;
-
-                new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index);
+                new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index,fShapeType);
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
-                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-
-                // TPZGeoElSide geosidePoint(gel,2);
-                // TPZGeoElBC gelbcPoint(geosidePoint, fConfig.fPoint);
-                // new TPZCompElH1<TPZShapePoint>(*cmesh,gelbcPoint.CreatedElement(),index);
-                // TPZMaterial *matPoint = cmesh->FindMaterial(fConfig.fPoint);
-                // TPZNullMaterial<> *nullmatPoint = dynamic_cast<TPZNullMaterial<> *>(matPoint);
-                
+                TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);                
                 nullmat->SetDimension(2);
                 if (matid == fConfig.fWrap){
                     gel->ResetReference();
                 }
             }
         } else if(type == ETetraedro) {
-            new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index);
+            new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index,fShapeType);
+            TPZMaterial *mat = cmesh->FindMaterial(matid);
+            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            nullmat->SetDimension(3);
+        } else if(type == ECube) {
+            new TPZCompElKernelHDiv3D<TPZShapeCube>(*cmesh,gel,index,fShapeType);
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);
@@ -212,7 +220,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                     nullmat->SetDimension(1);
                 } else if (fDimension == 3){
-                    new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index);
+                    new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index,fShapeType);
                     TPZMaterial *mat = cmesh->FindMaterial(fConfig.fWrap);
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                     nullmat->SetDimension(2);
@@ -225,7 +233,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                         TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                         nullmat->SetDimension(1);
                     } else if (fDimension == 3) {
-                        new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index);
+                        new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index,fShapeType);
                         TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
                         TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                         nullmat->SetDimension(2);
@@ -417,7 +425,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
     for(auto gel : fGeoMesh->ElementVec())
     {
         if (gel->Dimension() < 3) continue;
-        
+        if (gel->Type() != ETetraedro) continue;
         //For tetrahedra only, loop over the surface sides
         for (int side = 10; side < 14; side++){
             TPZGeoElSide gelside(gel,side);
@@ -447,6 +455,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::OrientFaces(TPZCompMesh * cmesh)
     {
         auto gel = cel->Reference();
         if (gel->Dimension() != 3) continue;
+        if (gel->Type() != ETetraedro) continue;
         auto nsides = gel->NSides();
 
         //Only Tetrahedra - these are the sides with wrong orientation

@@ -85,14 +85,19 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 1.;//(3.*x*x*y*z - y*y*y*z);
+    u[0] = 1;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
     gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
     gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
+
+    // u[0] = x*x*x*y*z - y*y*y*x*z;
+    // gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
+    // gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
+    // gradU(2,0) = (x*x*x*y - y*y*y*x);
 };
 
 
-enum EMatid  {ENone, EDomain, ES1, ES2, ES3, ES4, EPont, EWrap, EIntface, EPressureHyb, EEdgeRemove};
+enum EMatid {ENone, EDomain, ESurfaces, EPont, EWrap, EIntface, EPressureHyb, EEdgeRemove};
 
 int main(int argc, char* argv[])
 {
@@ -126,7 +131,7 @@ TPZLogger::InitializePZLOG();
     // const int xdiv = 1;
     // const int ydiv = 1;
     // const int zdiv = 1;
-    // const MMeshType meshType = MMeshType::ETetrahedral;
+    // const MMeshType meshType = MMeshType::EHexahedral;
     // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
     // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
@@ -181,13 +186,15 @@ TPZLogger::InitializePZLOG();
         std::set<int> matBCHybrid={};
         //Insert here the type of all boundary conditions
         std::set<int> matIDNeumann{};
-        std::set<int> matIDDirichlet{ES1,ES2,ES3,ES4};
+        std::set<int> matIDDirichlet{ESurfaces};
         /// All bc's mat ID's
         std::set<int> matBC;
         std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
         /// Creates the approximation space - Set the type of domain hybridization
-        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
+                                                    TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
+                                                    TPZApproxSpaceKernelHdiv<STATE>::EHDivConstant); // Shape Type
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;

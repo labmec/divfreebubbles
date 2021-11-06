@@ -168,16 +168,16 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
     phiHCurl = data.phi;
     unfiltCurl = data.curlphi;
 
-#ifdef PZ_LOG
-    if (logger.isDebugEnabled())
-    {
-        std::stringstream sout;
-        //	this->Print(sout);
-        sout << "\nUnfiltCurl = " << unfiltCurl << std::endl;
-        LOGPZ_DEBUG(logger,sout.str())
+// #ifdef PZ_LOG
+//     if (logger.isDebugEnabled())
+//     {
+//         std::stringstream sout;
+//         //	this->Print(sout);
+//         sout << "\nUnfiltCurl = " << unfiltCurl << std::endl;
+//         LOGPZ_DEBUG(logger,sout.str())
         
-    }
-#endif
+//     }
+// #endif
 
     // constexpr auto dim = TSHAPE::Dimension;
     constexpr auto nNodes = TSHAPE::NCornerNodes;
@@ -639,6 +639,8 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
 
 #include <pzshapetriang.h>
 #include <pzshapetetra.h>
+#include <pzshapecube.h>
+#include <pzshapequad.h>
 
 
 #define IMPLEMENTHCURLNOGRADS(TSHAPE)                           \
@@ -656,5 +658,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
 
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTriang)
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTetra)
+IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeQuad)
+IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeCube)
 
 #undef IMPLEMENTHCURLNOGRADS

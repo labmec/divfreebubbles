@@ -408,7 +408,7 @@ void readGeoMesh(string& filename, TPZGeoMesh* gmesh) {
     dim_name_and_physical_tagFine[1]["noflux"] = ENoflux;
     dim_name_and_physical_tagFine[1]["intersection"] = EIntersection;
     reader.SetDimNamePhysical(dim_name_and_physical_tagFine);
-    reader.GeometricGmshMesh4(filename,gmesh);
+    reader.GeometricGmshMesh(filename,gmesh);
     gmesh->SetDimension(2);
     ofstream outvtk("geoMesh.vtk");
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, outvtk);

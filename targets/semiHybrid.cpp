@@ -69,20 +69,16 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &x=loc[0];
     const auto &y=loc[1];
 
+    // //Nabla u = 1
+    // u[0] = 0.25*(x*x+y*y);
+    // gradU(0,0) = 0.5*x;
+    // gradU(1,0) = 0.5*y;
+    //Nabla u = 0
     u[0] = x*x*x*y - y*y*y*x;
     gradU(0,0) = (3.*x*x*y - y*y*y);
     gradU(1,0) = (x*x*x - 3.*y*y*x);
 };
-auto exactSolError = [](const TPZVec<REAL> &loc,
-    TPZVec<STATE>&u,
-    TPZFMatrix<STATE>&gradU){
-    const auto &x=loc[0];
-    const auto &y=loc[1];
 
-    u[0] = x*x*x*y - y*y*y*x;
-    gradU(0,0) = -(3.*x*x*y - y*y*y);
-    gradU(1,0) = -(x*x*x - 3.*y*y*x);
-};
 
 enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface, EPressureHyb};
 
@@ -178,7 +174,7 @@ TPZLogger::InitializePZLOG();
     //Print results
     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-    anNew.SetExact(exactSolError,solOrder);
+    anNew.SetExact(exactSol,solOrder);
 
     std::ofstream out4("mesh_MDFB.txt");
     anNew.Print("nothing",out4);

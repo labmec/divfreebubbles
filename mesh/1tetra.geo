@@ -42,9 +42,9 @@ Volume(1) = {1};
 //+
 Physical Volume("Domain") = {1};
 //+
-Physical Surface("S1") = {1};
-Physical Surface("S2") = {2};
-Physical Surface("S3") = {3};
-Physical Surface("S4") = {4};
+Physical Surface("S1") = {1,2,3,4};
+//Physical Surface("S2") = {2};
+//Physical Surface("S3") = {3};
+//Physical Surface("S4") = {4};
 
 

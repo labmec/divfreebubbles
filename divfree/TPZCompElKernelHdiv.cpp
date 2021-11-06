@@ -7,6 +7,7 @@
 #include "TPZMaterialData.h"
 #include "TPZMaterialDataT.h"
 #include "TPZShapeHDivKernel2D.h"
+#include "TPZShapeHDivConstant2D.h"
 #include <TPZCompElHCurl.h>
 #include "pzcmesh.h"
 

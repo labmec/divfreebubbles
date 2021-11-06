@@ -6,45 +6,89 @@
 #include "TPZCompElKernelHdivBC3D.h"
 #include "TPZMaterialData.h"
 #include "TPZMaterialDataT.h"
+#include "TPZShapeHDivKernel.h"
+#include "TPZShapeHDivConstant.h"
 
 #ifdef PZ_LOG
 static TPZLogger logger("pz.strmatrix");
 #endif
 
 template<class TSHAPE>
-TPZCompElKernelHDivBC3D<TSHAPE>::TPZCompElKernelHDivBC3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDivBC3D::ClassId), TPZCompElHCurlNoGrads<TSHAPE>(mesh,gel,index)  {
+TPZCompElKernelHDivBC3D<TSHAPE>::TPZCompElKernelHDivBC3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index, int shapetype) :
+TPZRegisterClassId(&TPZCompElKernelHDivBC3D::ClassId), TPZCompElHCurlNoGrads<TSHAPE>(mesh,gel,index), fShapeType(shapetype)  {
 
 }
 
 template<class TSHAPE>
 void TPZCompElKernelHDivBC3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
-	TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
+    if (fShapeType == ECurlNoGrads){
+	    TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
+    } else {
+        //Init the material data of Hcurl
+        TPZCompElHCurl<TSHAPE>::InitMaterialData(data);
+        
+        TPZShapeData dataaux = data;
+        data.fVecShapeIndex=dataaux.fSDVecShapeIndex;
+        data.divphi.Resize(data.fVecShapeIndex.size(),1);
+        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
+        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::ComputeVecandShape(data);
+        
+        //setting the type of shape functions as vector shape functions
+        data.fShapeType = TPZMaterialData::EVecShape;
+    }
 
-    
-    // int nshape = this->NShapeF();    
-    // int64_t size = nshape*3;//(TSHAPE::Dimension);
-    // data.fVecShapeIndex.Resize(size);
-    // // auto size = data.fVecShapeIndex.size();
-    
-    // for (int i=0; i<size; i++) {
-	// 	data.fVecShapeIndex[i] = std::make_pair(i,1);
-    // }
 
 }
 
 template<class TSHAPE>
 void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE> &data, TPZVec<REAL> &qsi){
 
-    bool needsol = data.fNeedsSol;
-    data.fNeedsSol = true;
-    TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
-    data.fNeedsSol = needsol;
+    if (fShapeType == ECurlNoGrads){
+        bool needsol = data.fNeedsSol;
+        data.fNeedsSol = true;
+        TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredData(data,qsi);
+        data.fNeedsSol = needsol;
+    } else {
+        //Compute the element geometric data
+        TPZGeoEl * ref = this->Reference();
+        if (!ref){
+            PZError << "\nERROR AT " << __PRETTY_FUNCTION__ << " - this->Reference() == NULL\n";
+            return;
+        }
+
+        ref->Jacobian(qsi, data.jacobian, data.axes, data.detjac , data.jacinv);
+        ref->X(qsi, data.x);
+        data.xParametric = qsi;
+        
+        constexpr auto dim{TSHAPE::Dimension};
+        auto nshape = TPZShapeHDivKernel<TSHAPE>::NHCurlShapeF(data);
+        // auto nshape = TPZShapeHDivConstant<TSHAPE>::NHDivShapeF(data);
+        
+        TPZFMatrix<REAL> phiAux(dim,nshape),divphiAux(nshape,1);
+
+        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+
+        TPZCompElHCurl<TSHAPE>::TransformCurl(phiAux, data.detjac, data.jacobian, data.curlphi);
+
+        const int ncorner = TSHAPE::NCornerNodes;
+        int nEdges = TSHAPE::NumSides(1);
+        const int nsides = TSHAPE::NSides;
+
+        // std::cout << "dphi" << data.fDPhi << std::endl;
+        // std::cout << "master" << data.fMasterDirections << std::endl;
     
-    // TPZFNMatrix<220,REAL> dphix(3,data.dphix.Cols());
-    // TPZFMatrix<REAL> &dphi = data.dphix;
-    // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, data.axes);
+        // std::cout << "data.curlphi = " << data.curlphi << std::endl;
+        // std::cout << "data.phi = " << data.phi << std::endl;
+
+        data.divphi = divphiAux;
+    
+        // data.phi = phiHCurl;
+        if (data.fNeedsSol) {
+            this->ReallyComputeSolution(data);
+        }
+    }
     
 
     data.phi.Zero();
@@ -59,8 +103,9 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
     {
         std::stringstream sout;
         //	this->Print(sout);
-        sout << "\nVecshape = " << data.fVecShapeIndex << std::endl;
-        sout << "MASTER = " << data.fMasterDirections << std::endl;
+        // sout << "\nVecshape = " << data.fVecShapeIndex << std::endl;
+        // sout << "MASTER = " << data.fMasterDirections << std::endl;
+        // sout << "TransformIDs = " << data.fSideTransformationId << std::endl;
         sout << "Phi = " << data.phi << std::endl;
         LOGPZ_DEBUG(logger,sout.str())
         
@@ -163,4 +208,4 @@ using namespace pzgeom;
 using namespace pzshape;
 
 template class TPZCompElKernelHDivBC3D<TPZShapeTriang>;
-// template class TPZCompElKernelHDivBC3D<TPZShapeQuad>;
+template class TPZCompElKernelHDivBC3D<TPZShapeQuad>;

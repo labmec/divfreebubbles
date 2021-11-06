@@ -16,6 +16,7 @@
 #include "TPZMatTypes.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
+#include "TPZCompElKernelHdivBC3D.h"
 
 class TPZCompMesh;
 class TPZGeoMesh;
@@ -29,10 +30,14 @@ class TPZApproxSpaceKernelHdiv
 public:
     /// types of spaces this class can create
     enum MSpaceType {ENone, EFullHybrid, ESemiHybrid};
+    enum MShapeType {EHDivKernel, EHDivConstant, EHCurlNoGrads};
 
 private:
     /// the type of space this object will generate
     MSpaceType fSpaceType = ENone;
+
+    /// the type of space this object will generate
+    MShapeType fShapeType = EHDivKernel;
 
     /// default internal order for the H1 elements
     int fDefaultPOrder = 3;
@@ -54,7 +59,7 @@ private:
 
 public:
     /// default constructor
-    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone);
+    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, MShapeType shapetype = EHDivKernel);
     
     /// copy constructor
     TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv &copy);
@@ -192,7 +197,7 @@ public:
     void CreateOrientedBoundaryElements();
 
     void OrientFaces(TPZCompMesh * cmesh);
-    
+        
 };
 
 #endif //TPZApproxSpaceKernelHdiv

@@ -106,7 +106,8 @@ void TestEdgeFiltering(TPZGeoMesh* gmesh, const int &volId, const int &bcId)
     
     TPZHCurlEquationFilter<STATE> filter;
 
-    if(filter.FilterEdgeEquations(cmesh, activeEqs)){
+    bool hybridization = false;
+    if(filter.FilterEdgeEquations(cmesh, activeEqs,hybridization)){
         return;
     }
 
@@ -240,7 +241,7 @@ ReadMeshFromGmsh(std::string file_name)
         stringtoint[2]["Surfaces"] = 2;
 
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh4(file_name,gmesh);
+        reader.GeometricGmshMesh(file_name,gmesh);
     }
 
     return gmesh;

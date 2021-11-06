@@ -28,28 +28,19 @@ class TPZCompElKernelHDiv3D : public TPZCompElHCurlNoGrads<TSHAPE> {
     /// Data structure which defines the restraints
     std::list<TPZOneShapeRestraint> fRestraints;
 
+    // Type of HDiv Space
+    enum MShapeType {EHDivKernel, EHDivConstant, ECurlNoGrads};
+    
+    /// the type of space this object will generate
+    int fShapeType;
+
 public:
 	    
-	TPZCompElKernelHDiv3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
-	
-	// TPZCompElKernelHDiv3D(TPZCompMesh &mesh, const TPZCompElKernelHDiv3D<TSHAPE> &copy);
-	
-	/**
-	 * @brief Constructor used to generate patch mesh... generates a map of connect index from
-	 * global mesh to clone mesh
-	//  */
-	// TPZCompElKernelHDiv3D(TPZCompMesh &mesh,
-	// 			        const TPZCompElKernelHDiv3D<TSHAPE> &copy,
-	// 			        std::map<int64_t,int64_t> & gl2lcConMap,
-	// 			        std::map<int64_t,int64_t> & gl2lcElMap);
+	TPZCompElKernelHDiv3D(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index, int shapetype = EHDivKernel);
 	
 	TPZCompElKernelHDiv3D(){};
 	
 	virtual ~TPZCompElKernelHDiv3D();
-	
-	// virtual TPZCompEl *Clone(TPZCompMesh &mesh) const  override {
-	// 	return new TPZCompElKernelHDiv3D<TSHAPE> (mesh, *this);
-	// }
 	
     /** @brief Set create function in TPZCompMesh to create elements of this type */
 	virtual void SetCreateFunctions(TPZCompMesh *mesh) override;
@@ -69,9 +60,6 @@ public:
         ComputeRequiredDataT(data,qsi);
     }
     //@}
-		
-	// /** @brief Compute the solution for a given variable */
-	// virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
 
 	/** @brief Returns the unique identifier for reading/writing objects to streams */
     int ClassId() const override;
@@ -100,8 +88,6 @@ public:
 #endif
         return fSideOrient[face];
     }
-	
-
 
 protected:
 
