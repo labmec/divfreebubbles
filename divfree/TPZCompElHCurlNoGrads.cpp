@@ -218,7 +218,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::ComputeRequiredDataT(
         }
         fcount++;
     } 
-    
+
     // data.phi = phiHCurl;
     if (data.fNeedsSol) {
         this->ReallyComputeSolution(data);
@@ -267,6 +267,18 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
             (k-1)*(k+1)-k*(k-1)/2
             */
             return (order - 1) * (order+2) / 2;
+        case EQuadrilateral://quadrilateral face
+            //Following the same logic:
+            /**
+             we remove one internal function for each h1 face function of order k+1
+            since there are (k-1)^2 functions per face in a face with order k,
+            we remove k^2.
+            so:
+            2k(k+1) - k^2 = k(k+2)
+            
+            */
+
+            return order * (order + 2);
         default:
             PZError<<__PRETTY_FUNCTION__<<" error. Not yet implemented"<<std::endl;
             DebugStop();
@@ -275,7 +287,56 @@ int TPZCompElHCurlNoGrads<TSHAPE>::NConnectShapeF(int icon, int order) const
         }
         else{//internal connect (3D element only)
         if constexpr (TSHAPE::Type() == ETetraedro){
+        /**
+             we remove one internal function for each h1 internal function of order k+1
+            since there are (k-1)(k-2)(k-3)/6 functions in a h1 element with order k,
+            we remove k(k-1)(k-2)/6.
+            so:
+            (k-1)(k-2)(k+1)/2 - k(k-1)(k-2)/6 = (k-1)(k-2)(2k+3)/6.
+
+            since we will remove k(k-1)(k-2)/6, for each     we remove (k-1)(k-2)/2 funcs.
+
+            we have two kinds of internal functions. phi_kf and phi_ki.
+            func        k                   k-1                 new funcs
+            phi_kf      2(k-1)(k-2)         2(k-2)(k-3)         4(k-2)
+            phi_ki      (k-1)(k-2)(k-3)/2   (k-2)(k-3)(k-4)/2   3(k-2)(k-3)/2
+            
+            that means that if we remove, for each k, (k-2) phi_kf 
+            (for instance, all phi_kf associated with a given face),
+            we need to remove (k-1)(k-2)/2 - (k-2) = (k-2)(k-3)/2
+            which is exactly one third of the phi_ki.
+            
+        */
             return (order-1)*(order-2)*(2*order+3)/6;
+        } else 
+        if constexpr (TSHAPE::Type() == ECube){
+        /**
+             we remove one internal function for each h1 internal function of order k+1
+            since there are (k-1)^3 functions in a h1 element with order k,
+            we remove k^3.
+            so:
+            3k^2(k+1) - k^3 = k^2 (3 + 2 k).
+
+            we have two kinds of internal functions. phi_kf and phi_ki.
+            func        k                   k-1                 new funcs
+            phi_kf      6k^2                6(k-1)^2            k(8k-k^2-1)
+            phi_ki      3k^2*(k-1)          3(k-1)(k-1)(k-2)/2  3(2-5k+2k^2+k^3)/2
+           
+        */
+            switch (order)
+            {
+            case 1:
+                return 5;
+            case 2:
+                return 19;
+            case 3: 
+                return 37;
+            case 4:
+                return 56;
+            default:
+                break;
+            }
+            return order*order*(3+2*order);
         }
         return 0;
         // int count = 0;
@@ -562,7 +623,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
             so:
             (k-1)(k-2)(k+1)/2 - k(k-1)(k-2)/6 = (k-1)(k-2)(2k+3)/6.
 
-            since we will remove k(k-1)(k-2)/6, for each k we remove (k-1)(k-2)/2 funcs.
+            since we will remove k(k-1)(k-2)/6, for each     we remove (k-1)(k-2)/2 funcs.
 
             we have two kinds of internal functions. phi_kf and phi_ki.
             func        k                   k-1                 new funcs
@@ -619,6 +680,7 @@ void TPZCompElHCurlNoGrads<TSHAPE>::HighOrderFunctionsFilter(
 #include <pzshapetetra.h>
 #include <pzshapecube.h>
 #include <pzshapequad.h>
+#include <pzshapeprism.h>
 
 
 #define IMPLEMENTHCURLNOGRADS(TSHAPE)                           \
@@ -638,5 +700,6 @@ IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTriang)
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeTetra)
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeQuad)
 IMPLEMENTHCURLNOGRADS(pzshape::TPZShapeCube)
+IMPLEMENTHCURLNOGRADS(pzshape::TPZShapePrism)
 
 #undef IMPLEMENTHCURLNOGRADS

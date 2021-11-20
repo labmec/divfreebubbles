@@ -10,7 +10,7 @@
 
 template<class TSHAPE>
 TPZCompElKernelHDivBC<TSHAPE>::TPZCompElKernelHDivBC(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDivBC::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index)  {
+TPZRegisterClassId(&TPZCompElKernelHDivBC::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index) {
 
 }
 
@@ -41,14 +41,20 @@ void TPZCompElKernelHDivBC<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi, TPZMaterialD
     TPZCompElH1<TSHAPE>::ComputeShape(qsi,data);
 
     TPZShapeData &shapedata = data;
-    TPZFMatrix<REAL> auxPhi;
-    TPZShapeHDivKernel2DBound<TSHAPE>::Shape(qsi, shapedata, auxPhi, data.divphi);
+    int nshape = this->NShapeF();
+    // data.phi.Resize(nshape,1);
+    // data.dphix.Resize(1,nshape);
 
+    TPZFMatrix<REAL> auxPhi(1,nshape);
+    auxPhi.Zero();
+    TPZShapeHDivKernel2DBound<TSHAPE>::Shape(qsi, shapedata, auxPhi, data.divphi);
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
 		data.phi(i,0) = auxPhi(0,i)/data.detjac;
 	  }
     }
+    std::cout << "AUXphi = " << data.phi << std::endl;
+
 
 }//void
 

@@ -59,7 +59,7 @@ enum EMatid {ENone, EDomain, EInjection, EProduction, EBottom,  ETop, ELeft, ERi
 int main(int argc, char* argv[]){
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{2};
+    constexpr int pOrder{1};
 
 #ifdef PZ_LOG
 TPZLogger::InitializePZLOG();
@@ -83,7 +83,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 8;
         stringtoint[1]["BottomLine2"] = 9;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh(string(MESHDIR)+"newMesh.msh",gmesh);
+        reader.GeometricGmshMesh(string(MESHDIR)+"1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -91,15 +91,20 @@ TPZLogger::InitializePZLOG();
     //.................................Hdiv.................................
     TPZCompMesh * cmeshflux = 0;
     TPZCompMesh * cmeshpressure = 0;
-    {
+    {   
+        TPZKernelHdivUtils<STATE> util;
         std::set<int> matIdVecHdiv={EDomain,EInjection,EProduction,EBottom,ETop,ELeft,ERight};
         std::set<int> matIdNeumannHdiv;
         
         //Flux mesh
         cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+        std::cout << "FLUX \n";
+        util.PrintCMeshConnects(cmeshflux);
 
         //Pressure mesh
         cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+        std::cout << "PRESSURE \n";
+        util.PrintCMeshConnects(cmeshpressure);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvector(2);
@@ -107,6 +112,9 @@ TPZLogger::InitializePZLOG();
         meshvector[1] = cmeshpressure;
         TPZCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
         std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
+        
+        std::cout << "MULTIPHYSICS \n";
+        util.PrintCMeshConnects(cmesh);
 
         //Solve Multiphysics
         TPZLinearAnalysis an(cmesh,true);
@@ -216,6 +224,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
   u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
   gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
   gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+  u[0] = x;
+gradU(0,0) = 1.;
+gradU(1,0) = 0.;
 };
 auto exactSolH1 = [](const TPZVec<REAL> &loc,
   TPZVec<STATE>&u,
@@ -236,6 +247,9 @@ auto exactSolError = [](const TPZVec<REAL> &loc,
   u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
   gradU(0,0) = -(x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
   gradU(1,0) = -(y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+  u[0] = x;
+    gradU(0,0) = 1.;
+    gradU(1,0) = 0.;
 };
 
 //Flux computational mesh

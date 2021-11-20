@@ -32,6 +32,8 @@ class TPZHCurlEquationFilter
 private:
     const int edgeDim{1};
 
+    int fNumEdgesPerFace = 0;
+
     // DATA STRUCTURES
     // 1 - VERTEX DATA STRUCTURE
     enum VertexStatusType {ENotTreatedVertex, ETreatedVertex};

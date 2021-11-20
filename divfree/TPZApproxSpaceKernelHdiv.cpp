@@ -14,15 +14,18 @@
 #include "pzgeoelbc.h"
 #include <TPZNullMaterial.h>
 #include "TPZCompElKernelHdiv.h"
+#include "TPZCompElHDivConstant.h"
 #include "TPZCompElKernelHDiv3D.h"
 #include "TPZCompElKernelHdivBC.h"
 #include "TPZCompElKernelHdivBC3D.h"
+#include "TPZCompElHDivConstantBC.h"
 #include "TPZL2ProjectionCS.h"
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
 #include "TPZMixedDarcyFlowHybrid.h"
 #include "TPZCompElDisc.h"
 #include "TPZCompElH1.h"
+#include <pzbuildmultiphysicsmesh.h>
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -30,6 +33,7 @@
 #include "pzshapepoint.h"
 #include "pzshapetriang.h"
 #include "pzshapetetra.h"
+#include "pzshapeprism.h"
 
 template<class TVar>
 TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype, MShapeType shapetype) :
@@ -140,7 +144,13 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             if (fSpaceType != ENone) continue;
             if (allMat.find(matid) == allMat.end()) continue;
             
-            new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,gel,index);
+            if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,gel,index);
+            } else if (fShapeType == EHDivConstant) {
+                new TPZCompElHDivConstantBC<TPZShapeLinear>(*cmesh,gel,index);
+            } else {
+                DebugStop();
+            }
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(1);
@@ -150,7 +160,13 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
 
         } else if (type == EQuadrilateral){
             if (fDimension == 2){
-                new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
+                if (fShapeType == EHDivKernel){
+                    new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
+                } else if (fShapeType == EHDivConstant) {
+                    new TPZCompElHDivConstant<TPZShapeQuad>(*cmesh,gel,index);
+                } else {
+                    DebugStop();
+                }
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 nullmat->SetDimension(2);
@@ -167,7 +183,13 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             }
         } else if(type == ETriangle) {
             if (fDimension == 2){
-                new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
+                if (fShapeType == EHDivKernel){
+                    new TPZCompElKernelHDiv<TPZShapeTriang>(*cmesh,gel,index);
+                } else if (fShapeType == EHDivConstant){
+                    new TPZCompElHDivConstant<TPZShapeTriang>(*cmesh,gel,index);
+                } else {
+                    DebugStop();
+                }
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                 nullmat->SetDimension(2);
@@ -189,6 +211,11 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             nullmat->SetDimension(3);
         } else if(type == ECube) {
             new TPZCompElKernelHDiv3D<TPZShapeCube>(*cmesh,gel,index,fShapeType);
+            TPZMaterial *mat = cmesh->FindMaterial(matid);
+            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+            nullmat->SetDimension(3);
+        } else if(type == EPrisma) {
+            new TPZCompElKernelHDiv3D<TPZShapePrism>(*cmesh,gel,index,fShapeType);
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);
@@ -215,7 +242,13 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
 
             if (neighbour.Element()->MaterialId() == fConfig.fWrap){
                 if (fDimension == 2){
-                    new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
+                    if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                        new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
+                    } else if (fShapeType == EHDivConstant){
+                        new TPZCompElHDivConstantBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
+                    } else {
+                        DebugStop();
+                    }
                     TPZMaterial *mat = cmesh->FindMaterial(fConfig.fWrap);
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                     nullmat->SetDimension(1);
@@ -228,10 +261,17 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             } else {
                 if (allMat.find(neighbour.Element()->MaterialId()) != allMat.end()){
                     if (fDimension == 2){
-                        new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
-                        TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
-                        TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
-                        nullmat->SetDimension(1);
+                        if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                            new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
+                        } else if (fShapeType == EHDivConstant) {
+                            new TPZCompElHDivConstantBC<TPZShapeLinear>(*cmesh,neighbour.Element(),index);
+                        } else {
+                            DebugStop();
+                        }
+                            TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
+                            TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
+                            nullmat->SetDimension(1);
+                        
                     } else if (fDimension == 3) {
                         new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,neighbour.Element(),index,fShapeType);
                         TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
@@ -249,15 +289,36 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         }
     }    
 
-    cmesh->ExpandSolution();
-    cmesh->InitializeBlock();
-    cmesh->ComputeNodElCon();
-    cmesh->LoadReferences();
-    
-
-    if (fDimension == 3){
-        OrientFaces(cmesh);
+    for (auto con:cmesh->ConnectVec())
+    {
+        std::cout << "Connects 0 = " << con << std::endl;
+        std::cout << "NSHAPE 0 = " << con.NShape()  << std::endl;
     }
+
+    cmesh->InitializeBlock();
+    for (auto con:cmesh->ConnectVec())
+    {
+        std::cout << "Connects 1 = " << con << std::endl;
+        std::cout << "NSHAPE 1 = " << con.NShape()  << std::endl;
+    }
+    
+    cmesh->ComputeNodElCon();
+    for (auto con:cmesh->ConnectVec())
+    {
+        std::cout << "Connects 2 = " << con << std::endl;
+        std::cout << "NSHAPE 2 = " << con.NShape()  << std::endl;
+
+    }
+    cmesh->LoadReferences();
+    for (auto con:cmesh->ConnectVec())
+    {
+        std::cout << "Connects 3 = " << con << std::endl;
+        std::cout << "NSHAPE 3 = " << con.NShape()  << std::endl;
+    }
+
+    // if (fDimension == 3){
+    //     OrientFaces(cmesh);
+    // }
 
     if (fSpaceType == ESemiHybrid){
         hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
@@ -315,35 +376,66 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
         mat->SetBigNumber(1.e10);
     }
 
-    cmesh->InitializeBlock();
+    if (fShapeType == EHDivConstant){
+        TPZNullMaterial<> *mat = new TPZNullMaterial<>(fConfig.fDomain);
+        mat->SetDimension(fDimension);
+        cmesh->InsertMaterialObject(mat);
+        mat -> SetBigNumber(1.e10);
 
-    if(fDefaultPOrder == 0 || fSpaceType == ESemiHybrid){
-        cmesh->SetDefaultOrder(0);
-        cmesh->SetDimModel(fDimension-1);
         cmesh->SetAllCreateFunctionsDiscontinuous();
+
+        cmesh->SetDefaultOrder(0);
+        cmesh->SetDimModel(fDimension);
+        cmesh->AutoBuild();
+
+        int ncon = cmesh->NConnects();
+        for(int i=0; i<ncon; i++)
+        {
+            TPZConnect &newnod = cmesh->ConnectVec()[i]; 
+            newnod.SetLagrangeMultiplier(1);
+        }
+
+        int nel = cmesh->NElements();
+        for(int i=0; i<nel; i++){
+            TPZCompEl *cel = cmesh->ElementVec()[i];
+            TPZCompElDisc *celdisc = dynamic_cast<TPZCompElDisc *>(cel);
+            if(!celdisc) continue;
+            celdisc->SetConstC(1.);
+            celdisc->SetTrueUseQsiEta();
+            // espera-se elemento de pressao apenas para o contorno
+            auto aaa = celdisc->Reference()->Dimension();
+            // if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
+            // {
+            //     DebugStop();
+            // }
+        }
     } else {
-        cmesh->SetAllCreateFunctionsContinuous();
-        cmesh->ApproxSpace().CreateDisconnectedElements(true);
-        cmesh->SetDefaultOrder(fDefaultPOrder-1);
-        cmesh->SetDimModel(fDimension-1);
-    }
-    
-    cmesh->AutoBuild(matIdVec);
-    
-    if (fSpaceType == ESemiHybrid){
-        // std::cout << "Matid " << std::endl;
-        // for (auto const &i: fConfig.fBCHybridMatId) {
-        //     std::cout << i << " ";
-        // }
-        hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
-    }
 
-    
-    for(auto &newnod : cmesh->ConnectVec())
-    {
-        newnod.SetLagrangeMultiplier(1);
-    }
+        cmesh->InitializeBlock();
 
+        if(fDefaultPOrder == 0 || fSpaceType == ESemiHybrid){
+            cmesh->SetDefaultOrder(0);
+            cmesh->SetDimModel(fDimension-1);
+            cmesh->SetAllCreateFunctionsDiscontinuous();
+        } else {
+            cmesh->SetAllCreateFunctionsContinuous();
+            cmesh->ApproxSpace().CreateDisconnectedElements(true);
+            cmesh->SetDefaultOrder(fDefaultPOrder-1);
+            cmesh->SetDimModel(fDimension-1);
+        }
+        
+        cmesh->AutoBuild(matIdVec);
+        
+        if (fSpaceType == ESemiHybrid){
+            hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
+        }
+
+        
+        for(auto &newnod : cmesh->ConnectVec())
+        {
+            newnod.SetLagrangeMultiplier(1);
+        }
+    }
     
 
     return cmesh;
@@ -405,6 +497,14 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     active[0]=1;
     active[1]=1;
     cmesh->BuildMultiphysicsSpace(active, meshvector);
+    if (fShapeType == EHDivConstant) {
+        cmesh->SetAllCreateFunctionsMultiphysicElem();
+        cmesh->AdjustBoundaryElements();
+        cmesh->CleanUpUnconnectedNodes();
+
+        TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
+        TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
+    }
     cmesh->LoadReferences();
     cmesh->CleanUpUnconnectedNodes(); 
 
@@ -425,9 +525,20 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
     for(auto gel : fGeoMesh->ElementVec())
     {
         if (gel->Dimension() < 3) continue;
-        if (gel->Type() != ETetraedro) continue;
+        int sideStart = 0;
+        int sideEnd = 0;
+        if (gel->Type() == ETetraedro){
+            sideStart = 10;
+            sideEnd = 14;
+        } else if (gel->Type() == ECube){
+            sideStart = 20;
+            sideEnd = 26;
+        } else if (gel->Type() == EPrisma){
+            sideStart = 15;
+            sideEnd = 20;
+        }
         //For tetrahedra only, loop over the surface sides
-        for (int side = 10; side < 14; side++){
+        for (int side = sideStart; side < sideEnd; side++){
             TPZGeoElSide gelside(gel,side);
             TPZGeoElSide neighbour = gelside.Neighbour();
             //Neighbour material id
@@ -442,57 +553,80 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
            
         }
     }
-
-    
 }
 
-template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::OrientFaces(TPZCompMesh * cmesh)
-{
-    cmesh->LoadReferences();
-    // Para cada elemento geométrico tetraedrico
-    for (auto cel : cmesh->ElementVec())
-    {
-        auto gel = cel->Reference();
-        if (gel->Dimension() != 3) continue;
-        if (gel->Type() != ETetraedro) continue;
-        auto nsides = gel->NSides();
+// template<class TVar>
+// void TPZApproxSpaceKernelHdiv<TVar>::OrientFaces(TPZCompMesh * cmesh)
+// {
+//     cmesh->LoadReferences();
+//     // Para cada elemento geométrico tetraedrico
+//     for (auto cel : cmesh->ElementVec())
+//     {
+//         auto gel = cel->Reference();
+//         if (gel->Dimension() != 3) continue;
+//         auto nsides = gel->NSides();
 
-        //Only Tetrahedra - these are the sides with wrong orientation
-        std::set<int> sides = {10,13};
-        for (auto iside:sides)
-        {            
-            TPZGeoElSide geoside(gel,iside);
-            TPZGeoElSide neighbour = geoside.Neighbour();
-            std::cout << " MATID = " << neighbour.Element()->MaterialId() << std::endl;
-            TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
-            if (intel) intel->SetSideOrient(-1);
+//         //Only Tetrahedra - these are the sides with wrong orientation
+//         std::set<int> sides;
+//         if (gel->Type() == ETetraedro){
+//             sides = {10,13};
+//         } else if (gel->Type() == ECube) {
+//             sides = {21,25};
+//         } else if (gel->Type() == EPrisma) {
+//             sides = {15,18};
+//         } 
+//         for (auto iside:sides)
+//         {            
+//             TPZGeoElSide geoside(gel,iside);
+//             TPZGeoElSide neighbour = geoside.Neighbour();
+//             if (gel->Type() == ETetraedro){
+//                 TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
+//                 if (intel) intel->SetSideOrient(-1);
+//             } else if (gel->Type() == ECube) {
+//                 TPZCompElKernelHDivBC3D<pzshape::TPZShapeQuad> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeQuad> *> (neighbour.Element()->Reference());
+//                 if (intel) intel->SetSideOrient(-1);
+//             } else if (gel->Type() == EPrisma) {
+//                 TPZCompElKernelHDivBC3D<pzshape::TPZShapeQuad> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeQuad> *> (neighbour.Element()->Reference());
+//                 if (intel){
+//                     intel->SetSideOrient(-1);
+//                 } else {
+//                     TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel3 = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
+//                     if (intel3) intel3->SetSideOrient(-1);
+//                 }
+//             }
 
-            TPZInterpolatedElement *intel2 = dynamic_cast<TPZInterpolatedElement *> (cel);
-            intel2->SetSideOrient(iside,-1);   
-        }
+//             TPZInterpolatedElement *intel2 = dynamic_cast<TPZInterpolatedElement *> (cel);
+//             intel2->SetSideOrient(iside,-1);   
+//         }
 
-        std::set<int> sides2 = {11,12};
-        for (auto iside:sides2)
-        {
-            TPZGeoElSide geoside(gel,iside);
-            TPZGeoElSide neighbour = geoside.Neighbour();
+//         std::set<int> sides2;
+//         if (gel->Type() == ETetraedro){
+//             sides = {11,12};
+//         } else if (gel->Type() == ECube) {
+//             sides = {20,22,23,24};
+//         } else if (gel->Type() == EPrisma) {
+//             sides = {16,17,19};
+//         }
+//         for (auto iside:sides2)
+//         {
+//             TPZGeoElSide geoside(gel,iside);
+//             TPZGeoElSide neighbour = geoside.Neighbour();
 
-            if (neighbour.Element()->MaterialId() != fConfig.fWrap) continue;
-            // std::cout << " MATID = " << neighbour.Element()->MaterialId() << std::endl;
-            // TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
-            // if (intel) intel->SetSideOrient(1);
+//             if (neighbour.Element()->MaterialId() != fConfig.fWrap) continue;
+//             // std::cout << " MATID = " << neighbour.Element()->MaterialId() << std::endl;
+//             // TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Element()->Reference());
+//             // if (intel) intel->SetSideOrient(1);
 
-            // std::cout << "NNMatid = " << neighbour.Neighbour().Element()->MaterialId() << std::endl;
-            // TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel2 = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Neighbour().Element()->Reference());
-            // if (intel) intel2->SetSideOrient(-1);
+//             // std::cout << "NNMatid = " << neighbour.Neighbour().Element()->MaterialId() << std::endl;
+//             // TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *intel2 = dynamic_cast<TPZCompElKernelHDivBC3D<pzshape::TPZShapeTriang> *> (neighbour.Neighbour().Element()->Reference());
+//             // if (intel) intel2->SetSideOrient(-1);
 
-            TPZInterpolatedElement *intel2 = dynamic_cast<TPZInterpolatedElement *> (cel);
-            intel2->SetSideOrient(iside,-1);   
-        }
+//             TPZInterpolatedElement *intel2 = dynamic_cast<TPZInterpolatedElement *> (cel);
+//             intel2->SetSideOrient(iside,-1);   
+//         }
         
-    }
-}
+//     }
+// }
 
 template class TPZApproxSpaceKernelHdiv<STATE>;
 // template class TPZApproxSpaceKernelHdiv<CSTATE>;

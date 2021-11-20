@@ -7,7 +7,6 @@
 #include "TPZMaterialData.h"
 #include "TPZMaterialDataT.h"
 #include "TPZShapeHDivKernel2D.h"
-#include "TPZShapeHDivConstant2D.h"
 #include <TPZCompElHCurl.h>
 #include "pzcmesh.h"
 
@@ -17,15 +16,26 @@ static TPZLogger logger("pz.strmatrix");
 
 template<class TSHAPE>
 TPZCompElKernelHDiv<TSHAPE>::TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index) :
-TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index)  {
-       
-}
+TPZRegisterClassId(&TPZCompElKernelHDiv::ClassId), TPZCompElH1<TSHAPE>(mesh,gel,index) {
 
+}
 
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
 	TPZCompElH1<TSHAPE>::InitMaterialData(data);
+
+    const int nSides = TSHAPE::NSides;
+    const int nCorner = TSHAPE::NCornerNodes;
+    TPZManVector<int64_t,nCorner> ids(nCorner,0);
+    for(auto i=0; i<nCorner; i++) ids[i] = i;
+    
+    data.fSideTransformationId.Resize(nSides-nCorner, 0);
+    for (int iside =nCorner; iside< nSides ; iside++) {
+        int pos = iside - nCorner;
+        int trans_id = TSHAPE::GetTransformId(iside, ids); // Foi criado
+        data.fSideTransformationId[iside-nCorner] = trans_id;
+    }
 
     int nshape = this->NShapeF();
     // int64_t numvec = TSHAPE::Dimension*TSHAPE::NSides;
@@ -53,19 +63,16 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi,TPZMaterialData
     TPZCompElH1<TSHAPE>::ComputeShape(qsi,data);
 
     TPZShapeData &shapedata = data;
-    TPZFMatrix<REAL> auxPhi;
+    int nshape = this->NShapeF();
+    TPZFMatrix<REAL> auxPhi(2,nshape);
+    auxPhi.Zero();
+
     TPZShapeHDivKernel2D<TSHAPE>::Shape(qsi, shapedata, auxPhi, data.divphi);
 
     TPZFMatrix<REAL> gradx, aux2(3,auxPhi.Cols());
     this->Reference()->GradX(qsi,gradx);
 
     const auto nCorner = TSHAPE::NCornerNodes;
-    for (int i = 0; i < nCorner; i++)
-    {
-        TPZConnect &c = this->Connect(i);
-        auto nshape = c.NShape();
-        int a = 0;
-    }
 
     aux2.Zero();
     gradx.MultAdd(auxPhi,data.phi,aux2,1/data.detjac,0);
@@ -73,6 +80,7 @@ void TPZCompElKernelHDiv<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi,TPZMaterialData
     data.fDeformedDirections = aux2;
 
     data.phi.Resize(auxPhi.Cols(),3);
+
     data.phi = 1.;
     // data.phi.Transpose(&aux2);
     // std::cout << "PHI = " << data.phi << std::endl;
@@ -100,52 +108,6 @@ template<class TSHAPE>
 int TPZCompElKernelHDiv<TSHAPE>::GetSideOrient(){
     return fSideOrient;
 }
-
-// template<class TSHAPE>
-// int TPZCompElKernelHDiv<TSHAPE>::NConnectShapeF(int icon, int order) const{
-  
-//     //Adapted from CurlNoGrads
-//     const int side = icon;
-//     if(order == 0) {
-//         PZError<<__PRETTY_FUNCTION__
-//             <<"\nERROR: polynomial order not compatible.\nAborting..."
-//             <<std::endl;
-//         DebugStop();
-//         return 0;
-//     }
-//     const auto nFaces = TSHAPE::Dimension < 2 ? 0 : TSHAPE::NumSides(2);
-//     const auto nEdges = TSHAPE::NumSides(1);
-//     const int nShapeF = [&](){
-//         if (side < TSHAPE::NCornerNodes + nEdges) {//edge connect
-//         return 1;
-//         }
-//         else if(side < TSHAPE::NCornerNodes + nEdges + nFaces){//face connect
-//         switch(TSHAPE::Type(side)){
-//             case ETriangle://triangular face
-//                 /**
-//                  we remove one internal function for each h1 face function of order k+1
-//                 since there are (k-1)(k-2)/2 functions per face in a face with order k,
-//                 we remove k(k-1)/2.
-//                 so:
-//                 (k-1)*(k+1)-k*(k-1)/2
-//                 */
-//                 return (order - 1) * (order+2) / 2;
-//             default:
-//                 PZError<<__PRETTY_FUNCTION__<<" error. Not yet implemented"<<std::endl;
-//                 DebugStop();
-//                 return 0;
-//             }
-//         }
-//         else{//internal connect (3D element only)
-//             DebugStop();
-//             return 0;
-//         }
-//     }();
-//     return nShapeF;
-
-
-// }
-
 
 template<class TSHAPE>
 void TPZCompElKernelHDiv<TSHAPE>:: Solution(TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol)

@@ -20,11 +20,15 @@ set(MATERIAL_SRCS
 
 set(MESH_HEADERS
   TPZCompElKernelHdiv.h
+  TPZCompElHDivConstant.h
+  TPZCompElHDivConstantBC.h
   TPZCompElKernelHDiv3D.h
   TPZCompElHCurlNoGrads.h)
 
 set(MESH_SRCS
   TPZCompElKernelHdiv.cpp
+  TPZCompElHDivConstant.cpp
+  TPZCompElHDivConstantBC.cpp
   TPZCompElKernelHDiv3D.cpp
   TPZCompElHCurlNoGrads.cpp)
 

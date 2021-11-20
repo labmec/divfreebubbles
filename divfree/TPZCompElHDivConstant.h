@@ -3,8 +3,8 @@
  * @brief Contains declaration of TPZCompElHDiv class which implements a generic computational element (HDiv scope).
  */
 
-#ifndef TPZCompElKernelHDiv_H
-#define TPZCompElKernelHDiv_H
+#ifndef TPZCompElHDivConstant_H
+#define TPZCompElHDivConstant_H
 
 #include "pzelctemp.h"
 #include "TPZBndCond.h"
@@ -12,9 +12,7 @@
 #include "pzshapequad.h"
 #include "pzgeoquad.h"
 #include "tpzquadrilateral.h"
-#include "TPZCompElH1.h"
-#include "TPZCompElHCurl.h"
-
+#include "pzelchdiv.h"
 
 /**
  * @brief This class implements a "generic" computational element to HDiv scope. \ref CompElement "Computational Element"
@@ -25,7 +23,7 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDiv : public TPZCompElH1<TSHAPE>  {
+class TPZCompElHDivConstant : public TPZCompElHDiv<TSHAPE>  {
 
 protected:
   ///! Indexes of the connects associated with the elements
@@ -37,9 +35,9 @@ private:
 
 public:
 	    
-	TPZCompElKernelHDiv();
+	TPZCompElHDivConstant();
     
-    TPZCompElKernelHDiv(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
+    TPZCompElHDivConstant(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
 	
     virtual void InitMaterialData(TPZMaterialData &data) override;
 
@@ -53,20 +51,28 @@ public:
 	/** @brief Compute the solution for a given variable */
 	virtual void Solution( TPZVec<REAL> &qsi,int var,TPZVec<STATE> &sol) override;
 
-protected:
-	 //@{
-    /** @brief Compute the solution using Hdiv structure */
-	void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
-        ComputeSolutionKernelHdivT(data);
-    }
-    void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
-        ComputeSolutionKernelHdivT(data);
-    }
+    void AdjustConnects();
+    /**
+   * @brief Number of shapefunctions of the connect associated
+   * @param connect connect number
+   * @return number of shape functions
+   */
+    int NConnectShapeF(int connect, int order) const override;
 
-	template<class TVar>
-    void ComputeSolutionKernelHdivT(TPZMaterialDataT<TVar> &data);
-    template<class TVar>
-    void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
+protected:
+	//  //@{
+    // /** @brief Compute the solution using Hdiv structure */
+	// void ReallyComputeSolution(TPZMaterialDataT<STATE> &data) override{
+    //     ComputeSolutionHDivConstantT(data);
+    // }
+    // void ReallyComputeSolution(TPZMaterialDataT<CSTATE> &data) override{
+    //     ComputeSolutionHDivConstantT(data);
+    // }
+
+	// template<class TVar>
+    // void ComputeSolutionHDivConstantT(TPZMaterialDataT<TVar> &data);
+    // template<class TVar>
+    // void ComputeRequiredDataT(TPZMaterialDataT<TVar> &data, TPZVec<REAL>&qsi);
 	
 };
 

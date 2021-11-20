@@ -139,18 +139,19 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         TPZFNMatrix<3, REAL> axesvec(3, 1, 0.);
         datavec[0].axes.Multiply(ivec, axesvec);
 
+        // 
+        // if (dphiQ.Cols()!=0){
+        //     for (int iloc = 0; iloc < fDim; iloc++) {
+        //         divwq += axesvec(iloc, 0) * dphiQ(iloc, ishapeind);
+        //     }
+        // } else {
+        //     TPZShapeData dataaux = datavec[0];
+        //     for (int iloc = 0; iloc < fDim; iloc++) {
+        //         divwq += axesvec(iloc, 0) * dataaux.fDPhi(iloc, ishapeind);
+        //     }
+        // }
         REAL divwq = 0.;
-        if (dphiQ.Cols()!=0){
-            for (int iloc = 0; iloc < fDim; iloc++) {
-                divwq += axesvec(iloc, 0) * dphiQ(iloc, ishapeind);
-            }
-        } else {
-            TPZShapeData dataaux = datavec[0];
-            for (int iloc = 0; iloc < fDim; iloc++) {
-                divwq += axesvec(iloc, 0) * dataaux.fDPhi(iloc, ishapeind);
-            }
-        }
-
+        if (datavec[0].divphi.Rows() > 0) divwq = datavec[0].divphi(ivecind);
         for (int jp = 0; jp < phrp; jp++) {
 
             REAL fact = (-1.) * weight * phip(jp, 0) * divwq;
@@ -245,7 +246,7 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
     // TPZFNMatrix<220,REAL> dphix(3,datavec[1].dphix.Cols());
     // TPZFMatrix<REAL> &dphi = datavec[1].dphix;
     // TPZAxesTools<REAL>::Axes2XYZ(dphi, dphix, datavec[1].axes);
-
+    // std::cout << "phiQ " << phiQ << std::endl;
     switch (bc.Type()) {
         case 0 :        // Dirichlet condition
             for (int iq = 0; iq < phrq; iq++) {

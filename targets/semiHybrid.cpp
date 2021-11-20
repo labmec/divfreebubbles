@@ -73,10 +73,14 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // u[0] = 0.25*(x*x+y*y);
     // gradU(0,0) = 0.5*x;
     // gradU(1,0) = 0.5*y;
+
     //Nabla u = 0
-    u[0] = x*x*x*y - y*y*y*x;
-    gradU(0,0) = (3.*x*x*y - y*y*y);
-    gradU(1,0) = (x*x*x - 3.*y*y*x);
+    // u[0] = x*x*x*y - y*y*y*x;
+    // gradU(0,0) = (3.*x*x*y - y*y*y);
+    // gradU(1,0) = (x*x*x - 3.*y*y*x);
+    u[0] = x;
+    gradU(0,0) = 1.;
+    gradU(1,0) = 0.;
 };
 
 
@@ -131,12 +135,14 @@ TPZLogger::InitializePZLOG();
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ENone);
+    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
+                                                TPZApproxSpaceKernelHdiv<STATE>::ENone,
+                                                TPZApproxSpaceKernelHdiv<STATE>::EHDivConstant);
 
-    //Setting material ids
+    //Setting material ids      
     createSpace.fConfig.fDomain = EDomain;
     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
-    createSpace.SetPOrder(pOrder+1);
+    createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
     util.PrintGeoMesh(gmesh);
 

@@ -27,6 +27,14 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh)
         const auto index = gel->Index();
         const auto ncorner = gel->NCornerNodes();
         const auto nsides = gel->NSides();
+        if (gel->Type(nsides-1) == ETetraedro){
+            fNumEdgesPerFace = 3;
+        } else if (gel->Type(nsides-1) == ECube){
+            fNumEdgesPerFace = 4;
+        } else if (gel->Type(nsides-1) == EPrisma){
+            fNumEdgesPerFace = 4;//Improve it
+        }
+
 
         for(auto ie = firstEdge; ie < firstFace; ie++){
             // Vertex data structure            
@@ -78,13 +86,13 @@ void TPZHCurlEquationFilter<TVar>::InitDataStructures(TPZGeoMesh* gmesh)
         }
     }
     
-    //Cheks if a face has more than 3 edges
-    for(auto it = mFace.cbegin(); it != mFace.cend(); ++it){
-        if (it->second.edge_connect.size() != 3){
-            std::cout << "Face with more than 3 edges!\n"; 
-            DebugStop();
-        }
-    }
+    //Cheks if a face has more than 3 edges for Tetrahedron and 4 edges for Cube/Hexahedron
+    // for(auto it = mFace.cbegin(); it != mFace.cend(); ++it){
+    //     if (it->second.edge_connect.size() != fNumEdgesPerFace){
+    //         std::cout << "Face with more than " << fNumEdgesPerFace << " edges!\n"; 
+    //         DebugStop();
+    //     }
+    // }
 
 }
 
@@ -209,7 +217,7 @@ void TPZHCurlEquationFilter<TVar>::CheckFaces()
         for (auto iedge : it->second.edge_connect){
             if (mEdge[iedge].status == ERemovedEdge) aux++;
         }
-        if (aux == 3){
+        if (aux == fNumEdgesPerFace){
             std::cout << "Problem with face " << it->first << std::endl;
             DebugStop();
         }
@@ -282,9 +290,13 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             if (!gel) continue;
             int dimg = gel->Dimension();
             if (gel->Dimension() != 3) continue;
-            removed_edges.insert(cel->ConnectIndex(0));
-            removed_edges.insert(cel->ConnectIndex(1));
-            removed_edges.insert(cel->ConnectIndex(5));
+            if (gel->Type() == ETetraedro){
+                removed_edges.insert(cel->ConnectIndex(0));
+                removed_edges.insert(cel->ConnectIndex(1));
+                removed_edges.insert(cel->ConnectIndex(5));
+            }else {
+                DebugStop();
+            }
         }      
    
     } else {
@@ -309,7 +321,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             mEdge[remEdge].vertex_treated = treatNode;
 
             // Updates the edges (if some needs to be blocked) and faces status.
-            UpdateEdgeAndFaceStatus(remEdge);
+            // UpdateEdgeAndFaceStatus(remEdge);
             
             // Checks if all edges of a face have been removed
             CheckFaces();
@@ -362,7 +374,7 @@ bool TPZHCurlEquationFilter<TVar>::FilterEdgeEquations(TPZAutoPointer<TPZCompMes
             check_edges_left = local_check && check_edges_left;
         }
 
-        if (!check_edges_left) DebugStop();
+        // if (!check_edges_left) DebugStop();
     }
 
 

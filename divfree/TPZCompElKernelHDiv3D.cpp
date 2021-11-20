@@ -90,7 +90,6 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
 
         data.divphi = divphiAux;
     
-        // data.phi = phiHCurl;
         if (data.fNeedsSol) {
             this->ReallyComputeSolution(data);
         }
@@ -100,8 +99,23 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
 
     int nshape = this->NShapeF();
     data.fDeformedDirections.Resize(3,nshape);
+    TPZShapeData &shapedata = data;
+    int size = data.curlphi.Cols();
+    // data.fDeformedDirections = data.curlphi;
 
-    data.fDeformedDirections=data.curlphi;
+    if (size != nshape) DebugStop();
+    int ncorner = TSHAPE::NCornerNodes;
+    for (int j = 0; j < nshape; j++){
+        // auto it = data.fSDVecShapeIndex[j];
+        // int vecindex = it.first;
+        // int scalindex = it.second;
+
+        for (int i = 0; i < 3; i++){
+            data.fDeformedDirections(i,j)=data.curlphi(i,j);
+        }
+    }
+    
+    // data.fDeformedDirections=data.curlphi;
 
 #ifdef PZ_LOG
     if (logger.isDebugEnabled())
@@ -109,7 +123,7 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
         std::stringstream sout;
         //	this->Print(sout);
         // sout << "\nVecshape = " << data.fVecShapeIndex << std::endl;
-        sout << "Phi = " << data.curlphi << std::endl;
+        sout << "Phi = " << data.fDeformedDirections << std::endl;
         LOGPZ_DEBUG(logger,sout.str())
         
     }
@@ -229,11 +243,13 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeSolutionKernelHdivT(TPZMaterialDataT<
 
 #include "pzshapecube.h"
 #include "pzshapetetra.h"
+#include "pzshapeprism.h"
 
 using namespace pztopology;
 
 #include "tpzcube.h"
 #include "tpztetrahedron.h"
+#include "tpzprism.h"
 
 using namespace pzgeom;
 using namespace pzshape;
@@ -241,6 +257,8 @@ using namespace pzshape;
 
 template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeCube>>;
 template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapeTetra>>;
+template class TPZRestoreClass< TPZCompElKernelHDiv3D<TPZShapePrism>>;
 
 template class TPZCompElKernelHDiv3D<TPZShapeTetra>;
 template class TPZCompElKernelHDiv3D<TPZShapeCube>;
+template class TPZCompElKernelHDiv3D<TPZShapePrism>;

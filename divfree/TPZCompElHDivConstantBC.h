@@ -3,8 +3,8 @@
  * @brief Contains declaration of TPZCompElHDiv class which implements a generic computational element (HDiv scope).
  */
 
-#ifndef TPZCOMPELKERNELHDIVBC_H
-#define TPZCOMPELKERNELHDIVBC_H
+#ifndef TPZCOMPELHDIVCONSTANTBC_H
+#define TPZCOMPELHDIVCONSTANTBC_H
 
 #include "pzelctemp.h"
 #include "TPZBndCond.h"
@@ -12,7 +12,7 @@
 #include "pzshapequad.h"
 #include "pzgeoquad.h"
 #include "tpzquadrilateral.h"
-#include "TPZCompElH1.h"
+#include "pzelchdivbound2.h"
 
 
 /**
@@ -24,18 +24,31 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElKernelHDivBC : public TPZCompElH1<TSHAPE>  {
+class TPZCompElHDivConstantBC : public TPZCompElHDivBound2<TSHAPE>  {
 
-public:	    
-	TPZCompElKernelHDivBC();
+
+
+public:
+    // Type of HDiv Space
+    enum MShapeType {EHDivKernel, EHDivConstant, ECurlNoGrads};
+	    
+	TPZCompElHDivConstantBC();
     
-    TPZCompElKernelHDivBC(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index);
+    TPZCompElHDivConstantBC(TPZCompMesh &mesh, TPZGeoEl *gel, int64_t &index, int shapetype = EHDivKernel);
 	
-	virtual ~TPZCompElKernelHDivBC();
+	virtual ~TPZCompElHDivConstantBC();
 
     virtual void InitMaterialData(TPZMaterialData &data) override;
 
 	void ComputeShape(TPZVec<REAL> &qsi,TPZMaterialData &data) override;
+    
+    virtual int NConnectShapeF(int connect, int order) const override;
+    
+    void AdjustConnects();
+
+private:
+    /// the type of space this object will generate
+    int fShapeType;
 
 };
 
