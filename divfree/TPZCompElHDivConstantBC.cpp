@@ -70,37 +70,21 @@ void TPZCompElHDivConstantBC<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi, TPZMateria
     bool needsol = data.fNeedsSol;
     data.fNeedsSol = true;
     data.fNeedsSol = needsol;
-    TPZCompElHDivBound2<TSHAPE>::ComputeShape(qsi,data);
+    // TPZCompElHDivBound2<TSHAPE>::ComputeShape(qsi,data);
 
     TPZShapeData &shapedata = data;
     int nshape = this->NShapeF();
     data.phi.Resize(nshape,1);
-    // data.dphix.Resize(1,nshape);
 
     TPZFMatrix<REAL> auxPhi(nshape,1);
     auxPhi.Zero();
-    TPZShapeHDivConstantBound<TSHAPE>::Shape(qsi, shapedata, auxPhi);
-    // auxPhi = data.fDPhi*data.axes;
-    // std::cout << "Jac" << data.jacobian << std::endl;
-    // std::cout << "JACINV" << data.jacinv << std::endl;
-    // std::cout << "AXES" << data.axes << std::endl;
-    // std::cout << "DPhi" << data.fDPhi << std::endl;
-    // REAL Tx = 0;
-    // REAL Ty = 0;
-    // for (int i = 0; i < nshape+1; i++){
-    //     Tx += data.fDPhi(0,i) * data.x[0];
-    //     Ty += data.fDPhi(0,i) * data.x[1];
-    // }
-    // REAL T=sqrt(Tx*Tx+Ty*Ty);
-    
-    // data.phi(0,0) = T/data.detjac;
-    if (data.phi.Rows()>=1){
-      for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(0,0) = data.fDPhi(0,i)/data.detjac*data.fSideOrient[0];//auxPhi(i,0)/data.detjac;
-	  }
-    }
-    std::cout << "AUXphi = " << data.phi << std::endl;
 
+    TPZShapeHDivConstantBound<TSHAPE>::Shape(qsi, shapedata, auxPhi);
+
+    for (int i = 0; i < data.phi.Rows(); i++){
+        data.phi(i,0) = auxPhi(i,0) / data.detjac;
+    }
+ 
 }//void
 
 template<class TSHAPE>

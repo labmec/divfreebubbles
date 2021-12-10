@@ -122,7 +122,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/cube2.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -150,26 +150,29 @@ TPZLogger::InitializePZLOG();
     //     std::set<int> matIdNeumannHdiv;
         
     //     //Flux mesh
-    //     cmeshflux = FluxCMesh(dim,pOrder-1,matIdVecHdiv,gmesh);
+    //     cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
 
     //     //Pressure mesh
-    //     cmeshpressure = PressureCMesh(dim,pOrder-1,matIdVecHdiv,gmesh);
+    //     cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
 
     //     //Multiphysics mesh
     //     TPZManVector< TPZCompMesh *, 2> meshvector(2);
     //     meshvector[0] = cmeshflux;
     //     meshvector[1] = cmeshpressure;
-    //     TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder-1,matIdVecHdiv,meshvector,gmesh);
+    //     TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
         
     //     //Solve Multiphysics
     //     TPZLinearAnalysis an(cmesh,true);
-    //     util.SolveProblemDirect(an,cmesh,false);
+    //     bool domainhyb=false;
+    //             std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
+
+    //     util.SolveProblemDirect(an,cmesh,false,domainhyb);
     //     std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
         
     //     //Print results
     //     an.SetExact(exactSol,solOrder);
-    //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
-    //     an.SetExact(exactSolError,solOrder);
+    //     // util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    //     an.SetExact(exactSol,solOrder);
     //     std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
     //     util.ComputeError(an,anPostProcessFileHdiv);
     // }
@@ -194,7 +197,7 @@ TPZLogger::InitializePZLOG();
         /// Creates the approximation space - Set the type of domain hybridization
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel); // Shape Type
+                                                    TPZApproxSpaceKernelHdiv<STATE>::EHDivConstant); // Shape Type
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
@@ -206,32 +209,34 @@ TPZLogger::InitializePZLOG();
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-        std::cout << "FLUX \n";
-        util.PrintCMeshConnects(cmeshfluxNew);
-        std::string fluxFile = "FluxCMesh";
-        util.PrintCompMesh(cmeshfluxNew,fluxFile);
+        // std::cout << "FLUX \n";
+        // util.PrintCMeshConnects(cmeshfluxNew);
+        // std::string fluxFile = "FluxCMesh";
+        // util.PrintCompMesh(cmeshfluxNew,fluxFile);
         
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-        std::cout << "PRESSURE \n";
-        util.PrintCMeshConnects(cmeshpressureNew);
-        std::string pressureFile = "PressureCMesh";
-        util.PrintCompMesh(cmeshpressureNew,pressureFile);        
+        // std::cout << "PRESSURE \n";
+        // util.PrintCMeshConnects(cmeshpressureNew);
+        // std::string pressureFile = "PressureCMesh";
+        // util.PrintCompMesh(cmeshpressureNew,pressureFile);        
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
         meshvectorNew[0] = cmeshfluxNew;
         meshvectorNew[1] = cmeshpressureNew;      
         auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-        std::cout << "MULTIPHYSICS \n";
-        util.PrintCMeshConnects(cmeshNew);
+        // std::cout << "MULTIPHYSICS \n";
+        // util.PrintCMeshConnects(cmeshNew);
         // Group and condense the elements
         // createSpace.Condense(cmeshNew);
-        std::string multiphysicsFile = "MultiPhysicsMeshNew";
-        util.PrintCompMesh(cmeshNew,multiphysicsFile);
+        // std::string multiphysicsFile = "MultiPhysicsMeshNew";
+        // util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
         // Solve the problem
         TPZLinearAnalysis anNew(cmeshNew,false);
+                    std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
+
         createSpace.Solve(anNew, cmeshNew, true, true); 
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
         
@@ -273,8 +278,8 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *
     cmesh->AutoBuild();
 
     // Print flux mesh
-    // std::ofstream myfile("FluxMesh.txt");
-    // cmesh->Print(myfile);
+    std::ofstream myfile("FluxMesh.txt");
+    cmesh->Print(myfile);
 
   return cmesh;
 }
@@ -338,35 +343,35 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
 {
     gmesh->ResetReference();
     auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
-    // cmesh->SetDefaultOrder(pOrder);
-    // cmesh->SetDimModel(dim);
-    // TPZMixedDarcyFlow* mat = new TPZMixedDarcyFlow(EDomain, dim);
-    // mat->SetConstantPermeability(1.);
+    cmesh->SetDefaultOrder(pOrder);
+    cmesh->SetDimModel(dim);
+    TPZMixedDarcyFlow* mat = new TPZMixedDarcyFlow(EDomain, dim);
+    mat->SetConstantPermeability(1.);
     
-    // cmesh->InsertMaterialObject(mat);
-    // mat -> SetBigNumber(1.e10);
+    cmesh->InsertMaterialObject(mat);
+    mat -> SetBigNumber(1.e10);
         
-    // //Boundary Conditions
-    // TPZFMatrix<STATE> val1(1,1,1.);
-    // TPZManVector<STATE> val2(1,0.);
-    // auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
-    // BCond0->SetForcingFunctionBC(exactSol);
-    // cmesh->InsertMaterialObject(BCond0);
+    //Boundary Conditions
+    TPZFMatrix<STATE> val1(1,1,1.);
+    TPZManVector<STATE> val2(1,0.);
+    auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
+    BCond0->SetForcingFunctionBC(exactSol);
+    cmesh->InsertMaterialObject(BCond0);
 
-    // TPZManVector<int> active(2,1);
-    // cmesh->BuildMultiphysicsSpace(active, meshvector);
-    // cmesh->SetAllCreateFunctionsMultiphysicElem();
-    // cmesh->AdjustBoundaryElements();
-    // cmesh->CleanUpUnconnectedNodes();
+    TPZManVector<int> active(2,1);
+    cmesh->BuildMultiphysicsSpace(active, meshvector);
+    cmesh->SetAllCreateFunctionsMultiphysicElem();
+    cmesh->AdjustBoundaryElements();
+    cmesh->CleanUpUnconnectedNodes();
 
-    // TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
-    // TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
+    TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
+    TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
 
-    // // Prints Multiphysics mesh
-    // std::ofstream myfile("MultiPhysicsMesh.txt");
-    // cmesh->Print(myfile);
+    // Prints Multiphysics mesh
+    std::ofstream myfile("MultiPhysicsMesh.txt");
+    cmesh->Print(myfile);
 
-    //Prints computational mesh properties
+    // Prints computational mesh properties
     // std::stringstream vtk_name;
     // vtk_name    << "MultiPhysics" << ".vtk";
     // std::ofstream vtkfile(vtk_name.str().c_str());

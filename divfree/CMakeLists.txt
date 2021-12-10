@@ -23,6 +23,7 @@ set(MESH_HEADERS
   TPZCompElHDivConstant.h
   TPZCompElHDivConstantBC.h
   TPZCompElKernelHDiv3D.h
+  TPZCompElHDivConstant3D.h
   TPZCompElHCurlNoGrads.h)
 
 set(MESH_SRCS
@@ -30,6 +31,7 @@ set(MESH_SRCS
   TPZCompElHDivConstant.cpp
   TPZCompElHDivConstantBC.cpp
   TPZCompElKernelHDiv3D.cpp
+  TPZCompElHDivConstant3D.cpp
   TPZCompElHCurlNoGrads.cpp)
 
 # let us create a config file with the directory containing the meshes

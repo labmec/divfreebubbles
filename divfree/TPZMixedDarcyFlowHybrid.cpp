@@ -139,18 +139,19 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         TPZFNMatrix<3, REAL> axesvec(3, 1, 0.);
         datavec[0].axes.Multiply(ivec, axesvec);
 
-        // 
-        // if (dphiQ.Cols()!=0){
-        //     for (int iloc = 0; iloc < fDim; iloc++) {
-        //         divwq += axesvec(iloc, 0) * dphiQ(iloc, ishapeind);
-        //     }
-        // } else {
-        //     TPZShapeData dataaux = datavec[0];
-        //     for (int iloc = 0; iloc < fDim; iloc++) {
-        //         divwq += axesvec(iloc, 0) * dataaux.fDPhi(iloc, ishapeind);
-        //     }
-        // }
         REAL divwq = 0.;
+        
+        if (dphiQ.Cols()!=0){
+            for (int iloc = 0; iloc < fDim; iloc++) {
+                divwq += axesvec(iloc, 0) * dphiQ(iloc, ishapeind);
+            }
+        } else {
+            TPZShapeData dataaux = datavec[0];
+            for (int iloc = 0; iloc < fDim; iloc++) {
+                divwq += axesvec(iloc, 0) * dataaux.fDPhi(iloc, ishapeind);
+            }
+        }
+        
         if (datavec[0].divphi.Rows() > 0) divwq = datavec[0].divphi(ivecind);
         for (int jp = 0; jp < phrp; jp++) {
 
@@ -177,6 +178,7 @@ void TPZMixedDarcyFlowHybrid::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &
         ek(phrp + phrq + 1, phrq + phrp) += -weight;
         ek(phrq + phrp, phrp + phrq + 1) += -weight;
     }
+    // std::cout << "EK = " << ek << std::endl;
 }
 
 void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek,
@@ -252,6 +254,7 @@ void TPZMixedDarcyFlowHybrid::ContributeBC(const TPZVec<TPZMaterialDataT<STATE>>
             for (int iq = 0; iq < phrq; iq++) {
                 ef(iq, 0) += (-1.) * v2 * phiQ(iq, 0) * weight;
             }
+            // std::cout << "EF = " << ef << std::endl;
             //New implementation for Div-free bubbles
             for (int ip = 0; ip < phrp; ip++) {
                 DebugStop();

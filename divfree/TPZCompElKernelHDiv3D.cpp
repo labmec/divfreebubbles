@@ -72,9 +72,15 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
         if (fShapeType == EHDivConstant) nshape = TPZShapeHDivConstant<TSHAPE>::NHDivShapeF(data);
         
         TPZFMatrix<REAL> phiAux(dim,nshape),divphiAux(nshape,1);
+        phiAux.Zero(); divphiAux.Zero();
 
         if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
         if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+
+        // std::cout <<"phiaux " << phiAux << std::endl;
+        // std::cout <<"detjac " << data.detjac << std::endl;
+        // std::cout <<"jacobian " << data.jacobian << std::endl;
+        // std::cout <<"curlphi " << data.curlphi << std::endl;
 
         TPZCompElHCurl<TSHAPE>::TransformCurl(phiAux, data.detjac, data.jacobian, data.curlphi);
 
@@ -89,6 +95,7 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
         // std::cout << "data.phi = " << data.phi << std::endl;
 
         data.divphi = divphiAux;
+        std::cout << "DivPhi = " << data.divphi << std::endl;
     
         if (data.fNeedsSol) {
             this->ReallyComputeSolution(data);

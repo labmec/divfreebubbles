@@ -102,7 +102,7 @@ TPZLogger::InitializePZLOG();
         util.PrintCMeshConnects(cmeshflux);
 
         //Pressure mesh
-        cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+        cmeshpressure = PressureCMesh(dim,pOrder-1,matIdVecHdiv,gmesh);
         std::cout << "PRESSURE \n";
         util.PrintCMeshConnects(cmeshpressure);
 

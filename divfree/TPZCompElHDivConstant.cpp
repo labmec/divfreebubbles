@@ -104,15 +104,15 @@ void TPZCompElHDivConstant<TSHAPE>::ComputeShape(TPZVec<REAL> &qsi,TPZMaterialDa
 
     const auto nCorner = TSHAPE::NCornerNodes;
 
-    aux2.Zero();
-    gradx.MultAdd(auxPhi,data.phi,aux2,1/data.detjac,0);
-    // std::cout << "AUX2 " << aux2 << std::endl;
-    data.fDeformedDirections = aux2;
+    // std::cout << "Gradx = " << gradx << std::endl;
+    TPZFMatrix<REAL> phiSHdiv;
+    gradx.Multiply(auxPhi,phiSHdiv);
+    phiSHdiv *= 1./data.detjac;
+    data.divphi *= 1./data.detjac;
 
-    data.phi.Resize(auxPhi.Cols(),3);
-
+    data.phi.Resize(data.fVecShapeIndex.size(),1);
     data.phi = 1.;
-    data.phi.Transpose(&aux2);
+    data.fDeformedDirections = phiSHdiv;
     // std::cout << "PHI = " << data.phi << std::endl;
 // #ifdef PZ_LOG
 //     if (logger.isDebugEnabled())

@@ -35,6 +35,16 @@
 #include "pzshapetetra.h"
 #include "pzshapeprism.h"
 
+auto forcefunction = [](const TPZVec<REAL> &loc,
+    TPZVec<STATE>&u){
+    const auto &x=loc[0];
+    const auto &y=loc[1];
+
+    // //Nabla u = 1
+    u[0] = 1;
+};
+
+
 template<class TVar>
 TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype, MShapeType shapetype) :
             fSpaceType(spacetype), fShapeType(shapetype), fGeoMesh(gmesh) {
@@ -119,6 +129,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     int64_t nel = fGeoMesh->NElements();
     for (int64_t el = 0; el < nel; el++) {
         TPZGeoEl *gel = fGeoMesh->Element(el);
+
         if(!gel) DebugStop();
         auto type = gel -> Type();
         int64_t index;
@@ -160,7 +171,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
 
         } else if (type == EQuadrilateral){
             if (fDimension == 2){
-                if (fShapeType == EHDivKernel){
+                if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
                     new TPZCompElKernelHDiv<TPZShapeQuad>(*cmesh,gel,index);
                 } else if (fShapeType == EHDivConstant) {
                     new TPZCompElHDivConstant<TPZShapeQuad>(*cmesh,gel,index);
@@ -452,6 +463,7 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
     mat->SetConstantPermeability(1.);
+    mat->SetForcingFunction(forcefunction,1);
 
     // mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
