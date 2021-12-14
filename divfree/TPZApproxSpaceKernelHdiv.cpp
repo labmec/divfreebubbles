@@ -23,6 +23,7 @@
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
 #include "TPZMixedDarcyFlowHybrid.h"
+#include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZCompElDisc.h"
 #include "TPZCompElH1.h"
 #include <pzbuildmultiphysicsmesh.h>
@@ -41,7 +42,7 @@ auto forcefunction = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
 
     // //Nabla u = 1
-    u[0] = 1;
+    u[0] = 0.;
 };
 
 
@@ -184,7 +185,13 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             } else if (fDimension == 3){
                 if (fSpaceType != ENone) continue;
                 if (allMat.find(matid) == allMat.end()) continue;
-                new TPZCompElKernelHDivBC3D<TPZShapeQuad>(*cmesh,gel,index,fShapeType);
+                if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                    new TPZCompElKernelHDivBC3D<TPZShapeQuad>(*cmesh,gel,index,fShapeType);
+                } else if (fShapeType == EHDivConstant) {
+                    new TPZCompElHDivConstantBC<TPZShapeQuad>(*cmesh,gel,index);
+                } else {
+                    DebugStop();
+                }
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);                
                 nullmat->SetDimension(2);
@@ -207,7 +214,13 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             } else if (fDimension == 3){
                 if (fSpaceType != ENone) continue;
                 if (allMat.find(matid) == allMat.end()) continue;
-                new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index,fShapeType);
+                if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                    new TPZCompElKernelHDivBC3D<TPZShapeTriang>(*cmesh,gel,index,fShapeType);
+                } else if (fShapeType == EHDivConstant) {
+                    new TPZCompElHDivConstantBC<TPZShapeTriang>(*cmesh,gel,index);
+                } else {
+                    DebugStop();
+                }
                 TPZMaterial *mat = cmesh->FindMaterial(matid);
                 TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);                
                 nullmat->SetDimension(2);
@@ -216,17 +229,35 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
                 }
             }
         } else if(type == ETetraedro) {
-            new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index,fShapeType);
+            if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                new TPZCompElKernelHDiv3D<TPZShapeTetra>(*cmesh,gel,index,fShapeType);
+            } else if (fShapeType == EHDivConstant){
+                new TPZCompElHDivConstant<TPZShapeTetra>(*cmesh,gel,index);
+            } else {
+                DebugStop();
+            }
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);
         } else if(type == ECube) {
-            new TPZCompElKernelHDiv3D<TPZShapeCube>(*cmesh,gel,index,fShapeType);
+            if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                new TPZCompElKernelHDiv3D<TPZShapeCube>(*cmesh,gel,index,fShapeType);
+            } else if (fShapeType == EHDivConstant){
+                new TPZCompElHDivConstant<TPZShapeCube>(*cmesh,gel,index);
+            } else {
+                DebugStop();
+            }
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);
         } else if(type == EPrisma) {
-            new TPZCompElKernelHDiv3D<TPZShapePrism>(*cmesh,gel,index,fShapeType);
+            if (fShapeType == EHDivKernel || fShapeType == EHCurlNoGrads){
+                new TPZCompElKernelHDiv3D<TPZShapePrism>(*cmesh,gel,index,fShapeType);
+            } else if (fShapeType == EHDivConstant){
+                new TPZCompElHDivConstant<TPZShapePrism>(*cmesh,gel,index);
+            } else {
+                DebugStop();
+            }
             TPZMaterial *mat = cmesh->FindMaterial(matid);
             TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             nullmat->SetDimension(3);

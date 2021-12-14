@@ -24,18 +24,19 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
 {
     if (fShapeType == ECurlNoGrads){
 	    TPZCompElHCurlNoGrads<TSHAPE>::InitMaterialData(data);
-    } else {
+    } else if (fShapeType == EHDivKernel) {
         //Init the material data of Hcurl
         TPZCompElHCurl<TSHAPE>::InitMaterialData(data);
         
         TPZShapeData dataaux = data;
         data.fVecShapeIndex=dataaux.fSDVecShapeIndex;
         data.divphi.Resize(data.fVecShapeIndex.size(),1);
-        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
-        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::ComputeVecandShape(data);
+        TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
         
         //setting the type of shape functions as vector shape functions
         data.fShapeType = TPZMaterialData::EVecShape;
+    } else {
+        DebugStop();
     }
 
 
@@ -67,8 +68,7 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
         
         TPZFMatrix<REAL> phiAux(dim,nshape),divphiAux(nshape,1);
 
-        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
-        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+        TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
 
         TPZCompElHCurl<TSHAPE>::TransformCurl(phiAux, data.detjac, data.jacobian, data.curlphi);
 
@@ -83,7 +83,8 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
         // std::cout << "data.phi = " << data.phi << std::endl;
 
         data.divphi = divphiAux;
-    
+        // if (fSideOrient != 1) DebugStop();
+        // if (data.fSideOrient[0] != 1) DebugStop();
         // data.phi = phiHCurl;
         if (data.fNeedsSol) {
             this->ReallyComputeSolution(data);
@@ -94,7 +95,7 @@ void TPZCompElKernelHDivBC3D<TSHAPE>::ComputeRequiredData(TPZMaterialDataT<STATE
     data.phi.Zero();
     if (data.phi.Rows()>1){
       for (int i = 0; i < data.phi.Rows(); i++){
-		data.phi(i,0) = -data.curlphi(0,i) * fSideOrient;
+		data.phi(i,0) = -data.curlphi(0,i);
 	  }
     }
 

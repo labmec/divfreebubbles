@@ -18,7 +18,6 @@
 // #include "tpzline.h"
 #include "tpztriangle.h"
 #include "TPZShapeHDivKernel.h"
-#include "TPZShapeHDivConstant.h"
 
 #include "pzshtmat.h"
 
@@ -68,14 +67,12 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
         
         constexpr auto dim{TSHAPE::Dimension};
         int nshape = 0;
-        if (fShapeType == EHDivKernel) nshape = TPZShapeHDivKernel<TSHAPE>::NHDivShapeF(data);
-        if (fShapeType == EHDivConstant) nshape = TPZShapeHDivConstant<TSHAPE>::NHDivShapeF(data);
+        nshape = TPZShapeHDivKernel<TSHAPE>::NHDivShapeF(data);
         
         TPZFMatrix<REAL> phiAux(dim,nshape),divphiAux(nshape,1);
         phiAux.Zero(); divphiAux.Zero();
 
-        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
-        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
+       TPZShapeHDivKernel<TSHAPE>::Shape(qsi,data,phiAux,divphiAux);
 
         // std::cout <<"phiaux " << phiAux << std::endl;
         // std::cout <<"detjac " << data.detjac << std::endl;
@@ -95,7 +92,7 @@ void TPZCompElKernelHDiv3D<TSHAPE>::ComputeRequiredDataT(TPZMaterialDataT<TVar> 
         // std::cout << "data.phi = " << data.phi << std::endl;
 
         data.divphi = divphiAux;
-        std::cout << "DivPhi = " << data.divphi << std::endl;
+        // std::cout << "DivPhi = " << data.divphi << std::endl;
     
         if (data.fNeedsSol) {
             this->ReallyComputeSolution(data);
@@ -171,8 +168,7 @@ void TPZCompElKernelHDiv3D<TSHAPE>::InitMaterialData(TPZMaterialData &data)
         TPZShapeData dataaux = data;
         data.fVecShapeIndex=dataaux.fSDVecShapeIndex;
         data.divphi.Resize(data.fVecShapeIndex.size(),1);
-        if (fShapeType == EHDivKernel) TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
-        if (fShapeType == EHDivConstant) TPZShapeHDivConstant<TSHAPE>::ComputeVecandShape(data);
+        TPZShapeHDivKernel<TSHAPE>::ComputeVecandShape(data);
         
         //setting the type of shape functions as vector shape functions
         data.fShapeType = TPZMaterialData::EVecShape;

@@ -44,8 +44,6 @@ public:
     
     virtual int NConnectShapeF(int connect, int order) const override;
     
-    void AdjustConnects();
-
 private:
     /// the type of space this object will generate
     int fShapeType;

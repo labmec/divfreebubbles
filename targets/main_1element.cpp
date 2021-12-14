@@ -433,7 +433,7 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoM
         // espera-se elemento de pressao apenas para o contorno
         if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
         {
-            DebugStop();
+            // DebugStop();
         }
     }
     // // Print pressure mesh

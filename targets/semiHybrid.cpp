@@ -70,14 +70,14 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
 
     // //Nabla u = 1
-    u[0] = 0.25*(x*x+y*y);
-    gradU(0,0) = -0.5*x;
-    gradU(1,0) = -0.5*y;
+    // u[0] = 0.25*(x*x+y*y);
+    // gradU(0,0) = -0.5*x;
+    // gradU(1,0) = -0.5*y;
 
     //Nabla u = 0
-    // u[0] = x*x*x*y - y*y*y*x;
-    // gradU(0,0) = (3.*x*x*y - y*y*y);
-    // gradU(1,0) = (x*x*x - 3.*y*y*x);
+    u[0] = x*x*x*y - y*y*y*x;
+    gradU(0,0) = (3.*x*x*y - y*y*y);
+    gradU(1,0) = (x*x*x - 3.*y*y*x);
     // u[0] = x;
     // gradU(0,0) = 1.;
     // gradU(1,0) = 0.;
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{6};
+    constexpr int pOrder{1};
       
 
 #ifdef PZ_LOG

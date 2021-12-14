@@ -85,10 +85,15 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x;//x*x*x*y*z - y*y*y*x*z;
+    u[0] = x+y+z;//x*x*x*y*z - y*y*y*x*z;
     gradU(0,0) = 1.;//(3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
+    gradU(1,0) = 1.;//(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = 1.;//(x*x*x*y - y*y*y*x);
+
+    // u[0] = x*x+y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
+    // gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
+    // gradU(1,0) = 2.*y;//(x*x*x*z - 3.*y*y*x*z);
+    // gradU(2,0) = 2.*z;//(x*x*x*y - y*y*y*x);
 
     // u[0] = x*x*x*y*z - y*y*y*x*z;
     // gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
@@ -122,7 +127,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[2]["Surfaces"] = 2;
         // stringtoint[2]["Hybrid"] = 3;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/cube.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -171,7 +176,7 @@ TPZLogger::InitializePZLOG();
         
     //     //Print results
     //     an.SetExact(exactSol,solOrder);
-    //     // util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
     //     an.SetExact(exactSol,solOrder);
     //     std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
     //     util.ComputeError(an,anPostProcessFileHdiv);
@@ -209,35 +214,35 @@ TPZLogger::InitializePZLOG();
 
         //Flux mesh
         TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-        // std::cout << "FLUX \n";
-        // util.PrintCMeshConnects(cmeshfluxNew);
-        // std::string fluxFile = "FluxCMesh";
-        // util.PrintCompMesh(cmeshfluxNew,fluxFile);
+        std::cout << "FLUX \n";
+        util.PrintCMeshConnects(cmeshfluxNew);
+        std::string fluxFile = "FluxCMesh";
+        util.PrintCompMesh(cmeshfluxNew,fluxFile);
         
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-        // std::cout << "PRESSURE \n";
-        // util.PrintCMeshConnects(cmeshpressureNew);
-        // std::string pressureFile = "PressureCMesh";
-        // util.PrintCompMesh(cmeshpressureNew,pressureFile);        
+        std::cout << "PRESSURE \n";
+        util.PrintCMeshConnects(cmeshpressureNew);
+        std::string pressureFile = "PressureCMesh";
+        util.PrintCompMesh(cmeshpressureNew,pressureFile);        
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
         meshvectorNew[0] = cmeshfluxNew;
         meshvectorNew[1] = cmeshpressureNew;      
         auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-        // std::cout << "MULTIPHYSICS \n";
-        // util.PrintCMeshConnects(cmeshNew);
+        std::cout << "MULTIPHYSICS \n";
+        util.PrintCMeshConnects(cmeshNew);
         // Group and condense the elements
         // createSpace.Condense(cmeshNew);
-        // std::string multiphysicsFile = "MultiPhysicsMeshNew";
-        // util.PrintCompMesh(cmeshNew,multiphysicsFile);
+        std::string multiphysicsFile = "MultiPhysicsMeshNew";
+        util.PrintCompMesh(cmeshNew,multiphysicsFile);
 
         // Solve the problem
         TPZLinearAnalysis anNew(cmeshNew,false);
                     std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
 
-        createSpace.Solve(anNew, cmeshNew, true, true); 
+        createSpace.Solve(anNew, cmeshNew, true, false); 
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
         
         anNew.SetExact(exactSol,solOrder);
@@ -328,7 +333,7 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoM
         // espera-se elemento de pressao apenas para o contorno
         if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
         {
-            DebugStop();
+            // DebugStop();
         }
     }
     // // Print pressure mesh
