@@ -21,9 +21,9 @@
 
 #include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
-#include "TPZL2ProjectionCS.h"
-#include "TPZCompElKernelHdiv.h"
-#include "TPZCompElKernelHdivBC.h"
+#include "Projection/TPZL2ProjectionCS.h"
+#include "TPZCompElKernelHDiv.h"
+#include "TPZCompElKernelHDivBC.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"

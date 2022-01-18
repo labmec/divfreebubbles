@@ -13,16 +13,15 @@
 #include "pzcmesh.h"
 #include "pzgeoelbc.h"
 #include <TPZNullMaterial.h>
-#include "TPZCompElKernelHdiv.h"
+#include "TPZCompElKernelHDiv.h"
 #include "TPZCompElHDivConstant.h"
 #include "TPZCompElKernelHDiv3D.h"
-#include "TPZCompElKernelHdivBC.h"
-#include "TPZCompElKernelHdivBC3D.h"
+#include "TPZCompElKernelHDivBC.h"
+#include "TPZCompElKernelHDivBC3D.h"
 #include "TPZCompElHDivConstantBC.h"
-#include "TPZL2ProjectionCS.h"
+#include "Projection/TPZL2ProjectionCS.h"
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
-#include "TPZMixedDarcyFlowHybrid.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZCompElDisc.h"
 #include "TPZCompElH1.h"
@@ -492,7 +491,7 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     cmesh->SetDimModel(fDimension);
    
     // eh preciso criar materiais para todos os valores referenciados no enum
-    auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
+    auto mat = new TPZMixedDarcyFlow(fConfig.fDomain,fDimension);
     mat->SetConstantPermeability(1.);
     mat->SetForcingFunction(forcefunction,1);
 

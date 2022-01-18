@@ -49,10 +49,10 @@
 
 #include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
-#include "TPZL2ProjectionCS.h"
-#include "TPZCompElKernelHdiv.h"
-#include "TPZCompElKernelHdivBC.h"
-#include "TPZMixedDarcyFlowHybrid.h"
+#include "Projection/TPZL2ProjectionCS.h"
+#include "TPZCompElKernelHDiv.h"
+#include "TPZCompElKernelHDivBC.h"
+#include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
 #include <TPZGeoMeshTools.h>
@@ -85,10 +85,10 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = x+y+z;//x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = 1.;//(3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = 1.;//(x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = 1.;//(x*x*x*y - y*y*y*x);
+    u[0] = 1.;//x+y+z;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 0.;//(3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = 0.;//(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 
     // u[0] = x*x+y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
     // gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
@@ -115,32 +115,32 @@ int main(int argc, char* argv[])
 TPZLogger::InitializePZLOG();
 #endif
     
-    //read mesh from gmsh
-    TPZGeoMesh *gmesh;
-    gmesh = new TPZGeoMesh();
-    {
-        TPZGmshReader reader;
-        // essa interface permite voce mapear os nomes dos physical groups para
-        // o matid que voce mesmo escolher
-        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-        stringtoint[3]["Domain"] = 1;
-        stringtoint[2]["Surfaces"] = 2;
-        // stringtoint[2]["Hybrid"] = 3;
-        reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/cube.msh",gmesh);
-        std::ofstream out("gmesh.vtk");
-        TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
-    }
+    // //read mesh from gmsh
+    // TPZGeoMesh *gmesh;
+    // gmesh = new TPZGeoMesh();
+    // {
+    //     TPZGmshReader reader;
+    //     // essa interface permite voce mapear os nomes dos physical groups para
+    //     // o matid que voce mesmo escolher
+    //     TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+    //     stringtoint[3]["Domain"] = 1;
+    //     stringtoint[2]["Surfaces"] = 2;
+    //     // stringtoint[2]["Hybrid"] = 3;
+    //     reader.SetDimNamePhysical(stringtoint);
+    //     reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
+    //     std::ofstream out("gmesh.vtk");
+    //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
+    // }
     
-    // //for now this should suffice
-    // const int xdiv = 1;
-    // const int ydiv = 1;
-    // const int zdiv = 1;
-    // const MMeshType meshType = MMeshType::EHexahedral;
-    // const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+    //for now this should suffice
+    const int xdiv = 1;
+    const int ydiv = 1;
+    const int zdiv = 1;
+    const MMeshType meshType = MMeshType::ETetrahedral;
+    const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
     // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+    TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
 
     TPZKernelHdivUtils<STATE> util;
@@ -219,6 +219,13 @@ TPZLogger::InitializePZLOG();
         std::string fluxFile = "FluxCMesh";
         util.PrintCompMesh(cmeshfluxNew,fluxFile);
         
+        auto con = cmeshfluxNew->ConnectVec();
+        for (auto con :cmeshfluxNew->ConnectVec())
+        {
+            std::cout << "con " << con << std::endl;
+        }
+        
+
         //Pressure mesh
         TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
         std::cout << "PRESSURE \n";
@@ -244,7 +251,7 @@ TPZLogger::InitializePZLOG();
 
         createSpace.Solve(anNew, cmeshNew, true, false); 
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
-        
+        anNew.StructMatrix();
         anNew.SetExact(exactSol,solOrder);
         //Print results
         util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);

@@ -45,10 +45,10 @@
 
 #include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
-#include "TPZL2ProjectionCS.h"
-#include "TPZCompElKernelHdiv.h"
-#include "TPZCompElKernelHdivBC.h"
-#include "TPZMixedDarcyFlowHybrid.h"
+#include "Projection/TPZL2ProjectionCS.h"
+#include "TPZCompElKernelHDiv.h"
+#include "TPZCompElKernelHDivBC.h"
+#include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
 #include "pzbdstrmatrix.h"
@@ -277,8 +277,8 @@ TPZLogger::InitializePZLOG();
         REAL overrelax = 1.;
         TPZFMatrix<STATE> solution(nEqFlux,1,0.);
         TPZFMatrix<STATE> solution2(nEqFlux,1,0.);
-        // K11Red->SolveCG(iter,*precond,rhsFlux,solution,&residual,tol);
-        matRed->SolveCG(iter,*precond,rhsFlux,solution,&residual,tol);
+        K11Red->SolveCG(iter,*precond,rhsFlux,solution,&residual,tol);
+        // matRed->SolveCG(iter,*precond,rhsFlux,solution,&residual,tol);
         auto diff = solution2-solution;
         REAL norm = 0.;
         

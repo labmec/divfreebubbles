@@ -16,7 +16,7 @@
 #include "TPZMatTypes.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
-#include "TPZCompElKernelHdivBC3D.h"
+#include "TPZCompElKernelHDivBC3D.h"
 
 class TPZCompMesh;
 class TPZGeoMesh;
