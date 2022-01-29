@@ -70,28 +70,21 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &x=loc[0];
     const auto &y=loc[1];
 
-    // //Nabla u = 1
-    // u[0] = 0.25*(x*x+y*y);
-    // gradU(0,0) = -0.5*x;
-    // gradU(1,0) = -0.5*y;
+    const auto &d = 1.; // distance between injection and production wells
+    u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+    gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
+    gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
 
-    //Nabla u = 0
-    u[0] = x*x*x*y - y*y*y*x;
-    gradU(0,0) = (3.*x*x*y - y*y*y);
-    gradU(1,0) = (x*x*x - 3.*y*y*x);
-    // u[0] = x;
-    // gradU(0,0) = 1.;
-    // gradU(1,0) = 0.;
 };
 
 
-enum EMatid  {ENone, EDomain, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface, EPressureHyb};
+enum EMatid  {ENone, EDomain, EInjection, EProduction, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface, EPressureHyb};
 
 int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{5};
+    constexpr int pOrder{2};
       
 
 #ifdef PZ_LOG
@@ -114,7 +107,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 6;
         stringtoint[1]["Top2"] = 7;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/1element.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/newMesh.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -129,8 +122,8 @@ TPZLogger::InitializePZLOG();
     //Insert here the BC material id's to be hybridized
     std::set<int> matBCHybrid={};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{};
-    std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
+    std::set<int> matIDNeumann{EInjection,EProduction,ERight,ETop};
+    std::set<int> matIDDirichlet{EBottom,ELeft};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
@@ -168,8 +161,8 @@ TPZLogger::InitializePZLOG();
     TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
     meshvectorNew[0] = cmeshfluxNew;
     meshvectorNew[1] = cmeshpressureNew;      
-    auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
-    // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
+    // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
+    auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
     std::cout << "MULTIPHYSICS \n";
     // util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
@@ -183,8 +176,8 @@ TPZLogger::InitializePZLOG();
 
     std::cout << "Number of equations = " << cmeshNew->NEquations() << std::endl;
 
-    // anNew.SetExact(exactSol,solOrder);
-    anNew.SetExact(LaplaceExact.ExactSolution(),solOrder);
+    anNew.SetExact(exactSol,solOrder);
+    // anNew.SetExact(LaplaceExact.ExactSolution(),solOrder);
     //Print results
     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 

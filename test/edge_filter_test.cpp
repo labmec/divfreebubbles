@@ -188,10 +188,10 @@ CreateCompMesh(TPZAutoPointer<TPZGeoMesh> gmesh, const int pOrder,
             int64_t index;
             switch(type){
                 case ETriangle:
-                    new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel,index);
+                    new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel);
                     break;
                 case ETetraedro:
-                    new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel,index);
+                    new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel);
                     break;
                 default:
                     const auto elName =  MElementType_Name(type);

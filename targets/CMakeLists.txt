@@ -15,3 +15,6 @@ target_link_libraries(3d PRIVATE divfree)
 
 add_executable(SHIterative SHIterative.cpp)
 target_link_libraries(SHIterative PRIVATE divfree)
+
+add_executable(fiveSpot fiveSpot.cpp)
+target_link_libraries(fiveSpot PRIVATE divfree)

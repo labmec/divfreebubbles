@@ -85,20 +85,20 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    // u[0] = x*x-y*y;//x*x*x*y*z - y*y*y*x*z;
-    // gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
-    // gradU(1,0) = -2.*y;//(x*x*x*z - 3.*y*y*x*z);
-    // gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
+    u[0] = x*x-y*y;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = -2.*y;//(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 
     // u[0] = x*x+y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
     // gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
     // gradU(1,0) = 2.*y;//(x*x*x*z - 3.*y*y*x*z);
     // gradU(2,0) = 2.*z;//(x*x*x*y - y*y*y*x);
 
-    u[0] = x*x*x*y*z - y*y*y*x*z;
-    gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
-    gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
-    gradU(2,0) = (x*x*x*y - y*y*y*x);
+    // u[0] = x*x*x*y*z - y*y*y*x*z;
+    // gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
+    // gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
+    // gradU(2,0) = (x*x*x*y - y*y*y*x);
 };
 
 
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{3};
-    constexpr int pOrder{3};
+    constexpr int pOrder{2};
       
 
 #ifdef PZ_LOG
@@ -133,9 +133,9 @@ TPZLogger::InitializePZLOG();
     // }
     
     //for now this should suffice
-    const int xdiv = 2;
-    const int ydiv = 2;
-    const int zdiv = 2;
+    const int xdiv = 1;
+    const int ydiv = 1;
+    const int zdiv = 1;
     const MMeshType meshType = MMeshType::EHexahedral;
     const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
@@ -202,7 +202,7 @@ TPZLogger::InitializePZLOG();
         /// Creates the approximation space - Set the type of domain hybridization
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    TPZApproxSpaceKernelHdiv<STATE>::EHCurlNoGrads); // Shape Type
+                                                    TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel); // Shape Type
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
@@ -219,11 +219,11 @@ TPZLogger::InitializePZLOG();
         std::string fluxFile = "FluxCMesh";
         util.PrintCompMesh(cmeshfluxNew,fluxFile);
         
-        // auto con = cmeshfluxNew->ConnectVec();
-        // for (auto con :cmeshfluxNew->ConnectVec())
-        // {
-        //     std::cout << "con " << con << std::endl;
-        // }
+        auto con = cmeshfluxNew->ConnectVec();
+        for (auto con :cmeshfluxNew->ConnectVec())
+        {
+            std::cout << "con " << con << std::endl;
+        }
         
 
 
@@ -264,70 +264,70 @@ TPZLogger::InitializePZLOG();
         
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
 
-        createSpace.Solve(anNew, cmeshNew, true, true); 
+        // createSpace.Solve(anNew, cmeshNew, true, true); 
         std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
         anNew.SetExact(exactSol,solOrder);
         //Print results
         
-        // // anNew.Solution().Zero();
-        // const int rows = anNew.Solution().Rows();
-        // const int cols = anNew.Solution().Cols();
-        // TPZFMatrix<STATE> solNew(rows,cols,0.);
+        anNew.Solution().Zero();
+        const int rows = anNew.Solution().Rows();
+        const int cols = anNew.Solution().Cols();
+        TPZFMatrix<STATE> solNew(rows,cols,0.);
         // solNew(11,0)=1.;
         
         
-        // anNew.Solution()=solNew;
-        // anNew.LoadSolution();
-        // std::ofstream outSol("Solution.txt");
-        // anNew.Solution().Print("Sol",outSol,EMathematicaInput);
+        anNew.Solution()=solNew;
+        anNew.LoadSolution();
+        std::ofstream outSol("Solution.txt");
+        anNew.Solution().Print("Sol",outSol,EMathematicaInput);
 
-        // {
-        //     TPZLinearAnalysis anFlux(cmeshfluxNew,false);
-        //     for (int i = 0; i < rows; i++)
-        //     {   
-        //         solNew.Zero();
-        //         solNew(i,0)=1.;
-        //         anFlux.Solution()=solNew;
-        //         anFlux.LoadSolution();
-        //         // cmeshfluxNew->Solution().Print("Sol");
+        {
+            TPZLinearAnalysis anFlux(cmeshfluxNew,false);
+            for (int i = 0; i < rows; i++)
+            {   
+                solNew.Zero();
+                solNew(i,0)=1.;
+                anFlux.Solution()=solNew;
+                anFlux.LoadSolution();
+                // cmeshfluxNew->Solution().Print("Sol");
                 
-        //         TPZStack<std::string> scalnames;
-        //         scalnames.Push("Curl");
-        //         TPZStack<std::string> vecnames;
-        //         vecnames.Push("Solution");
-        //         const std::string plotfile = "shapeContornoNovo.vtk";
-        //         std::set<int> matids = {ESurfaces};
+                TPZStack<std::string> scalnames;
+                scalnames.Push("Curl");
+                TPZStack<std::string> vecnames;
+                vecnames.Push("Solution");
+                const std::string plotfile = "shapeContornoNovo.vtk";
+                std::set<int> matids = {ESurfaces};
                 
-        //         anFlux.DefineGraphMesh(2, matids, scalnames, vecnames, plotfile);
-        //         anFlux.PostProcess(2,2);
+                anFlux.DefineGraphMesh(2, matids, scalnames, vecnames, plotfile);
+                anFlux.PostProcess(2,2);
 
 
-        //         anNew.Solution()=solNew;
-        //         anNew.LoadSolution();
+                anNew.Solution()=solNew;
+                anNew.LoadSolution();
 
-        //         // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-        //         TPZManVector<std::string,10> scalnames2(0), vecnames2(1);
-        //         vecnames2[0]= "State";
+                // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
+                TPZManVector<std::string,10> scalnames2(0), vecnames2(1);
+                vecnames2[0]= "State";
     
-        //         constexpr int resolution{2};
-        //         std::string plotfile2 = "ShapeRUIM.vtk";
-        //         anNew.DefineGraphMesh(3,scalnames2,vecnames2,plotfile2);
-        //         anNew.PostProcess(resolution,3);
-        //     }
+                constexpr int resolution{2};
+                std::string plotfile2 = "ShapeRUIM.vtk";
+                anNew.DefineGraphMesh(3,scalnames2,vecnames2,plotfile2);
+                anNew.PostProcess(resolution,3);
+            }
             
            
-        // }
+        }
 
-        util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
+        // util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 
-        anNew.SetExact(exactSol,solOrder);
+        // anNew.SetExact(exactSol,solOrder);
         
 
-        std::ofstream out4("mesh_MDFB.txt");
-        anNew.Print("nothing",out4);
-        std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
+        // std::ofstream out4("mesh_MDFB.txt");
+        // anNew.Print("nothing",out4);
+        // std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
         
-        util.ComputeError(anNew,anPostProcessFileMDFB);
+        // util.ComputeError(anNew,anPostProcessFileMDFB);
     }
 
   

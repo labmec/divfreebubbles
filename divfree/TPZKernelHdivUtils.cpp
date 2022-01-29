@@ -13,6 +13,9 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZMultiphysicsCompMesh.h"
 #include "TPZHCurlEquationFilter.h"
+#include "pzstrmatrixflowtbb.h"
+#include "pzstrmatrixot.h"
+#include <chrono>
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh
 template <class TVar>
@@ -114,6 +117,12 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     //sets number of threads to be used by the solver
     constexpr int nThreads{0};
     TPZSkylineStructMatrix<STATE> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
+
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixTBBFlow<STATE>> matskl(cmesh);
     matskl.SetNumThreads(nThreads);
 
     //-----------------------
@@ -138,18 +147,26 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     ///Setting a direct solver
     TPZStepSolver<STATE> step;
     step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    
     // TPZStepSolver<STATE> jac;
     // REAL tol = 1.e-30;
     // jac.SetJacobi(100,tol,0);
     // jac.ShareMatrix(step);
-
+// #ifdef USING_MKL
     an.SetSolver(step);
-
+// #endif
     //assembles the system
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     an.Assemble();
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
 
     ///solves the system
+    std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
     an.Solve();
+    std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
+    std::cout << "Time Solve = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin2).count() << "[ms]" << std::endl;
 
     return;
 }
@@ -159,10 +176,16 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{10};
     //defines storage scheme to be used for the FEM matrices
     //in this case, a symmetric skyline matrix is used
-    TPZSkylineStructMatrix<STATE> matskl(cmesh);
+    // TPZSkylineStructMatrix<STATE> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixTBBFlow<STATE>> matskl(cmesh);
+    
+
     matskl.SetNumThreads(nThreads);
     an.SetStructuralMatrix(matskl);
 
@@ -176,8 +199,8 @@ void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZC
     REAL tol = 1.e-30;
     jac.SetSSOR(1,1.1,0.,0);
     jac.ShareMatrix(step);
-    step.SetGMRES(2000,2000, *precond, tol, 0);
-    // step.SetCG(2000, *precond, tol, 0);
+    // step.SetGMRES(2000,2000, *precond, tol, 0);
+    step.SetCG(2000, *precond, tol, 0);
     an.SetSolver(step);
 
     //assembles the system
@@ -202,10 +225,10 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
     vecnames[0]= "Flux";
     vecnames[1]= "ExactFlux";
 
-    int div = 0;
+    constexpr int resolution{0};
     std::string plotfile = "solutionMDFB.vtk";
     an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
-    an.PostProcess(div,cmesh->Dimension());
+    an.PostProcess(resolution,cmesh->Dimension());
     // Print mesh properties
     // std::ofstream out("mesh.txt");
     // an.Print("nothing",out);

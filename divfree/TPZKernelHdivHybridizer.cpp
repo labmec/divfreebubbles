@@ -202,7 +202,7 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
 
         // Creates Multiphysics Interface element
         int64_t index;
-        TPZMultiphysicsInterfaceElement *intf = new TPZMultiphysicsInterfaceElement(*cmesh,gelIntface,index,celneigh,celside);
+        TPZMultiphysicsInterfaceElement *intf = new TPZMultiphysicsInterfaceElement(*cmesh,gelIntface,celneigh,celside);
     }
 
 
@@ -312,8 +312,7 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
         if(groupnum == -1) continue;
         auto iter = groupmap.find(groupnum);
         if (groupmap.find(groupnum) == groupmap.end()) {
-            int64_t index;
-            TPZElementGroup *elgr = new TPZElementGroup(*cmesh,index);
+            TPZElementGroup *elgr = new TPZElementGroup(*cmesh);
             groupmap[groupnum] = elgr;
             elgr->AddElement(cmesh->Element(el));
         }

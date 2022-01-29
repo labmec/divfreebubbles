@@ -29,12 +29,14 @@ set(UTIL_HEADERS
   TPZApproxSpaceKernelHdiv.h
   TPZKernelHdivHybridizer.h
   TPZKernelHdivUtils.h
+  TPZSparseMatRed.h
   )
 
 set(UTIL_SRCS
   TPZKernelHdivHybridizer.cpp
   TPZApproxSpaceKernelHdiv.cpp
   TPZKernelHdivUtils.cpp
+  TPZSparseMatRed.cpp
   )
 
 target_sources(divfree PRIVATE

@@ -53,11 +53,15 @@
 #include "TPZApproxSpaceKernelHdiv.h"
 #include "pzbdstrmatrix.h"
 #include "pzblockdiag.h"
+#include "tpzsparseblockdiagonal.h"
 #include "TPZFileStream.h"
 #include "TPZAnalyticSolution.h"
 #include "pzsmanal.h"
 #include "pzsubcmesh.h"
-
+#include "tpzverysparsematrix.h"
+#include "TPZSpStructMatrix.h"
+#include "TPZSparseMatRed.h"
+#include "pzsysmp.h"
 
 void GetNSubEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux);
 
@@ -76,7 +80,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{4};
+    constexpr int pOrder{1};
       
 
 #ifdef PZ_LOG
@@ -163,9 +167,10 @@ TPZLogger::InitializePZLOG();
 
     //HERE STARTS THE ITERATIVE SOLVER SET
     //sets number of threads to be used by the solver
-    constexpr int nThreads{10};
+    constexpr int nThreads{0};
     // Solve the problem
     TPZLinearAnalysis anNew(cmeshNew,false);
+    auto anNewSparse = anNew;
     // createSpace.Solve(anNew, cmeshNew, true, false); 
 
     // Compute the number of equations in the system
@@ -179,14 +184,20 @@ TPZLogger::InitializePZLOG();
 
     // Create the RHS vectors
     TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
+    TPZFMatrix<STATE> rhsFullSparse(nEqFull,1,0.);
     TPZFMatrix<STATE> rhsAux(nEqFull,1,0.);
+    TPZFMatrix<STATE> rhsAuxSparse(nEqFull,1,0.);
     TPZFMatrix<STATE> rhsFlux(nEqFlux,1,0.);
-    TPZAutoPointer<TPZGuiInterface> guiInterface;
+    TPZFMatrix<STATE> rhsFluxSparse(nEqFlux,1,0.);
+    TPZAutoPointer<TPZGuiInterface> guiInterface,guiInterfaceSparse;
 
     //Creates the problem matrix    
     TPZSkylineStructMatrix<STATE> Stiffness(cmeshNew);
     Stiffness.SetNumThreads(nThreads);
-
+#ifdef PZ_USING_MKL
+    TPZSpStructMatrix<STATE> StiffnessSparse(cmeshNew);
+    StiffnessSparse.SetNumThreads(nThreads);
+#endif
     for (auto &con : cmeshNew->ConnectVec())
     {
         int64_t seqNum = con.SequenceNumber();
@@ -210,56 +221,85 @@ TPZLogger::InitializePZLOG();
     cmeshNew->ExpandSolution();
     
     //Cria duas matrizes, para inverter a ordem das matrizes em bloco
-    TPZMatRed<STATE, TPZFMatrix<STATE>> *matRed;
-    matRed = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqFull,nEqPres);
+    TPZSparseMatRed<STATE, TPZFMatrix<STATE>> *matRed;
+    matRed = new TPZSparseMatRed<STATE, TPZFMatrix<STATE>>(nEqFull,nEqPres);
+    TPZSparseMatRed<STATE, TPZVerySparseMatrix<STATE>> *matRedSparse;
+    matRedSparse = new TPZSparseMatRed<STATE, TPZVerySparseMatrix<STATE>>(nEqFull,nEqPres);
 
     //Primeiro cria a matriz auxiliar
     TPZFMatrix<REAL> K00(nEqPres,nEqPres,0.);
+    TPZVerySparseMatrix<REAL> K00Sparse(nEqPres,nEqPres,0.);
 
-    TPZStepSolver<STATE> step;
+    TPZStepSolver<STATE> step, stepSparse;
     step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    stepSparse.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
     anNew.SetSolver(step);
+    anNewSparse.SetSolver(stepSparse);
 
     //Altera range da matriz stiffness e cria a K00 correta no matRed correto.
     Stiffness.SetEquationRange(0,nEqPres);
-    K00.Zero();
-    Stiffness.Assemble(K00,rhsAux,guiInterface);  
+    StiffnessSparse.SetEquationRange(0,nEqPres);
 
     //Transfere as submatrizes da matriz auxiliar para a matriz correta.
     step.SetMatrix(&K00);
+    stepSparse.SetMatrix(&K00Sparse);
     matRed->SetSolver(&step);
-  
+    matRedSparse->SetSolver(&stepSparse);
+    
     Stiffness.EquationFilter().Reset();
+    StiffnessSparse.EquationFilter().Reset();
     anNew.SetStructuralMatrix(Stiffness);
+    anNewSparse.SetStructuralMatrix(StiffnessSparse);
 
     //Monta a matriz auxiliar
-    matRed->K00()->Zero();
+    // matRed->K00()->Zero();
     rhsAux.Zero();
+    rhsAuxSparse.Zero();
     Stiffness.Assemble(*matRed,rhsAux,guiInterface);
+    StiffnessSparse.Assemble(*matRedSparse,rhsAuxSparse,guiInterfaceSparse);
 
     rhsFull=rhsAux;
+    rhsFullSparse=rhsAuxSparse;
     
+    // std::ofstream outMatRed("outMatRed.txt");
+    // std::ofstream outMatRedSparse("outMatRedSparse.txt");
+    // matRed->Print("MatRed",outMatRed,EMathematicaInput);
+    // matRedSparse->Print("MatRedSparse",outMatRedSparse,EMathematicaInput);
     // matRed->Print("MATRED "); //Deve ser a matriz de pressão, depois fluxo.
     
+    //Cria precondicionador bloco diagonal
     TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(cmeshNew);
     BDFmatrix.SetEquationRange(nEqPres,nEqFull);
     // BDFmatrix.SetEquationRange(nEqFlux,nEqFull);
-    TPZBlockDiagonal<REAL> KBD, KBD2;
+    // TPZSparseBlockDiagonal<REAL> KBD;
+    TPZBlockDiagonal<REAL> KBD;
     BDFmatrix.CreateAssemble(rhsAux,guiInterface);
     BDFmatrix.EndCreateAssemble(&KBD);
     // KBD.Print("KBD");
 
-    TPZFMatrix<REAL> *K11Red,*K11Red2;
+    TPZFMatrix<REAL> *K11Red;
+    TPZFMatrix<STATE> *K11RedSparse;
     K11Red = new TPZFMatrix<REAL>;
+    K11RedSparse = new TPZFMatrix<REAL>;
     K11Red->Redim(nEqFlux,nEqFlux);
-    K11Red2 = new TPZFMatrix<REAL>;
-    K11Red2->Redim(nEqFlux,nEqFlux);
-
+    K11RedSparse->Redim(nEqFlux,nEqFlux);
+    
     matRed->SetF(rhsFull);
+    matRedSparse->SetF(rhsFullSparse);
     
     matRed->K11Reduced(*K11Red,rhsFlux);
-    std::ofstream out("out.txt");
-    K11Red->Print("K11Red=",out,EMathematicaInput);
+    matRedSparse->K11Reduced(*K11RedSparse,rhsFluxSparse);
+    
+    std::ofstream outMatRed("outMatRed.txt");
+    std::ofstream outMatRedSparse("outMatRedSparse.txt");
+    matRed->Print("MatRed",outMatRed,EMathematicaInput);
+    matRedSparse->Print("MatRedSparse",outMatRedSparse,EMathematicaInput);
+    
+    std::ofstream outK11("outK11.txt");
+    K11Red->Print("K11Red=",outK11,EMathematicaInput);
+    std::ofstream outK11Sp("outK11sp.txt");
+    K11RedSparse->Print("K11RedSparse=",outK11Sp,EMathematicaInput);
+
     matRed->F1Red(rhsFlux);
     matRed->SetF(rhsFull);
      
