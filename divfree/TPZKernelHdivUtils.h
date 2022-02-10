@@ -12,7 +12,7 @@
 #include "pzstack.h"
 #include "TPZLinearAnalysis.h"
 #include <TPZVTKGeoMesh.h>
-
+#include "TPZHCurlEquationFilter.h"
 //#include "pzgeoelrefless.h"
 
 template<class T>
@@ -86,8 +86,15 @@ public:
      * @param an 
      * @param anPostProcessFile 
      */
-    void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
+    void ComputeError(TPZLinearAnalysis &an, std::ostream &anPostProcessFile);
 
+    std::set<int64_t> &GetRemoveEdges(){return rem_edges;}
+    std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &GetVertexData(){return vertexData;}
+    std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &GetEdgeData(){return edgeData;}
 
+private:
+    std::set<int64_t> rem_edges;
+    std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> vertexData;
+    std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> edgeData;
 };
 #endif

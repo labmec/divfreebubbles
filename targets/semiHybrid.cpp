@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{5};
+    constexpr int pOrder{2};
       
 
 #ifdef PZ_LOG
@@ -157,7 +157,7 @@ TPZLogger::InitializePZLOG();
     //Pressure mesh
     TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
     // std::cout << "PRESSURE \n";
-    // util.PrintCMeshConnects(cmeshpressureNew);
+    // // util.PrintCMeshConnects(cmeshpressureNew);
     // std::string pressureFile = "PressureCMesh";
     // util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
@@ -167,15 +167,15 @@ TPZLogger::InitializePZLOG();
     //Multiphysics mesh
     TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
     meshvectorNew[0] = cmeshfluxNew;
-    meshvectorNew[1] = cmeshpressureNew;      
+    meshvectorNew[1] = cmeshpressureNew;       
     auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
     // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-    std::cout << "MULTIPHYSICS \n";
+    // std::cout << "MULTIPHYSICS \n";
     // util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
     // createSpace.Condense(cmeshNew);
-    // std::string multiphysicsFile = "MultiPhysicsMeshNew";
-    // util.PrintCompMesh(cmeshNew,multiphysicsFile);
+    std::string multiphysicsFile = "MultiPhysicsMeshNew";
+    util.PrintCompMesh(cmeshNew,multiphysicsFile);
     std::cout << "Number of equations = " << cmeshNew->NEquations() << std::endl;
     // Solve the problem
     TPZLinearAnalysis anNew(cmeshNew,false);

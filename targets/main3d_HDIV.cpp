@@ -45,7 +45,7 @@
 #include "pzshapetriang.h"
 #include "pzshapetetra.h"
 #include <pzfstrmatrix.h>
-
+#include "TPZCompMeshTools.h"
 
 #include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
@@ -58,8 +58,6 @@
 #include <TPZGeoMeshTools.h>
 #include "TPZCompElHCurlNoGrads.h"
 #include "TPZMatCurlDotCurl.h"
-#include "TPZHCurlEquationFilter.h"
-#include "TPZCompMeshTools.h"
 
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
@@ -68,7 +66,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
 TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
 TPZGeoMesh *CreateGeoMeshTetra(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
 TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh);
-void PrintEdges(TPZGeoMesh* cmesh, std::set<int64_t> &rem_edges, std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &vertexData, std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &edgeData);
+void PrintEdges(TPZGeoMesh* cmesh, std::set<int64_t> &rem_edges);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -105,9 +103,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 
     REAL aux = 1./sinh(sqrt(2)*M_PI);
     u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 };
 
 
@@ -136,15 +134,15 @@ TPZLogger::InitializePZLOG();
     //     stringtoint[2]["Surfaces"] = 2;
     //     // stringtoint[2]["Hybrid"] = 3;
     //     reader.SetDimNamePhysical(stringtoint);
-    //     reader.GeometricGmshMesh("../mesh/span_tree.msh",gmesh);
+    //     reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
     //     std::ofstream out("gmesh.vtk");
     //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     // }
     
     //for now this should suffice
-    const int xdiv = 16;
-    const int ydiv = 16;
-    const int zdiv = 16;
+    const int xdiv = 2;
+    const int ydiv = 2;
+    const int zdiv = 2;
     const MMeshType meshType = MMeshType::EHexahedral;
     const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
@@ -180,7 +178,7 @@ TPZLogger::InitializePZLOG();
         cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);     
 
         //Pressure mesh
-        cmeshpressure = PressureCMesh(dim,0,matIdVecHdiv,gmesh);
+        cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvector(2);
@@ -191,10 +189,10 @@ TPZLogger::InitializePZLOG();
         util.PrintCompMesh(cmesh,multiphysicsFile);
 
         // util.PrintCMeshConnects(cmesh);
-        std::cout << "Equations without condense = " << cmesh->NEquations() - gmesh->NNodes()+1 << std::endl;
+        std::cout << "Equations without condense = " << cmesh->NEquations()<< std::endl;
         // Group and condense the elements
         // createSpace.Condense(cmesh);
-        TPZCompMeshTools::CreatedCondensedElements(cmesh,false,false);
+        TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
 
         std::string multiphysicsFile1 = "MultiPhysicsMeshNew2";
         util.PrintCompMesh(cmesh,multiphysicsFile1);
@@ -203,10 +201,11 @@ TPZLogger::InitializePZLOG();
         TPZLinearAnalysis an(cmesh,true);
         bool domainhyb=false;
                 
-        util.SolveProblemDirect(an,cmesh,true,domainhyb);
-        std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
+        util.SolveProblemDirect(an,cmesh,false,domainhyb);
+        // util.SolveProblemIterative(an,cmesh);
+        std::cout << "Equations condensed = " << cmesh->NEquations() << std::endl;
         
-        // PrintEdges(gmesh,util.GetRemoveEdges(),util.GetVertexData(),util.GetEdgeData());
+        // PrintEdges(gmesh,util.GetRemoveEdges());
 
         //Print results
         an.SetExact(exactSol,solOrder);
@@ -384,7 +383,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *
         cmesh->InsertMaterialObject(mat);
     }
     
-    cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHCurlNoGrads);
+    // cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHCurlNoGrads);
     cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
     
     // cmesh->ApproxSpace().SetHCurlFamily(HCurlFamily::EHCurlNoGrads);
@@ -406,10 +405,10 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoM
     TPZCompMesh *cmesh = new TPZCompMesh(gmesh,false);
     if(matIdVec.size() == 0) return cmesh;
 
-    // TPZNullMaterial<> *mat = new TPZNullMaterial<>(EDomain);
-    // mat->SetDimension(dim);
-    // cmesh->InsertMaterialObject(mat);
-    // mat -> SetBigNumber(1.e10);
+    TPZNullMaterial<> *mat = new TPZNullMaterial<>(EDomain);
+    mat->SetDimension(dim);
+    cmesh->InsertMaterialObject(mat);
+    mat -> SetBigNumber(1.e10);
     // distincao de ordem zero
     if(pOrder == 0)
     {
@@ -596,19 +595,10 @@ TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh)
 }
 
 
-void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges, std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &vertexData, std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &edgeData){
+void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges){
 
     int idRem=50;
     int idEdg=40;
-    int node0=idRem;
-    idRem++;
-    int nnodes = vertexData.size();
-
-    for (int i = 0; i < edgeData.size(); i++)
-    {
-        edgeData[i].status = TPZHCurlEquationFilter<STATE>::EdgeStatusType::EFreeEdge;
-    }
-    
 
     for (auto gel:gmesh->ElementVec())
     {
@@ -629,30 +619,13 @@ void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges, std::map<int64
             TPZGeoElSide gelside(gel,side);
             auto con = gel->Reference()->ConnectIndex(side-sideStart);
 
-            if (edgeData[con].status != TPZHCurlEquationFilter<STATE>::EdgeStatusType::EFreeEdge) continue;
-
-            edgeData[con].status = TPZHCurlEquationFilter<STATE>::EdgeStatusType::ERemovedEdge;
             int Nmatid = 0;
             if (rem_edges.find(con) != rem_edges.end()){
-                Nmatid = idRem++;
-                for (int iNode = 0; iNode < nnodes; iNode++)
-                {
-                    if (con == vertexData[iNode].removed_edge){
-                        int64_t index;
-                        TPZVec<int64_t> corner{iNode};
-                        if (iNode == 5){
-                            gmesh->CreateGeoElement(EPoint,corner,node0,index);
-                        } else {
-                            gmesh->CreateGeoElement(EPoint,corner,Nmatid,index);
-                        }
-                    }
-                }
+                Nmatid = idRem;
             }else{
                 Nmatid = idEdg;
             }
             TPZGeoElBC gelbcWrap(gelside, Nmatid);
-            
-            
         }
     }
     

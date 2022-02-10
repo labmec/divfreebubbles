@@ -30,7 +30,6 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
         TPZGeoEl *gel = gmesh->Element(el);
         if(!gel) DebugStop();
         auto type = gel -> Type();
-        int64_t index;
         auto matid = gel->MaterialId();
 
         using namespace pzgeom;
@@ -39,7 +38,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
         if (gel->Dimension() != dim) continue;
         
         int nsides = gel->NSides();
-        // gel->ResetReference();
+
         for (int side = 0; side < nsides; side++) {
 
             if(gel->SideDimension(side) != dim-1) continue;
@@ -75,7 +74,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                         TPZGeoElBC gelPHyb(gelPresHSide, fEPressureHyb);
                     }
                 }
-
+                gel->ResetReference();
             }//domain Hybrid
 
             //Creates interface and wrap geometric elements for hybridized BC
@@ -83,10 +82,11 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                 TPZGeoElBC gelbcWrap(geoside, fEWrap);
                 TPZGeoElSide gelWrapSide(gelbcWrap.CreatedElement(),gelbcWrap.CreatedElement()->NSides()-1);
                 TPZGeoElBC gelbc(gelWrapSide, fEInterface);
-                // gelbcWrap.CreatedElement()->ResetReference();
-                // gelbc.CreatedElement()->ResetReference();
-                // gel->ResetReference();
+                gelbcWrap.CreatedElement()->ResetReference();
+                gelbc.CreatedElement()->ResetReference();
+                gel->ResetReference();
             }
+            
         }
 
         //Creates a point for each hybrizided volumetric finite element
@@ -110,8 +110,9 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                 gelside.Element()->ResetReference();
                 TPZGeoElSide neighbour = gelside.Neighbour();
                 neighbour.Element()->ResetReference();
+                // gel->ResetReference();
             }   
-            gel->ResetReference();
+            // gel->ResetReference();
         }
     }
 }
@@ -210,10 +211,10 @@ void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysic
 
 void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC)
 {
-    for (auto i:matIdBC)
-    {
-        std::cout << " " << i ;
-    }
+    // for (auto i:matIdBC)
+    // {
+    //     std::cout << " " << i ;
+    // }
     
     
     int64_t nel = cmesh->NElements();
@@ -223,7 +224,6 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
     // elementgroup2.Fill(-1);
     int64_t nconnects = cmesh->NConnects();
     TPZVec<int64_t> groupindex(nconnects, -1);
-    TPZVec<int64_t> groupindex2(nconnects, -1);
     int dim = cmesh->Dimension();
     for (TPZCompEl *cel : cmesh->ElementVec()) {
         cel->LoadElementReference();
@@ -236,27 +236,33 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
 
         // std::cout << "Connect List = " << connectlist << std::endl;
         int k = -1;
-        for (auto cindex : connectlist) {
-            // k++;
-            // auto gel = cel->Reference();
-            // TPZGeoElSide geoside(gel,k);
-            // if (geoside.Dimension() == dim-1){
-            //     TPZGeoElSide neighbour = geoside.Neighbour();
-            //     auto Nneighbour = neighbour.Element()->Neighbour(2);
-            //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
-            //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
-            //         continue;
-            //     }
-            // }
+        //Only internal 
+        auto index = cel->Index();
+        auto nCon = cel->NConnects();
+        auto cindex = cel->ConnectIndex(nCon-1);
+        // std::cout << "CINDEX = " << cindex << std::endl;
+        groupindex[cindex] = cel->Index();
 
-            if (groupindex[cindex] != -1) {
-                groupindex2[cindex] = cel->Index();
-            } else {
-                groupindex[cindex] = cel->Index();
-            }
-        }
+        // for (auto cindex : connectlist) {
+        //     // k++;
+        //     // auto gel = cel->Reference();
+        //     // TPZGeoElSide geoside(gel,k);
+        //     // if (geoside.Dimension() == dim-1){
+        //     //     TPZGeoElSide neighbour = geoside.Neighbour();
+        //     //     auto Nneighbour = neighbour.Element()->Neighbour(2);
+        //     //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
+        //     //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
+        //     //         continue;
+        //     //     }
+        //     // }
+
+        //     if (groupindex[cindex] == -1) {
+        //         groupindex[cindex] = cel->Index();
+        //     }
+        // }
     }
-    //    std::cout << "Groups of connects " << groupindex << std::endl;
+    // std::cout << "Groups of connects " << groupindex << std::endl;
+    // std::cout << "Groups of connects " << groupindex2 << std::endl;
     for (TPZCompEl *cel : cmesh->ElementVec()) {
         if (!cel || !cel->Reference()) {
             continue;
@@ -283,14 +289,12 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
                 if(groupfound != -1 && groupfound != groupindex[cindex])
                 {
                     //Do nothing
-                    groupfound = groupindex2[cindex];
                 }else{
                     elementgroup[cel->Index()] = groupindex[cindex];
                     groupfound = groupindex[cindex];
                 }
             }
         }
-//        std::cout << std::endl;
     }
 }
 
@@ -323,6 +327,8 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
     }
 
     cmesh->ComputeNodElCon();
+    // increment elconnect em um elemento de pressao 
+    // Compmesh tools condense equations
     nel = cmesh->NElements();
     for (int64_t el = 0; el < nel; el++) {
         TPZCompEl *cel = cmesh->Element(el);
@@ -335,6 +341,7 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElements(TPZMultiphysicsCompMesh *
 
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
+
 }
 
 

@@ -92,6 +92,13 @@ void TPZKernelHdivUtils<TVar>::PrintGeoMesh(TPZGeoMesh *gmesh){
                     << ", NNmatid = " << neighbour.Neighbour().Element() -> MaterialId() << std::endl;
         }
     }
+
+    //Prints gmesh mesh properties
+    std::string vtk_name = "geoMesh.vtk";
+    std::ofstream vtkfile(vtk_name.c_str());
+
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
+
 }
 
 // Util to print the computational mesh
@@ -115,27 +122,30 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
-    TPZSkylineStructMatrix<STATE> matskl(cmesh);
+    constexpr int nThreads{12};
+    // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
-    // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
-
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
+    
+    // 
     // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
     // TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);
     // TPZSSpStructMatrix<STATE,TPZStructMatrixTBBFlow<STATE>> matskl(cmesh);
     matskl.SetNumThreads(nThreads);
-
+    TPZHCurlEquationFilter<TVar> filter;
     //-----------------------
     if (filterEquations){    
-        TPZHCurlEquationFilter<TVar> filter;
+        
 
         TPZVec<int64_t> activeEqs;
     
-        if(filter.FilterEdgeEquations(cmesh, activeEqs, domainHybridization)){
+        if(filter.FilterEdgeEquations(cmesh, activeEqs, domainHybridization,rem_edges)){
             return;
         }
+        vertexData = filter.GetVertexDataStructure();
+        edgeData = filter.GetEdgeDataStructure();
         const int neqs = activeEqs.size();
-        
+        // std::cout << "ACtiveEqu - " << activeEqs << std::endl;
         matskl.EquationFilter().SetActiveEquations(activeEqs);
         std::cout << "Active equations = " << activeEqs.size() << std::endl;
     }
@@ -181,8 +191,8 @@ void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZC
     //in this case, a symmetric skyline matrix is used
     // TPZSkylineStructMatrix<STATE> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
-    // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
-    TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);
     // TPZSSpStructMatrix<STATE,TPZStructMatrixTBBFlow<STATE>> matskl(cmesh);
     
 
@@ -237,7 +247,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
 
 // An Util to compute the error on Kernel Hdiv simulations
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile)
+void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ostream &anPostProcessFile)
 {
     ///Calculating approximation error  
     TPZManVector<REAL,5> error;
@@ -248,12 +258,14 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ofstream
     cmeshNew->ExpandSolution();
     cmeshNew->ElementSolution().Redim(nelem, 5);
 
-    an.PostProcessError(error);
+    an.PostProcessError(error,false,anPostProcessFile);
         
     std::cout << "\nApproximation error:\n";
     std::cout << "H1 Norm = " << std::scientific << std::setprecision(15) << error[0]<<'\n';
     std::cout << "L1 Norm = " << std::scientific << std::setprecision(15) << error[1]<<'\n'; 
     std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[2]<<'\n'; 
+    // std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[3]<<'\n'; 
+    // std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[4]<<'\n'; 
     // std::cout << "error 4 = " << error[3]<<'\n'; 
     // std::cout << "error 5 = " << error[4] << "\n\n";
 }

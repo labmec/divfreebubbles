@@ -195,8 +195,6 @@ public:
     }
 
     void CreateOrientedBoundaryElements();
-
-    // void OrientFaces(TPZCompMesh * cmesh);
         
 };
 

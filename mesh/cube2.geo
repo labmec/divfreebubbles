@@ -1,5 +1,6 @@
 a = 0.5;
-layers = 2;
+layers = 33;
+layers2 = 33;
 p1 =0;
 p2 = 1;
 Point(1) = {p1,p1,p1, a};
@@ -36,7 +37,7 @@ Line(11) = {1, 2};
 Line(12) = {3, 5};
 
 Transfinite Curve {1,3,4,5,6,7,8,9} = layers Using Progression 1;
-Transfinite Curve {2,10,11,12} = layers Using Progression 1;
+Transfinite Curve {2,10,11,12} = layers2 Using Progression 1;
 
 //+
 Curve Loop(1) = {-7, -2, -3, 10};

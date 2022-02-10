@@ -40,7 +40,7 @@ CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
    @param[in] volId Material identifier for the volumetric region.
    @param[in] bcId Material identifier for the boundary.
 */
-TPZAutoPointer<TPZCompMesh>
+TPZCompMesh*
 CreateCompMesh(TPZAutoPointer<TPZGeoMesh> gmesh, const int pOrder,
                const int volId, const int bcId);
 
@@ -154,14 +154,14 @@ CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
     return gmesh;
 }
 
-TPZAutoPointer<TPZCompMesh>
+TPZCompMesh*
 CreateCompMesh(TPZAutoPointer<TPZGeoMesh> gmesh, const int pOrder,
                const int volId, const int bcId)
 {
     constexpr bool isComplex{false};
     constexpr int dim{3};
     
-    TPZAutoPointer<TPZCompMesh> cmesh =
+    TPZCompMesh* cmesh =
         new TPZCompMesh(gmesh, isComplex);
 
     cmesh->SetDefaultOrder(pOrder);
@@ -188,10 +188,10 @@ CreateCompMesh(TPZAutoPointer<TPZGeoMesh> gmesh, const int pOrder,
             int64_t index;
             switch(type){
                 case ETriangle:
-                    new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel);
+                    // new TPZCompElHCurlNoGrads<pzshape::TPZShapeTriang>(*cmesh,gel);
                     break;
                 case ETetraedro:
-                    new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel);
+                    // new TPZCompElHCurlNoGrads<pzshape::TPZShapeTetra>(*cmesh,gel);
                     break;
                 default:
                     const auto elName =  MElementType_Name(type);

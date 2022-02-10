@@ -74,6 +74,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
     gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
     gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+    u[0] = 1.;
+    gradU(0,0) = 0.;
+    gradU(1,0) = 0.;
 
 };
 
@@ -84,7 +87,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{2};
+    constexpr int pOrder{3};
       
 
 #ifdef PZ_LOG
@@ -107,7 +110,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 6;
         stringtoint[1]["Top2"] = 7;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/newMesh.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -122,15 +125,15 @@ TPZLogger::InitializePZLOG();
     //Insert here the BC material id's to be hybridized
     std::set<int> matBCHybrid={};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{EInjection,EProduction,ERight,ETop};
-    std::set<int> matIDDirichlet{EBottom,ELeft};
+    std::set<int> matIDNeumann{};
+    std::set<int> matIDDirichlet{EInjection,EProduction,ERight,ETop,EBottom,ELeft};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
-                                                TPZApproxSpaceKernelHdiv<STATE>::ENone,
+                                                TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid,
                                                 TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel);
 
     //Setting material ids      
@@ -138,21 +141,22 @@ TPZLogger::InitializePZLOG();
     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
-    // util.PrintGeoMesh(gmesh);
+    util.PrintGeoMesh(gmesh);
 
     //Flux mesh
     TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-    // std::cout << "FLUX \n";
-    // util.PrintCMeshConnects(cmeshfluxNew);
-    // std::string fluxFile = "FluxCMesh";
-    // util.PrintCompMesh(cmeshfluxNew,fluxFile);
+    std::cout << "FLUX \n";
+    util.PrintCMeshConnects(cmeshfluxNew);
+    std::string fluxFile = "FluxCMesh";
+    util.PrintCompMesh(cmeshfluxNew,fluxFile);
+    std::cout << "h = " << cmeshfluxNew->MaximumRadiusOfMesh() << std::endl;
 
     //Pressure mesh
     TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-    // std::cout << "PRESSURE \n";
-    // util.PrintCMeshConnects(cmeshpressureNew);
-    // std::string pressureFile = "PressureCMesh";
-    // util.PrintCompMesh(cmeshpressureNew,pressureFile);
+    std::cout << "PRESSURE \n";
+    util.PrintCMeshConnects(cmeshpressureNew);
+    std::string pressureFile = "PressureCMesh";
+    util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
     TLaplaceExample1 LaplaceExact;
     // LaplaceExact.fExact = TLaplaceExample1::EHarmonic;
@@ -164,11 +168,11 @@ TPZLogger::InitializePZLOG();
     // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
     auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
     std::cout << "MULTIPHYSICS \n";
-    // util.PrintCMeshConnects(cmeshNew);
+    util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
     // createSpace.Condense(cmeshNew);
-    // std::string multiphysicsFile = "MultiPhysicsMeshNew";
-    // util.PrintCompMesh(cmeshNew,multiphysicsFile);
+    std::string multiphysicsFile = "MultiPhysicsMeshNew";
+    util.PrintCompMesh(cmeshNew,multiphysicsFile);
     std::cout << "Number of equations = " << cmeshNew->NEquations() << std::endl;
     // Solve the problem
     TPZLinearAnalysis anNew(cmeshNew,false);

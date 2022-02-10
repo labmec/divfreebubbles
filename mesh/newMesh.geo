@@ -18,16 +18,18 @@ Line(5) = {7, 2};
 Line(6) = {2, 6};
 Line(7) = {2, 4};
 
-nh = 11; ph = 1; 
-nv = 11; pv = 1.15; pa = 1;
+nh = 5; ph = 1; 
+nv = 5; pv = 1.1; pa = 1;
+//nh = 23; ph = 1; 
+//nv = 33; pv = 1.1; pa = 1;
 Transfinite Curve {1, 2, 7} = nh Using Progression ph;
 Transfinite Curve {4,6} = nv Using Progression 1/pv;
 Transfinite Curve {3,5} = nv Using Progression pv;
 //+
 Curve Loop(1) = {6, 1, 3, -7};
-Plane Surface(1) = {1};
+Plane Surface(1) = {-1};
 Curve Loop(2) = {4, 2, 5, 7};
-Plane Surface(2) = {2};
+Plane Surface(2) = {-2};
 Transfinite Surface {1, 2} ;
 Recombine Surface{1,2};
 //+

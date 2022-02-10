@@ -45,6 +45,49 @@ void PrintResultsH1(int dim, TPZLinearAnalysis &an);
 void PrintResultsDivFreeBubbles(int dim, TPZLinearAnalysis &an);
 void ComputeError(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
+auto exactSolError = [](const TPZVec<REAL> &loc,
+  TPZVec<STATE>&u,
+  TPZFMatrix<STATE>&gradU){
+  const auto &x=loc[0];
+  const auto &y=loc[1];
+  const auto &d = 1.; // distance between injection and production wells
+  u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+  gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
+  gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+//Harmonic2
+// REAL a1 = 0.25;
+// REAL alpha = M_PI/2;
+//     u[0]= x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
+//     gradU(0,0) = (a1*cos(alpha*x)*cosh(alpha*y) - a1*alpha* x*cosh(alpha*y)*sin(alpha*x) + a1*alpha*y*cos(alpha*x)*sinh(alpha*y));
+//     gradU(1,0) = (a1*alpha* y*cosh(alpha*y) *sin(alpha* x) + a1* alpha *x* cos(alpha* x)* sinh(alpha* y) + a1* sin(alpha* x) * sinh(alpha* y));
+
+    // u[0] = x;
+    // gradU(0,0) = 1.;
+    // gradU(1,0) = 0.;
+
+};
+
+auto exactSolError2 = [](const TPZVec<REAL> &loc,
+  TPZVec<STATE>&u,
+  TPZFMatrix<STATE>&gradU){
+  const auto &x=loc[0];
+  const auto &y=loc[1];
+  const auto &d = 1.; // distance between injection and production wells
+  u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+  gradU(0,0) = -(x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
+  gradU(1,0) = -(y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+//Harmonic2
+// REAL a1 = 0.25;
+// REAL alpha = M_PI/2;
+//     u[0]= x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
+//     gradU(0,0) = (a1*cos(alpha*x)*cosh(alpha*y) - a1*alpha* x*cosh(alpha*y)*sin(alpha*x) + a1*alpha*y*cos(alpha*x)*sinh(alpha*y));
+//     gradU(1,0) = (a1*alpha* y*cosh(alpha*y) *sin(alpha* x) + a1* alpha *x* cos(alpha* x)* sinh(alpha* y) + a1* sin(alpha* x) * sinh(alpha* y));
+
+    // u[0] = x;
+    // gradU(0,0) = 1.;
+    // gradU(1,0) = 0.;
+
+};
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -55,12 +98,12 @@ void ComputeErrorHdiv(TPZLinearAnalysis &an, std::ofstream &anPostProcessFile);
 //-------------------------------------------------------------------------------------------------
 using namespace std;
 
-enum EMatid {ENone, EDomain, EBottom,  ETop, ELeft, ERight, EPont, EWrap, EIntface, EPressureHyb};
+enum EMatid {ENone, EDomain, EInjection, EProduction, EBottom, ERight, ETop, ELeft, EPont, EWrap, EIntface, EPressureHyb};
 
 int main(int argc, char* argv[]){
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{2};
+    constexpr int pOrder{1};
 
 #ifdef PZ_LOG
 TPZLogger::InitializePZLOG();
@@ -84,7 +127,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 8;
         stringtoint[1]["BottomLine2"] = 9;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh(string(MESHDIR)+"1element.msh",gmesh);
+        reader.GeometricGmshMesh(string(MESHDIR)+"newMesh.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -94,16 +137,18 @@ TPZLogger::InitializePZLOG();
     TPZCompMesh * cmeshpressure = 0;
     {   
         TPZKernelHdivUtils<STATE> util;
-        std::set<int> matIdVecHdiv={EDomain,EBottom,ETop,ELeft,ERight};
+        std::set<int> matIdVecHdiv={EDomain, EInjection, EProduction, EBottom, ERight, ETop, ELeft};
         std::set<int> matIdNeumannHdiv;
         
+
         //Flux mesh
         cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);
         // std::cout << "FLUX \n";
         // util.PrintCMeshConnects(cmeshflux);
 
+        std::cout << "h = " << cmeshflux->MaximumRadiusOfMesh() << std::endl;
         //Pressure mesh
-        cmeshpressure = PressureCMesh(dim,pOrder-1,matIdVecHdiv,gmesh);
+        cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
         // std::cout << "PRESSURE \n";
         // util.PrintCMeshConnects(cmeshpressure);
 
@@ -116,6 +161,8 @@ TPZLogger::InitializePZLOG();
         
         // std::cout << "MULTIPHYSICS \n";
         // util.PrintCMeshConnects(cmesh);
+        // std::string fluxFile = "MCMeshTriangle";
+        // util.PrintCompMesh(cmesh,fluxFile);
 
         //Solve Multiphysics
         TPZLinearAnalysis an(cmesh,true);
@@ -124,8 +171,10 @@ TPZLogger::InitializePZLOG();
         //Print results
         PrintResultsMultiphysic(dim,meshvector,an,cmesh);
 
+
         std::ofstream anPostProcessFileHdiv("postprocessHdiv.txt");
-        ComputeErrorHdiv(an,anPostProcessFileHdiv);
+        an.SetExact(exactSolError2,2);
+        util.ComputeError(an,anPostProcessFileHdiv);
     }
 
     //..................................H1..................................
@@ -239,27 +288,6 @@ auto exactSolH1 = [](const TPZVec<REAL> &loc,
 //   gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
 //   gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
 };
-auto exactSolError = [](const TPZVec<REAL> &loc,
-  TPZVec<STATE>&u,
-  TPZFMatrix<STATE>&gradU){
-  const auto &x=loc[0];
-  const auto &y=loc[1];
-  const auto &d = 1.; // distance between injection and production wells
-//   u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
-//   gradU(0,0) = -(x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
-//   gradU(1,0) = -(y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
-//Harmonic2
-REAL a1 = 0.25;
-REAL alpha = M_PI/2;
-u[0]= 
-  x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
-    gradU(0,0) = a1*cos(alpha*x)*cosh(alpha*y) - 
-  a1*alpha* x*cosh(alpha*y)*sin(alpha*x) + 
-  a1*alpha*y*cos(alpha*x)*sinh(alpha*y);
-    gradU(1,0) = a1*alpha* y*cosh(alpha*y) *sin(alpha* x) + 
-  a1* alpha *x* cos(alpha* x)* sinh(alpha* y) + 
-  a1* sin(alpha* x) * sinh(alpha* y);
-};
 
 //Flux computational mesh
 TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *gmesh) 
@@ -275,6 +303,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *
         cmesh->InsertMaterialObject(mat);
     }
     
+    // cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHDivKernel);
     cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
     // cmesh->ApproxSpace().SetAllCreateFunctionsHDivConstant(dim);
     // cmesh->ApproxSpace().SetAllCreateFunctionsHDivKernel(dim);
@@ -507,7 +536,7 @@ TPZCompMesh *PressureCMeshDFB(int dim, int pOrder, std::set<int> &matIdVec, TPZG
 }
 
 // Multiphysics computational mesh
-TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh)
+TPZMultiphysicsCompMesh *   MultiphysicCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh)
 {
     gmesh->ResetReference();
     auto cmesh = new TPZMultiphysicsCompMesh(gmesh);
@@ -522,32 +551,34 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
-    // auto * BCond0 = mat->CreateBC(mat, EInjection, 0, val1, val2);
+    constexpr int bc1{0};
+    auto * BCond0 = mat->CreateBC(mat, EInjection, bc1, val1, val2);
     TPZFMatrix<STATE> val3(1,1,1.); 
     TPZManVector<STATE> val4(1,0.);
-    // auto * BCond1 = mat->CreateBC(mat, EProduction, 0, val3, val4);
-    // BCond0->SetForcingFunctionBC(exactSol);
-    // BCond1->SetForcingFunctionBC(exactSol);
-    // cmesh->InsertMaterialObject(BCond1);
-    // cmesh->InsertMaterialObject(BCond0);
+    auto * BCond1 = mat->CreateBC(mat, EProduction, bc1, val3, val4);
+    BCond0->SetForcingFunctionBC(exactSolError);
+    BCond1->SetForcingFunctionBC(exactSolError);
+    cmesh->InsertMaterialObject(BCond1);
+    cmesh->InsertMaterialObject(BCond0);
 
     TPZFMatrix<STATE> val5(1,1,1.);
     TPZManVector<STATE> val6(1,0.);
-    auto * BCond2 = mat->CreateBC(mat, EBottom, 0, val5, val6);
-    auto * BCond3 = mat->CreateBC(mat, ETop, 0, val5, val6);
-    auto * BCond4 = mat->CreateBC(mat, ELeft, 0, val5, val6);
-    auto * BCond5 = mat->CreateBC(mat, ERight, 0, val5, val6);
-    auto * BCond6 = mat->CreateBC(mat, EPont, 0, val5, val6);
+    constexpr int bc2{0};
+    auto * BCond2 = mat->CreateBC(mat, EBottom, bc2, val5, val6);
+    auto * BCond3 = mat->CreateBC(mat, ETop, bc2, val5, val6);
+    auto * BCond4 = mat->CreateBC(mat, ELeft, bc2, val5, val6);
+    auto * BCond5 = mat->CreateBC(mat, ERight, bc2, val5, val6);
+    // auto * BCond6 = mat->CreateBC(mat, EPont, 0, val5, val6);
     BCond2->SetForcingFunctionBC(exactSolError);
     BCond3->SetForcingFunctionBC(exactSolError);
     BCond4->SetForcingFunctionBC(exactSolError);
     BCond5->SetForcingFunctionBC(exactSolError);
-    BCond6->SetForcingFunctionBC(exactSolError);
+    // BCond6->SetForcingFunctionBC(exactSolError);
     cmesh->InsertMaterialObject(BCond2);
     cmesh->InsertMaterialObject(BCond3);
     cmesh->InsertMaterialObject(BCond4);
     cmesh->InsertMaterialObject(BCond5);
-    cmesh->InsertMaterialObject(BCond6);
+    // cmesh->InsertMaterialObject(BCond6);
 
     TPZManVector<int> active(2,1);
     cmesh->SetAllCreateFunctionsMultiphysicElem();
@@ -591,14 +622,14 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, std::set<int> 
     //Boundary Conditions
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
-    // auto * BCond0 = mat->CreateBC(mat, EInjection, 1, val1, val2);
+    auto * BCond0 = mat->CreateBC(mat, EInjection, 1, val1, val2);
     TPZFMatrix<STATE> val3(1,1,1.); 
     TPZManVector<STATE> val4(1,0.);
-    // auto * BCond1 = mat->CreateBC(mat, EProduction, 1, val3, val4);
-    // BCond0->SetForcingFunctionBC(exactSolError);
-    // BCond1->SetForcingFunctionBC(exactSolError);
-    // cmesh->InsertMaterialObject(BCond1);
-    // cmesh->InsertMaterialObject(BCond0);
+    auto * BCond1 = mat->CreateBC(mat, EProduction, 1, val3, val4);
+    BCond0->SetForcingFunctionBC(exactSolError);
+    BCond1->SetForcingFunctionBC(exactSolError);
+    cmesh->InsertMaterialObject(BCond1);
+    cmesh->InsertMaterialObject(BCond0);
 
     TPZFMatrix<STATE> val5(1,1,1.);
     TPZManVector<STATE> val6(1,0.);

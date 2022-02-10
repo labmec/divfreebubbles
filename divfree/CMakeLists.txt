@@ -3,11 +3,15 @@ target_include_directories(divfree PUBLIC
 
 set(MATERIAL_HEADERS
   TPZMatDivFreeBubbles.h
-  TPZMatCurlDotCurl.h)
+  TPZMatCurlDotCurl.h
+  TPZMixedDarcyFlowHybrid.h
+  )
 
 set(MATERIAL_SRCS
   TPZMatDivFreeBubbles.cpp
-  TPZMatCurlDotCurl.cpp)
+  TPZMatCurlDotCurl.cpp
+  TPZMixedDarcyFlowHybrid.cpp
+  )
 
 
 set(MESH_HEADERS
