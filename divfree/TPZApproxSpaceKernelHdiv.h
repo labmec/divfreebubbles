@@ -17,6 +17,8 @@
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZCompElKernelHDivBC3D.h"
+#include "TPZHybridizeHDivKernel.h"
+#include "TPZEnumApproxFamily.h"
 
 class TPZCompMesh;
 class TPZGeoMesh;
@@ -30,14 +32,14 @@ class TPZApproxSpaceKernelHdiv
 public:
     /// types of spaces this class can create
     enum MSpaceType {ENone, EFullHybrid, ESemiHybrid};
-    enum MShapeType {EHDivKernel, EHDivConstant, EHCurlNoGrads};
+    // enum MShapeType {EHDivKernel, EHDivConstant, EHCurlNoGrads};
 
 private:
     /// the type of space this object will generate
     MSpaceType fSpaceType = ENone;
 
     /// the type of space this object will generate
-    MShapeType fShapeType = EHDivKernel;
+    HDivFamily fShapeType = HDivFamily::EHDivKernel;
 
     /// default internal order for the H1 elements
     int fDefaultPOrder = 3;
@@ -57,9 +59,11 @@ private:
     /// The util
     TPZKernelHdivUtils<TVar> * util;
 
+    bool isCube = false;// a bool variable to know if it is an hexahedral mesh
+
 public:
     /// default constructor
-    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, MShapeType shapetype = EHDivKernel);
+    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, HDivFamily shapetype = HDivFamily::EHDivKernel);
     
     /// copy constructor
     TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv &copy);
@@ -129,6 +133,7 @@ public:
      * @return TPZMultiphysicsCompMesh* 
      */
     TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
+    TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet, TPZHybridizeHDivKernel &hybridHDiv);
     
     /// Parameters needed for creating a hybrid KernelHdiv space
     struct TConfig

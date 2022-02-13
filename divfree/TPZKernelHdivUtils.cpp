@@ -139,11 +139,11 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
 
         TPZVec<int64_t> activeEqs;
     
-        if(filter.FilterEdgeEquations(cmesh, activeEqs, domainHybridization,rem_edges)){
+        if(filter.FilterEdgeEquations(cmesh, activeEqs, domainHybridization)){
             return;
         }
-        vertexData = filter.GetVertexDataStructure();
-        edgeData = filter.GetEdgeDataStructure();
+        // vertexData = filter.GetVertexDataStructure();
+        // edgeData = filter.GetEdgeDataStructure();
         const int neqs = activeEqs.size();
         // std::cout << "ACtiveEqu - " << activeEqs << std::endl;
         matskl.EquationFilter().SetActiveEquations(activeEqs);

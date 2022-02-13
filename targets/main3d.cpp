@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{3};
-    constexpr int pOrder{4};
+    constexpr int pOrder{1};
       
 
 #ifdef PZ_LOG
@@ -142,9 +142,9 @@ TPZLogger::InitializePZLOG();
     // }
     
     //for now this should suffice
-    const int xdiv = 16;
-    const int ydiv = 16;
-    const int zdiv = 16;
+    const int xdiv = 2;
+    const int ydiv = 1;
+    const int zdiv = 1;
     const MMeshType meshType = MMeshType::EHexahedral;
     const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
 
@@ -167,7 +167,7 @@ TPZLogger::InitializePZLOG();
         
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel); // Shape Type
+                                                    HDivFamily::EHDivKernel); // Shape Type
 
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;

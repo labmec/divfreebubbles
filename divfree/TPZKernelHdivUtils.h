@@ -88,12 +88,10 @@ public:
      */
     void ComputeError(TPZLinearAnalysis &an, std::ostream &anPostProcessFile);
 
-    std::set<int64_t> &GetRemoveEdges(){return rem_edges;}
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &GetVertexData(){return vertexData;}
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &GetEdgeData(){return edgeData;}
 
 private:
-    std::set<int64_t> rem_edges;
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> vertexData;
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> edgeData;
 };

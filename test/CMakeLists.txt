@@ -10,3 +10,5 @@ endif()
 target_link_libraries(test_library PUBLIC divfree Catch2::Catch2)
 
 add_unit_test(edge_filter_test edge_filter_test.cpp)
+
+add_unit_test(hybridization_test hybridization_test.cpp)

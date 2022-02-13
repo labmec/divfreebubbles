@@ -41,7 +41,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
 
         for (int side = 0; side < nsides; side++) {
 
-            if(gel->SideDimension(side) != dim-1) continue;
+            if(gel->SideDimension(side) != dim-1) continue;// onlu edges for 2D and faces for 3D
             TPZGeoElSide geoside(gel,side);
             TPZGeoElSide neighbour = geoside.Neighbour();
 
@@ -96,22 +96,22 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
                 TPZGeoElBC gelbcPoint(geosidePoint, fEPont);
             }
             // For the static condensation in 3D
-            if (type==ETetraedro){
-                TPZGeoElSide geoside1(gel,4);//The same edges removed in the equation filter
-                TPZGeoElSide geoside2(gel,5);
-                TPZGeoElSide geoside3(gel,9);
-                TPZGeoElBC gelPHyb1(geoside1,fEEdgeRemove);
-                TPZGeoElBC gelPHyb2(geoside2,fEEdgeRemove);
-                TPZGeoElBC gelPHyb3(geoside3,fEEdgeRemove);
-            }
+            // if (type==ETetraedro){
+            //     TPZGeoElSide geoside1(gel,4);//The same edges removed in the equation filter
+            //     TPZGeoElSide geoside2(gel,5);
+            //     TPZGeoElSide geoside3(gel,9);
+            //     TPZGeoElBC gelPHyb1(geoside1,fEEdgeRemove);
+            //     TPZGeoElBC gelPHyb2(geoside2,fEEdgeRemove);
+            //     TPZGeoElBC gelPHyb3(geoside3,fEEdgeRemove);
+            // }
 
-            for (int side = 0; side < nsides; side++) {
-                TPZGeoElSide gelside(gel,side);
-                gelside.Element()->ResetReference();
-                TPZGeoElSide neighbour = gelside.Neighbour();
-                neighbour.Element()->ResetReference();
-                // gel->ResetReference();
-            }   
+            // for (int side = 0; side < nsides; side++) {
+            //     TPZGeoElSide gelside(gel,side);
+            //     gelside.Element()->ResetReference();
+            //     TPZGeoElSide neighbour = gelside.Neighbour();
+            //     neighbour.Element()->ResetReference();
+            //     // gel->ResetReference();
+            // }   
             // gel->ResetReference();
         }
     }
@@ -236,30 +236,30 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
 
         // std::cout << "Connect List = " << connectlist << std::endl;
         int k = -1;
-        //Only internal 
-        auto index = cel->Index();
-        auto nCon = cel->NConnects();
-        auto cindex = cel->ConnectIndex(nCon-1);
-        // std::cout << "CINDEX = " << cindex << std::endl;
-        groupindex[cindex] = cel->Index();
+        // //Only internal 
+        // auto index = cel->Index();
+        // auto nCon = cel->NConnects();
+        // auto cindex = cel->ConnectIndex(nCon-1);
+        // // std::cout << "CINDEX = " << cindex << std::endl;
+        // groupindex[cindex] = cel->Index();
 
-        // for (auto cindex : connectlist) {
-        //     // k++;
-        //     // auto gel = cel->Reference();
-        //     // TPZGeoElSide geoside(gel,k);
-        //     // if (geoside.Dimension() == dim-1){
-        //     //     TPZGeoElSide neighbour = geoside.Neighbour();
-        //     //     auto Nneighbour = neighbour.Element()->Neighbour(2);
-        //     //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
-        //     //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
-        //     //         continue;
-        //     //     }
-        //     // }
+        for (auto cindex : connectlist) {
+            // k++;
+            // auto gel = cel->Reference();
+            // TPZGeoElSide geoside(gel,k);
+            // if (geoside.Dimension() == dim-1){
+            //     TPZGeoElSide neighbour = geoside.Neighbour();
+            //     auto Nneighbour = neighbour.Element()->Neighbour(2);
+            //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
+            //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
+            //         continue;
+            //     }
+            // }
 
-        //     if (groupindex[cindex] == -1) {
-        //         groupindex[cindex] = cel->Index();
-        //     }
-        // }
+            if (groupindex[cindex] == -1) {
+                groupindex[cindex] = cel->Index();
+            }
+        }
     }
     // std::cout << "Groups of connects " << groupindex << std::endl;
     // std::cout << "Groups of connects " << groupindex2 << std::endl;

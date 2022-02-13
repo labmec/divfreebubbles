@@ -165,7 +165,7 @@ TPZLogger::InitializePZLOG();
         
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel); // Shape Type
+                                                    HDivFamily::EHDivKernel); // Shape Type
 
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;

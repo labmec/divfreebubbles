@@ -138,7 +138,7 @@ TPZLogger::InitializePZLOG();
     /// Creates the approximation space - Set the type of domain hybridization
     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                 TPZApproxSpaceKernelHdiv<STATE>::ENone,
-                                                TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel);
+                                                HDivFamily::EHDivKernel);
 
     //Setting material ids      
     createSpace.fConfig.fDomain = EDomain;
