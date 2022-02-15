@@ -20,7 +20,7 @@
 #include "pzelementgroup.h"
 #include "pzcondensedcompel.h"
 
-void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int> &matIdBC, bool domainHyb){
+void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int> &matIdBC, bool domainHyb, HDivFamily &hdivfam){
 
     int dim = gmesh->Dimension();
 
@@ -91,7 +91,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
 
         //Creates a point for each hybrizided volumetric finite element
         if (domainHyb){
-            if (dim < 3){
+            if (dim == 2 && hdivfam != HDivFamily::EHDivConstant){
                 TPZGeoElSide geosidePoint(gel,0);
                 TPZGeoElBC gelbcPoint(geosidePoint, fEPont);
             }

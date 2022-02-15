@@ -52,9 +52,6 @@
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
 #include "TPZAnalyticSolution.h"
-#include "TPZHybridizeHDivKernel.h"
-
-void HybridizeDomain(TPZHybridizeHDivKernel& hybridizer, TPZVec<TPZCompMesh*>& meshvector);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -169,12 +166,7 @@ TPZLogger::InitializePZLOG();
     meshvectorNew[0] = cmeshfluxNew;
     meshvectorNew[1] = cmeshpressureNew;      
 
-    // TPZHybridizeHDivKernel hybridizer(meshvectorNew);
-    // HybridizeDomain(hybridizer,meshvectorNew);
-
-    // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
-    auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-    // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet,hybridizer);
+       auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
     std::cout << "MULTIPHYSICS \n";
     util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
@@ -200,68 +192,4 @@ TPZLogger::InitializePZLOG();
     util.ComputeError(anNew,anPostProcessFileMDFB);
   
     return 0;
-}
-
-
-void HybridizeDomain(TPZHybridizeHDivKernel& hybridizer, TPZVec<TPZCompMesh*>& meshvec_Hybrid) {
-
-       
-    TPZCompMesh* fluxmesh = meshvec_Hybrid[0];
-    TPZGeoMesh* gmesh = fluxmesh->Reference();
-    fluxmesh->LoadReferences();
-    hybridizer.InsertPeriferalMaterialObjects(meshvec_Hybrid);
-    hybridizer.SetPointMatId(EPont);
-    for (auto cel:fluxmesh->ElementVec())
-    {
-        auto ncon = cel->NConnects();
-        for (int i = 0; i < ncon; i++)
-        {
-            auto con = cel->Connect(i) ;
-            std::cout << "Element " << cel->Index() << "connec " << i << " " << con << std::endl;
-        }
-        
-    }
-    
-    hybridizer.HybridizeInternalSides(meshvec_Hybrid);
-
-    // int dim = fluxmesh->Dimension();
-    // for (auto gel : gmesh->ElementVec()) {
-    //     if (gel->MaterialId() != EDomain) {
-    //         continue;
-    //     }
-    //     if (gel->Dimension() != dim) {
-    //         DebugStop();
-    //     }
-        
-    //     for (int iSide = 0; iSide < gel->NSides()-1; iSide++)
-    //     {
-    //         TPZGeoElSide gelside(gel,iSide);
-    //         // if (gelside.Element()->Dimension() != dim-1) continue;
-    //         TPZGeoElSide neigh = gelside.Neighbour();
-    //         TPZGeoEl* gelneigh = neigh.Element();
-    //         int neighmatid = gelneigh->MaterialId();
-            
-    //         if (neighmatid == EDomain){//Found another volumetric element
-    //             cout << "\nElement with ID " << gel->Id() << " and index " << gel->Index() << " is an intersection element" << endl;
-    //             cout << "===> Trying to split the connects of the flux mesh and create pressure element..." << endl;
-    //             TPZCompEl* celneigh = gelneigh->Reference();
-    //             TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (celneigh);
-    //             if (!intel)
-    //                 DebugStop();
-                
-    //             const int side = neigh.Side();
-    //             TPZCompElSide celsideleft(intel, side);
-    //             bool isNewInterface = hybridizer.HybridizeInterface(celsideleft,intel,side,meshvec_Hybrid);
-    //             if (isNewInterface) {
-    //                 break;
-    //             }
-    //             else{
-    //                 DebugStop();
-    //             }
-    //         }
-
-    //     }
-
-    // } 
-       
 }

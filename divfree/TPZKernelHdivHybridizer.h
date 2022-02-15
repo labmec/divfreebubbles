@@ -60,7 +60,7 @@ struct TPZKernelHdivHybridizer {
      * @param matIdBC = a std::set containing all BC' material id's to be hybridized
      * @param domainHyb = true if the domain is also hybridized, false otherwise
      */
-    void CreateWrapElements(TPZGeoMesh *geomesh, std::set<int> &matIdBC, bool domainHyb);
+    void CreateWrapElements(TPZGeoMesh *geomesh, std::set<int> &matIdBC, bool domainHyb, HDivFamily &hdivfam);
 
     /**
      * @brief Set the material id's needed to separate the geometric elements and perform the hybridation.

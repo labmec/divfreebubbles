@@ -44,16 +44,16 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 TEST_CASE("Hybridization test")
 {
 
-    const int xdiv = GENERATE(2,3);
-    const int pOrder = GENERATE(2,3);
-    HDivFamily hdivfam = GENERATE(HDivFamily::EHCurlNoGrads);//HDivKernel Should not work for tetrahedra
+    const int xdiv = GENERATE(1,2);
+    const int pOrder = GENERATE(2,3,4);
+    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);//HDivKernel Should not work for tetrahedra
     TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ENone,  
-                                                                       TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid,
-                                                                       TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+                                                                       TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+                                                                    //    TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
     
-    // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace);
-    TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace);
+    TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
+    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); // HDivConstant not working because of the number of equations. We need to change it to HCurlNoGrad
     // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
@@ -71,9 +71,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     gradU(0,0) = 2*x;
     gradU(1,0) = -2.*y;
     gradU(2,0) = 0.;
-    // u[0]= y;
-    // gradU(0,0) = 0.;
-    // gradU(1,0) = 1.;
+    // u[0]= x;
+    // gradU(0,0) = 1.;
+    // gradU(1,0) = 0.;
     // gradU(2,0) = 0.;
 
     // REAL aux = 1./sinh(sqrt(2)*M_PI);
@@ -120,31 +120,51 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
-    // util.PrintGeoMesh(gmesh);
+    util.PrintGeoMesh(gmesh);
 
-    TPZManVector< TPZCompMesh *, 2> meshvector(2);
+    //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
+    int nMeshes = 2;
+    if (approxSpace != TPZApproxSpaceKernelHdiv<STATE>::ENone && hdivfamily == HDivFamily::EHDivConstant) {
+        nMeshes = 3;
+    }
+    TPZVec<TPZCompMesh *> meshvector;
+    meshvector.Resize(nMeshes);
 
     //Flux mesh
     meshvector[0] = createSpace.CreateFluxCMesh();
     std::string fluxFile = "FluxCMesh";
     util.PrintCompMesh(meshvector[0],fluxFile);
-
+    // std::cout << "Flux mesh \n";
+    // util.PrintCMeshConnects(meshvector[0]);
+    
     //Pressure mesh
     meshvector[1]  = createSpace.CreatePressureCMesh();
     std::string presFile = "PressureCMesh";
     util.PrintCompMesh(meshvector[1],presFile);
+    // std::cout << "Pressure mesh \n";
+    // util.PrintCMeshConnects(meshvector[1]);
+
+    if (approxSpace != TPZApproxSpaceKernelHdiv<STATE>::ENone && hdivfamily == HDivFamily::EHDivConstant) {
+        meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
+        util.PrintCompMesh(meshvector[1],presFile);
+        // std::cout << "Pressure mesh2 \n";
+        // util.PrintCMeshConnects(meshvector[2]);
+    }
     
     //Multiphysics mesh
     auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
     std::string multFile = "MultiCMesh";
     util.PrintCompMesh(cmesh,multFile);
+    // std::cout << "Multi mesh \n";
+    // util.PrintCMeshConnects(cmesh);
 
     // Number of equations without condense elements
     int nEquationsFull = cmesh->NEquations();
+    std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
     // Group and condense the elements
     if (DIM == 2){
-        createSpace.Condense(cmesh);
+        // createSpace.Condense(cmesh);
     }
 
     //Number of condensed problem.
@@ -155,7 +175,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Solve problem
     bool filter = false;
-    if (DIM == 3) filter = true;
+    if (DIM == 3 && hdivfamily != HDivFamily::EHDivConstant) filter = true;
     createSpace.Solve(an, cmesh, true, filter);
     an.SetExact(exactSol,pOrder);
 

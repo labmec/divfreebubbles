@@ -122,7 +122,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{12};
+    constexpr int nThreads{0};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
@@ -186,7 +186,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{10};
+    constexpr int nThreads{0};
     //defines storage scheme to be used for the FEM matrices
     //in this case, a symmetric skyline matrix is used
     // TPZSkylineStructMatrix<STATE> matskl(cmesh);

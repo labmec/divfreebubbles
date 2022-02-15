@@ -17,7 +17,6 @@
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZCompElKernelHDivBC3D.h"
-#include "TPZHybridizeHDivKernel.h"
 #include "TPZEnumApproxFamily.h"
 
 class TPZCompMesh;
@@ -121,6 +120,7 @@ public:
      * @return TPZCompMesh* 
      */
     TPZCompMesh * CreatePressureCMesh();
+    TPZCompMesh * CreatePressureCMeshHybridizedHDivConstant();
 
     /**
      * @brief Create the Multiphysics mesh (always, even when the pressure
@@ -133,7 +133,6 @@ public:
      * @return TPZMultiphysicsCompMesh* 
      */
     TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
-    TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet, TPZHybridizeHDivKernel &hybridHDiv);
     
     /// Parameters needed for creating a hybrid KernelHdiv space
     struct TConfig
@@ -200,7 +199,9 @@ public:
     }
 
     void CreateOrientedBoundaryElements();
-        
+    
+    void CreateFluxHybridezedHDivKernel(TPZCompMesh *cmesh);
+    void CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh);
 };
 
 #endif //TPZApproxSpaceKernelHdiv
