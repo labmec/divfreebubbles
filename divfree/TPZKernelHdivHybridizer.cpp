@@ -236,30 +236,30 @@ void TPZKernelHdivHybridizer::AssociateElements(TPZCompMesh *cmesh, TPZVec<int64
 
         // std::cout << "Connect List = " << connectlist << std::endl;
         int k = -1;
-        // //Only internal 
-        // auto index = cel->Index();
-        // auto nCon = cel->NConnects();
-        // auto cindex = cel->ConnectIndex(nCon-1);
-        // // std::cout << "CINDEX = " << cindex << std::endl;
-        // groupindex[cindex] = cel->Index();
+        //Only internal 
+        auto index = cel->Index();
+        auto nCon = cel->NConnects();
+        auto cindex = cel->ConnectIndex(nCon-1);
+        // std::cout << "CINDEX = " << cindex << std::endl;
+        groupindex[cindex] = cel->Index();
 
-        for (auto cindex : connectlist) {
-            // k++;
-            // auto gel = cel->Reference();
-            // TPZGeoElSide geoside(gel,k);
-            // if (geoside.Dimension() == dim-1){
-            //     TPZGeoElSide neighbour = geoside.Neighbour();
-            //     auto Nneighbour = neighbour.Element()->Neighbour(2);
-            //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
-            //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
-            //         continue;
-            //     }
-            // }
+        // for (auto cindex : connectlist) {
+        //     // k++;
+        //     // auto gel = cel->Reference();
+        //     // TPZGeoElSide geoside(gel,k);
+        //     // if (geoside.Dimension() == dim-1){
+        //     //     TPZGeoElSide neighbour = geoside.Neighbour();
+        //     //     auto Nneighbour = neighbour.Element()->Neighbour(2);
+        //     //     std::cout << "Nmaterial = " << neighbour.Element()->MaterialId() << " " << Nneighbour.Element()->MaterialId()<< " " << Nneighbour.Element()->Neighbour(2).Element()->MaterialId() << std::endl;
+        //     //     if (matIdBC.find(Nneighbour.Element()->Neighbour(2).Element()->MaterialId()) != matIdBC.end()) {
+        //     //         continue;
+        //     //     }
+        //     // }
 
-            if (groupindex[cindex] == -1) {
-                groupindex[cindex] = cel->Index();
-            }
-        }
+        //     if (groupindex[cindex] == -1) {
+        //         groupindex[cindex] = cel->Index();
+        //     }
+        // }
     }
     // std::cout << "Groups of connects " << groupindex << std::endl;
     // std::cout << "Groups of connects " << groupindex2 << std::endl;

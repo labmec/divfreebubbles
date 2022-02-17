@@ -15,6 +15,37 @@
 #include "pzshapecube.h"
 #include "pzshapetetra.h"
 
+/** @brief Returns the name of the HDiv Family approximation space. */
+inline std::string MHDivFamily_Name(HDivFamily hdivfam)
+{
+	switch (hdivfam)
+	{
+		case HDivFamily::EHDivStandard:
+		{
+			return "EHDivStandard";
+		}
+		case HDivFamily::EHDivConstant:
+		{
+			return "EHDivConstant";
+		}
+		case HDivFamily::EHDivKernel:
+		{
+			return "EHDivKernel";
+		}
+		case HDivFamily::EHCurlNoGrads:
+		{
+			return "EHCurlNoGrads";
+		}
+		default:
+        {
+            return "HDivFamily not found!";
+        }
+    }
+    DebugStop();
+	return "";
+}
+
+
 enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb};
 
 /**
@@ -44,17 +75,17 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 TEST_CASE("Hybridization test")
 {
 
-    const int xdiv = GENERATE(1,2);
+    const int xdiv = GENERATE(2,3);
     const int pOrder = GENERATE(2,3,4);
-    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);//HDivKernel Should not work for tetrahedra
-    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ENone,  
-                                                                       TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHCurlNoGrads);//HDivKernel Should not work for tetrahedra
+    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ENone);
+                                                                        // TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
     
-    TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); // HDivConstant not working because of the number of equations. We need to change it to HCurlNoGrad
-    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace);
+    TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); // HDivConstant not working because of the number of equations. We need to change it to HCurlNoGrad
+    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 //Analytical solution
@@ -68,9 +99,14 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 
     const auto &d = 1.; // distance between injection and production wells
     u[0]= x*x-y*y ;
-    gradU(0,0) = 2*x;
-    gradU(1,0) = -2.*y;
+    gradU(0,0) = -2*x;
+    gradU(1,0) = 2.*y;
     gradU(2,0) = 0.;
+    
+    // u[0] = x*x*x*y - y*y*y*x;
+    // gradU(0,0) = (3.*x*x*y - y*y*y);
+    // gradU(1,0) = (x*x*x - 3.*y*y*x);
+
     // u[0]= x;
     // gradU(0,0) = 1.;
     // gradU(1,0) = 0.;
@@ -90,7 +126,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 {
 
     std::cout << "\nTest Case: \nTopology = " << MElementType_Name(tshape::Type()) << 
-                 ", xdiv = " << xdiv << ", pOrder = " << pOrder << "\n\n "; 
+                 ", xdiv = " << xdiv << ", pOrder = " << pOrder << ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
     
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
@@ -100,7 +136,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     
     // Creates/import a geometric mesh
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
-    // auto gmesh = ReadMeshFromGmsh<tshape>("../mesh/2tetra.msh");
+    // auto gmesh = ReadMeshFromGmsh<tshape>("../mesh/1element.msh");
 
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -120,7 +156,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
-    util.PrintGeoMesh(gmesh);
+    // util.PrintGeoMesh(gmesh);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
     int nMeshes = 2;
@@ -283,3 +319,28 @@ ReadMeshFromGmsh(std::string file_name)
 
     return gmesh;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -60,6 +60,8 @@ private:
 
     bool isCube = false;// a bool variable to know if it is an hexahedral mesh
 
+    REAL fBigNumber = 1.e10;
+
 public:
     /// default constructor
     TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, HDivFamily shapetype = HDivFamily::EHDivKernel);
@@ -169,6 +171,8 @@ public:
         
         /// copy operator
         TConfig &operator=(const TConfig &copy);
+
+        
     };
 
     /// object which contains the relevant information for create a hybrid H1 mesh

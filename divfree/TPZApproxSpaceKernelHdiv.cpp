@@ -124,20 +124,20 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         cmesh->InsertMaterialObject(mat);
         mat->SetDimension(fDimension);
         if (*it == fConfig.fEdgeRemove) mat->SetDimension(1);
-        mat->SetBigNumber(1.e10);
+        mat->SetBigNumber(fBigNumber);
     } 
 
     for (std::set<int>::iterator it=fConfig.fBCMatId.begin(); it!=fConfig.fBCMatId.end(); ++it)
     {
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it,fDimension-1);
         cmesh->InsertMaterialObject(mat);
-        mat->SetBigNumber(1.e10);
+        mat->SetBigNumber(fBigNumber);
     } 
 
     set_symmetric_difference(fConfig.fBCMatId.begin(), fConfig.fBCMatId.end(), fConfig.fBCHybridMatId.begin(), fConfig.fBCHybridMatId.end(), inserter(allMat, allMat.begin()));
     
     //Creates computational elements
-    if (fSpaceType == ENone){//No hybridization (so easy...)
+    if (fSpaceType == ENone && fConfig.fBCHybridMatId.size() == 0){//No hybridization (so easy...)
        
         cmesh->ApproxSpace().SetHDivFamily(fShapeType);
         cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(fDimension);
@@ -203,14 +203,14 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
         mat->SetDimension(1);
         cmesh->InsertMaterialObject(mat);
-        mat->SetBigNumber(1.e10);
+        mat->SetBigNumber(fBigNumber);
     }
 
     if (fShapeType == HDivFamily::EHDivConstant){
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(fConfig.fDomain);
         mat->SetDimension(fDimension);
         cmesh->InsertMaterialObject(mat);
-        mat -> SetBigNumber(1.e10);
+        mat -> SetBigNumber(fBigNumber);
 
         cmesh->SetAllCreateFunctionsDiscontinuous();
 
@@ -292,7 +292,7 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
 
     // mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
-    mat -> SetBigNumber(1.e10);
+    mat -> SetBigNumber(fBigNumber);
     // mat->NStateVariables(3);
 
     //Boundary Conditions
@@ -404,6 +404,12 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
         if(!gel) DebugStop();
         auto type = gel -> Type();
         auto matid = gel->MaterialId();
+
+        // We only create points here if we are hybridizing HDivFamily::EHDivConstant
+        if (gel->Dimension() == 0  && fSpaceType == ENone){
+            CreateHDivKernelBoundPointEl(gel,*cmesh,fShapeType);
+        }
+
         if (matid != fConfig.fDomain) continue;
 
         using namespace pzgeom;
@@ -435,9 +441,9 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
                 break;
             }
         }
-        
+    
         // For dim = 2 we need to create a point element
-        if (fDimension == 2){
+        if (fDimension == 2 && fSpaceType != ENone){
             TPZGeoElSide gelside(gel,0);
             TPZGeoElSide neighbour = gelside.Neighbour();
             if (fShapeType == HDivFamily::EHDivConstant) continue;
@@ -458,6 +464,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
 
             //Creates the computational elements. Both wrap, BC and interface
             if (fDimension == 2){
+                if (neighbour.Element()->MaterialId() == fConfig.fDomain) continue;
                 CreateHDivKernelBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);                       
             } else if (fDimension == 3){
                 switch (type){
@@ -473,12 +480,14 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
                 }
             }
         }
-        //Finally reset the reference of all neighbours
-        for (int side = 0; side < gel->NSides(); side++)
-        {
-            TPZGeoElSide gelside(gel,side);
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            neighbour.Element()->ResetReference();
+        if (fSpaceType != ENone){
+            //Finally reset the reference of all neighbours
+            for (int side = 0; side < gel->NSides(); side++)
+            {
+                TPZGeoElSide gelside(gel,side);
+                TPZGeoElSide neighbour = gelside.Neighbour();
+                neighbour.Element()->ResetReference();
+            }
         }
     } 
 
@@ -490,10 +499,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
     if (fSpaceType == ESemiHybrid){
         hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     }
-
 }
-
-
 
 template<class TVar>
 void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh)
@@ -612,14 +618,14 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivC
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
         mat->SetDimension(1);
         cmesh->InsertMaterialObject(mat);
-        mat->SetBigNumber(1.e10);
+        mat->SetBigNumber(fBigNumber);
     }
 
     if (fShapeType == HDivFamily::EHDivConstant){
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(fConfig.fLagrange);
         mat->SetDimension(fDimension-1);
         cmesh->InsertMaterialObject(mat);
-        mat -> SetBigNumber(1.e10);
+        mat -> SetBigNumber(fBigNumber);
 
         cmesh->SetAllCreateFunctionsDiscontinuous();
 

@@ -74,9 +74,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
     gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
     gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
-    u[0] = 1.;
-    gradU(0,0) = 0.;
-    gradU(1,0) = 0.;
+    // u[0] = 1.;
+    // gradU(0,0) = 0.;
+    // gradU(1,0) = 0.;
 
 };
 
@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{1};
+    constexpr int pOrder{4};
       
 
 #ifdef PZ_LOG
@@ -107,10 +107,11 @@ TPZLogger::InitializePZLOG();
         stringtoint[1]["Right"] = 3;
         stringtoint[1]["Top"] = 4;
         stringtoint[1]["Left"] = 5;
-        stringtoint[0]["Point"] = 6;
-        stringtoint[1]["Top2"] = 7;
+        stringtoint[1]["Left"] = 6;
+        stringtoint[1]["Left"] = 7;
+        stringtoint[0]["Point"] = 8;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/1element.msh",gmesh);
+        reader.GeometricGmshMesh("../mesh/newMesh.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -125,15 +126,15 @@ TPZLogger::InitializePZLOG();
     //Insert here the BC material id's to be hybridized
     std::set<int> matBCHybrid={};
     //Insert here the type of all boundary conditions
-    std::set<int> matIDNeumann{};
-    std::set<int> matIDDirichlet{EInjection,EProduction,ERight,ETop,EBottom,ELeft};
+    std::set<int> matIDNeumann{EInjection,EProduction};
+    std::set<int> matIDDirichlet{ERight,ETop,EBottom,ELeft};
     /// All bc's mat ID's
     std::set<int> matBC;
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
-                                                TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid,
+                                                TPZApproxSpaceKernelHdiv<STATE>::ENone,
                                                 HDivFamily::EHDivKernel);
 
     //Setting material ids      
@@ -141,20 +142,20 @@ TPZLogger::InitializePZLOG();
     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
-    util.PrintGeoMesh(gmesh);
+    // util.PrintGeoMesh(gmesh);
 
     //Flux mesh
     TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-    std::cout << "FLUX \n";
-    util.PrintCMeshConnects(cmeshfluxNew);
+    // std::cout << "FLUX \n";
+    // util.PrintCMeshConnects(cmeshfluxNew);
     std::string fluxFile = "FluxCMesh";
     util.PrintCompMesh(cmeshfluxNew,fluxFile);
     std::cout << "h = " << cmeshfluxNew->MaximumRadiusOfMesh() << std::endl;
 
     //Pressure mesh
     TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-    std::cout << "PRESSURE \n";
-    util.PrintCMeshConnects(cmeshpressureNew);
+    // std::cout << "PRESSURE \n";
+    // util.PrintCMeshConnects(cmeshpressureNew);
     std::string pressureFile = "PressureCMesh";
     util.PrintCompMesh(cmeshpressureNew,pressureFile);
 
@@ -167,10 +168,10 @@ TPZLogger::InitializePZLOG();
     meshvectorNew[1] = cmeshpressureNew;      
 
        auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-    std::cout << "MULTIPHYSICS \n";
-    util.PrintCMeshConnects(cmeshNew);
+    // std::cout << "MULTIPHYSICS \n";
+    // util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
-    // createSpace.Condense(cmeshNew);
+    createSpace.Condense(cmeshNew);
     std::string multiphysicsFile = "MultiPhysicsMeshNew";
     util.PrintCompMesh(cmeshNew,multiphysicsFile);
     std::cout << "Number of equations = " << cmeshNew->NEquations() << std::endl;

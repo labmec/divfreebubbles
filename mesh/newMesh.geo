@@ -18,8 +18,8 @@ Line(5) = {7, 2};
 Line(6) = {2, 6};
 Line(7) = {2, 4};
 
-nh = 5; ph = 1; 
-nv = 5; pv = 1.1; pa = 1;
+nh = 2; ph = 1; 
+nv = 2; pv = 1; pa = 1;
 //nh = 23; ph = 1; 
 //nv = 33; pv = 1.1; pa = 1;
 Transfinite Curve {1, 2, 7} = nh Using Progression ph;
@@ -49,4 +49,4 @@ Physical Curve("RightLine") = {4};//7
 
 
 //+
-//Physical Point("Point") = {5};
+Physical Point("Point") = {2};
