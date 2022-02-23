@@ -79,9 +79,16 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     u[0] = x*x*x*y - y*y*y*x;
     gradU(0,0) = (3.*x*x*y - y*y*y);
     gradU(1,0) = (x*x*x - 3.*y*y*x);
-    // u[0] = x;
-    // gradU(0,0) = 1.;
-    // gradU(1,0) = 0.;
+    u[0] = x;
+    gradU(0,0) = 1.;
+    gradU(1,0) = 0.;
+
+    REAL a1 = 1./4;
+    REAL alpha = M_PI/2;
+    u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
+    gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
+    gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
+
 };
 
 
@@ -91,7 +98,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{2};
+    constexpr int pOrder{5};
       
 
 #ifdef PZ_LOG
@@ -138,7 +145,7 @@ TPZLogger::InitializePZLOG();
     /// Creates the approximation space - Set the type of domain hybridization
     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                 TPZApproxSpaceKernelHdiv<STATE>::ENone,
-                                                HDivFamily::EHDivKernel);
+                                                HDivFamily::EHDivConstant);
 
     //Setting material ids      
     createSpace.fConfig.fDomain = EDomain;
@@ -168,8 +175,8 @@ TPZLogger::InitializePZLOG();
     TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
     meshvectorNew[0] = cmeshfluxNew;
     meshvectorNew[1] = cmeshpressureNew;       
-    auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
-    // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
+    // auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,LaplaceExact.ExactSolution(),matIDNeumann,matIDDirichlet);
+    auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
     // std::cout << "MULTIPHYSICS \n";
     // util.PrintCMeshConnects(cmeshNew);
     // Group and condense the elements
@@ -183,8 +190,8 @@ TPZLogger::InitializePZLOG();
 
     std::cout << "Number of equations = " << cmeshNew->NEquations() << std::endl;
 
-    // anNew.SetExact(exactSol,solOrder);
-    anNew.SetExact(LaplaceExact.ExactSolution(),solOrder);
+    anNew.SetExact(exactSol,solOrder);
+    // anNew.SetExact(LaplaceExact.ExactSolution());
     //Print results
     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
 

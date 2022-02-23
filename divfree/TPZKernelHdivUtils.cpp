@@ -122,7 +122,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{12};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
@@ -264,8 +264,8 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ostream 
     std::cout << "H1 Norm = " << std::scientific << std::setprecision(15) << error[0]<<'\n';
     std::cout << "L1 Norm = " << std::scientific << std::setprecision(15) << error[1]<<'\n'; 
     std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[2]<<'\n'; 
-    // std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[3]<<'\n'; 
-    // std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[4]<<'\n'; 
+    std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[3]<<'\n'; 
+    std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[4]<<'\n'; 
     // std::cout << "error 4 = " << error[3]<<'\n'; 
     // std::cout << "error 5 = " << error[4] << "\n\n";
 }

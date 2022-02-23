@@ -206,6 +206,7 @@ public:
     
     void CreateFluxHybridezedHDivKernel(TPZCompMesh *cmesh);
     void CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh);
+
 };
 
 #endif //TPZApproxSpaceKernelHdiv

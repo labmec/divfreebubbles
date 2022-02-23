@@ -105,9 +105,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 
     REAL aux = 1./sinh(sqrt(2)*M_PI);
     u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 };
 
 
@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{3};
-    constexpr int pOrder{1};
+    constexpr int pOrder{3};
       
 
 #ifdef PZ_LOG
@@ -142,11 +142,11 @@ TPZLogger::InitializePZLOG();
     // }
     
     //for now this should suffice
-    const int xdiv = 2;
-    const int ydiv = 1;
-    const int zdiv = 1;
+    const int xdiv = 16;
+    // const int ydiv = 1;
+    // const int zdiv = 1;
     const MMeshType meshType = MMeshType::EHexahedral;
-    const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+    const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
 
     TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
     // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
@@ -167,7 +167,7 @@ TPZLogger::InitializePZLOG();
         
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    HDivFamily::EHDivKernel); // Shape Type
+                                                    HDivFamily::EHCurlNoGrads); // Shape Type
 
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
@@ -194,7 +194,7 @@ TPZLogger::InitializePZLOG();
         std::cout << "Equations without condense = " << cmesh->NEquations() - gmesh->NNodes()+1 << std::endl;
         // Group and condense the elements
         // createSpace.Condense(cmesh);
-        TPZCompMeshTools::CreatedCondensedElements(cmesh,false,false);
+        // TPZCompMeshTools::CreatedCondensedElements(cmesh,false,false);
 
         std::string multiphysicsFile1 = "MultiPhysicsMeshNew2";
         util.PrintCompMesh(cmesh,multiphysicsFile1);

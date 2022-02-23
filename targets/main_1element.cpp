@@ -28,6 +28,9 @@
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZCompElH1.h"
+#include "TPZAnalyticSolution.h"
+#include "TPZCompMeshTools.h"
+
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *FluxCMeshDFB(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
@@ -50,10 +53,10 @@ auto exactSolError = [](const TPZVec<REAL> &loc,
   TPZFMatrix<STATE>&gradU){
   const auto &x=loc[0];
   const auto &y=loc[1];
-  const auto &d = 1.; // distance between injection and production wells
-  u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
-  gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
-  gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+//   const auto &d = 1.; // distance between injection and production wells
+//   u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+//   gradU(0,0) = (x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
+//   gradU(1,0) = (y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
 //Harmonic2
 // REAL a1 = 0.25;
 // REAL alpha = M_PI/2;
@@ -64,6 +67,11 @@ auto exactSolError = [](const TPZVec<REAL> &loc,
     // u[0] = x;
     // gradU(0,0) = 1.;
     // gradU(1,0) = 0.;
+    REAL a1 = 1./4;
+    REAL alpha = M_PI/2;
+    u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
+    gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
+    gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
 
 };
 
@@ -72,10 +80,10 @@ auto exactSolError2 = [](const TPZVec<REAL> &loc,
   TPZFMatrix<STATE>&gradU){
   const auto &x=loc[0];
   const auto &y=loc[1];
-  const auto &d = 1.; // distance between injection and production wells
-  u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
-  gradU(0,0) = -(x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
-  gradU(1,0) = -(y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
+//   const auto &d = 1.; // distance between injection and production wells
+//   u[0]= log(hypot(x,y)) - log(hypot(x-d,y-d)) - log(hypot(x+d,y-d)) - log(hypot(x-d,y+d)) - log(hypot(x+d,y+d));
+//   gradU(0,0) = -(x/(x*x+y*y) - (x-d)/(pow(x-d,2)+pow(y-d,2)) - (x+d)/(pow(x+d,2)+pow(y-d,2)) - (x-d)/(pow(x-d,2)+pow(y+d,2)) - (x+d)/(pow(x+d,2)+pow(y+d,2)));
+//   gradU(1,0) = -(y/(x*x+y*y) - (y-d)/(pow(x-d,2)+pow(y-d,2)) - (y-d)/(pow(x+d,2)+pow(y-d,2)) - (y+d)/(pow(x-d,2)+pow(y+d,2)) - (y+d)/(pow(x+d,2)+pow(y+d,2)));
 //Harmonic2
 // REAL a1 = 0.25;
 // REAL alpha = M_PI/2;
@@ -86,6 +94,11 @@ auto exactSolError2 = [](const TPZVec<REAL> &loc,
     // u[0] = x;
     // gradU(0,0) = 1.;
     // gradU(1,0) = 0.;
+    REAL a1 = 1./4;
+    REAL alpha = M_PI/2;
+    u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
+    gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
+    gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
 
 };
 
@@ -103,7 +116,7 @@ enum EMatid {ENone, EDomain, EInjection, EProduction, EBottom, ERight, ETop, ELe
 int main(int argc, char* argv[]){
     //dimension of the problem
     constexpr int dim{2};
-    constexpr int pOrder{1};
+    constexpr int pOrder{4};
 
 #ifdef PZ_LOG
 TPZLogger::InitializePZLOG();
@@ -127,7 +140,7 @@ TPZLogger::InitializePZLOG();
         stringtoint[0]["Point"] = 8;
         stringtoint[1]["BottomLine2"] = 9;
         reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh(string(MESHDIR)+"newMesh.msh",gmesh);
+        reader.GeometricGmshMesh(string(MESHDIR)+"1element.msh",gmesh);
         std::ofstream out("gmesh.vtk");
         TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     }
@@ -163,6 +176,8 @@ TPZLogger::InitializePZLOG();
         // util.PrintCMeshConnects(cmesh);
         // std::string fluxFile = "MCMeshTriangle";
         // util.PrintCompMesh(cmesh,fluxFile);
+        // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
+
 
         //Solve Multiphysics
         TPZLinearAnalysis an(cmesh,true);

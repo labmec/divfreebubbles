@@ -140,11 +140,11 @@ TPZLogger::InitializePZLOG();
     // }
     
     //for now this should suffice
-    const int xdiv = 2;
-    const int ydiv = 2;
-    const int zdiv = 2;
+    const int xdiv = 16;
+    // const int ydiv = 2;
+    // const int zdiv = 2;
     const MMeshType meshType = MMeshType::EHexahedral;
-    const TPZManVector<int,3> nDivs = {xdiv,ydiv,zdiv};
+    const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
 
     TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
     // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);

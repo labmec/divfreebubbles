@@ -590,8 +590,10 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
         
         TPZInterpolationSpace *intel = dynamic_cast<TPZInterpolationSpace *>(cel);
         auto nsides = cel->Reference()->NSides();
-        auto ncorner = cel->Reference()->NCornerNodes();
-        for (int i = ncorner; i<nsides-1; i++){
+        auto nfacets = cel->Reference()->NSides(fDimension-1);
+
+        int firstside = nsides-nfacets-1;
+        for (int i = firstside; i<nsides-1; i++){
             intel->SetSideOrient(i,1);
         }
     }
@@ -630,6 +632,9 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivC
         cmesh->SetAllCreateFunctionsDiscontinuous();
 
         cmesh->SetDefaultOrder(fDefaultPOrder-1);
+        if (isCube) {
+            cmesh->SetDefaultOrder(fDefaultPOrder);
+        }
         cmesh->SetDimModel(fDimension-1);
         cmesh->AutoBuild();
 

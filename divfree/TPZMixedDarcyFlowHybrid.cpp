@@ -425,6 +425,9 @@ void TPZMixedDarcyFlowHybrid::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data
 
     TPZManVector<STATE, 3> fluxfem(3), pressurefem(1,0);
     fluxfem = data[0].sol[0];
+    auto gradFluxFem = data[0].dsol[0];
+    auto divFluxFem = data[0].divsol[0];
+    
     STATE divsigmafem = data[0].divsol[0][0];
 
     auto dsol = data[1].dsol;
@@ -441,6 +444,11 @@ void TPZMixedDarcyFlowHybrid::Errors(const TPZVec<TPZMaterialDataT<STATE>> &data
     }
 
     REAL residual = (divsigma[0] - divsigmafem) * (divsigma[0] - divsigmafem);
+    REAL residual2=0.;
+    if (Dimension() == 2){
+        residual2 = divsigmafem*divsigmafem;
+    }
+    
     if(data[1].sol[0].size())
         pressurefem[0] = data[1].sol[0][0];
 
