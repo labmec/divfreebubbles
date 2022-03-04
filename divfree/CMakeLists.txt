@@ -15,11 +15,13 @@ set(MATERIAL_SRCS
 
 
 set(MESH_HEADERS
-
+    TPZCompElHDivSemiHybrid.h
+    TPZCompElHDivSemiHybridBound.h
   )
 
 set(MESH_SRCS
-
+    TPZCompElHDivSemiHybrid.cpp
+    TPZCompElHDivSemiHybridBound.cpp
   )
 
 # let us create a config file with the directory containing the meshes

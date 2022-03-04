@@ -105,7 +105,7 @@ TEST_CASE("Hybridization test")
     const int xdiv = GENERATE(2);
     const int pOrder = GENERATE(1);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);//HDivKernel Should not work for tetrahedra
-    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);//,
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
     

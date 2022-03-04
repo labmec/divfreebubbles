@@ -27,6 +27,7 @@
 #include "Projection/TPZHCurlProjection.h"
 #include "pzelchdiv.h"
 #include "pzelchdivbound2.h"
+#include "TPZCompElHDivSemiHybrid.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -521,10 +522,22 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
         if (fDimension == 2){
             switch (type){
             case ETriangle:
-                CreateHDivTriangleEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == ESemiHybrid){
+                    CreateHDivSemiHybridTriangleEl(gel,*cmesh,fShapeType);
+                } else if (fSpaceType == EFullHybrid){
+                    CreateHDivTriangleEl(gel,*cmesh,fShapeType);
+                } else {
+                    DebugStop();
+                }
                 break;
             case EQuadrilateral:
-                CreateHDivQuadEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == ESemiHybrid){
+                    CreateHDivSemiHybridQuadEl(gel,*cmesh,fShapeType);
+                } else if (fSpaceType == EFullHybrid){
+                    CreateHDivQuadEl(gel,*cmesh,fShapeType);
+                } else {
+                    DebugStop();
+                }
                 break;
             default:
                 DebugStop();
@@ -533,10 +546,22 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
         } else if (fDimension == 3){
             switch (type){
             case ECube:
-                CreateHDivCubeEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == ESemiHybrid){
+                    CreateHDivSemiHybridCubeEl(gel,*cmesh,fShapeType);
+                } else if (fSpaceType == EFullHybrid){
+                    CreateHDivCubeEl(gel,*cmesh,fShapeType);
+                } else {
+                    DebugStop();
+                }
                 break;
             case ETetraedro:
-                CreateHDivTetraEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == ESemiHybrid){
+                    CreateHDivSemiHybridTetraEl(gel,*cmesh,fShapeType);
+                } else if (fSpaceType == EFullHybrid){
+                    CreateHDivTetraEl(gel,*cmesh,fShapeType);
+                } else {
+                    DebugStop();
+                }
                 break;
             default:
                 DebugStop();
@@ -553,7 +578,11 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
 
             //Creates the computational elements. Both wrap, BC and interface
             if (fDimension == 2){
-                CreateHDivBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);                       
+                if (fSpaceType == ESemiHybrid){
+                    CreateHDivSemiHybridLinearEl(neighbour.Element(),*cmesh,fShapeType);
+                }else {
+                    CreateHDivBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);   
+                }
             } else if (fDimension == 3){
                 switch (type){
                 case ETetraedro:
