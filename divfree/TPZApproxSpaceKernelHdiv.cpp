@@ -15,7 +15,6 @@
 #include <TPZNullMaterial.h>
 #include "TPZCompElKernelHDiv.h"
 #include "TPZCompElKernelHDiv3D.h"
-#include "TPZCompElKernelHDivBC.h"
 #include "Projection/TPZL2ProjectionCS.h"
 #include "TPZLagrangeMultiplierCS.h"
 #include <TPZNullMaterialCS.h>
@@ -36,6 +35,7 @@
 #include "pzshapetriang.h"
 #include "pzshapetetra.h"
 #include "pzshapeprism.h"
+using namespace pzshape;
 
 auto forcefunction = [](const TPZVec<REAL> &loc,
     TPZVec<STATE>&u){
@@ -145,7 +145,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         cmesh->AutoBuild();
 
     } else { // Hybridization active
-        if (fShapeType == HDivFamily::EHDivKernel || fShapeType == HDivFamily::EHCurlNoGrads){
+        if (fShapeType == HDivFamily::EHDivKernel){
             CreateFluxHybridezedHDivKernel(cmesh);
         } else if (fShapeType == HDivFamily::EHDivConstant) {
             CreateFluxHybridezedHDivConstant(cmesh);
@@ -154,37 +154,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
             DebugStop();
         }
     }// end if hybridization
-
-    //Set the connect as equal to the removed edge
-    // cmesh->LoadReferences();
-    // int count = 0;
-    // for (auto cel : cmesh->ElementVec())
-    // {
-    //     cel->LoadElementReference();
-    //     auto gel = cel->Reference();
-    //     if (gel->Dimension() != 1) continue;
-    //     if (gel->MaterialId() != fConfig.fEdgeRemove) continue;
-        
-    //     cel->SetgOrder(0);
-    //     TPZGeoElSide geoside(gel,2);
-    //     TPZGeoElSide neighbour = geoside.Neighbour();
-
-    //     while (neighbour.Element()->MaterialId() != fConfig.fDomain){
-    //         neighbour = neighbour.Neighbour();
-    //     }
-        
-    //     //Descobrir qual o connect de aresta vizinha ao elemento 1D, que será removida
-    //     auto s = neighbour.Side() - 4;
-    //     TPZGeoElSide neigh(neighbour.Element(),s);
-    //     auto neigh2 = neigh.Neighbour();
-    //     auto index = neighbour.Element()->Reference()->ConnectIndex(s);
-        
-    //     cel->SetConnectIndex(0,index);
-       
-    // }
-    
-    // hybridizer.EdgeRemove(cmesh);
-
 
     return cmesh;
 }
@@ -207,15 +176,21 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
         mat->SetBigNumber(fBigNumber);
     }
 
-    if (fShapeType == HDivFamily::EHDivConstant){
+    if (fShapeType == HDivFamily::EHDivConstant || fShapeType == HDivFamily::EHDivStandard){
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(fConfig.fDomain);
         mat->SetDimension(fDimension);
         cmesh->InsertMaterialObject(mat);
         mat -> SetBigNumber(fBigNumber);
 
-        cmesh->SetAllCreateFunctionsDiscontinuous();
-
-        cmesh->SetDefaultOrder(0);
+        if (fShapeType == HDivFamily::EHDivConstant) {
+            cmesh->SetAllCreateFunctionsDiscontinuous();
+            cmesh->SetDefaultOrder(0);
+        }
+        if (fShapeType == HDivFamily::EHDivStandard){
+            cmesh->SetDefaultOrder(fDefaultPOrder);
+            cmesh->SetAllCreateFunctionsContinuous();
+            cmesh->ApproxSpace().CreateDisconnectedElements(true);
+        }
         cmesh->SetDimModel(fDimension);
         cmesh->AutoBuild();
 
@@ -244,7 +219,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
 
         cmesh->InitializeBlock();
 
-        if(fSpaceType == ESemiHybrid || (fDefaultPOrder <= 1 && isCube==false) ){
+        if(fSpaceType == ESemiHybrid){
             cmesh->SetDefaultOrder(0);
             cmesh->SetDimModel(fDimension-1);
             cmesh->SetAllCreateFunctionsDiscontinuous();
@@ -252,11 +227,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
         } else {
             cmesh->SetAllCreateFunctionsContinuous();
             cmesh->ApproxSpace().CreateDisconnectedElements(true);
-            if (isCube){
-                cmesh->SetDefaultOrder(fDefaultPOrder);
-            } else {
-                cmesh->SetDefaultOrder(fDefaultPOrder-1);
-            }
+            cmesh->SetDefaultOrder(fDefaultPOrder);
             cmesh->SetDimModel(fDimension-1);
         }
         
@@ -361,22 +332,13 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
 {   
     for(auto gel : fGeoMesh->ElementVec())
     {
-        if (gel->Dimension() < 3) continue;
-        int sideStart = 0;
-        int sideEnd = 0;
-        if (gel->Type() == ETetraedro){
-            sideStart = 10;
-            sideEnd = 14;
-        } else if (gel->Type() == ECube){
-            isCube=true;
-            sideStart = 20;
-            sideEnd = 26;
-        } else if (gel->Type() == EPrisma){
-            sideStart = 15;
-            sideEnd = 20;
-        }
+        if (gel->Dimension() < fGeoMesh->Dimension()) continue;
+        
+        int nSides = gel->NSides();
         //For tetrahedra only, loop over the surface sides
-        for (int side = sideStart; side < sideEnd; side++){
+        for (int side = 0; side < nSides; side++){
+            if (gel->SideDimension(side) != gel->Dimension()-1) continue;
+
             TPZGeoElSide gelside(gel,side);
             TPZGeoElSide neighbour = gelside.Neighbour();
             //Neighbour material id
@@ -408,7 +370,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
 
         // We only create points here if we are hybridizing HDivFamily::EHDivConstant
         if (gel->Dimension() == 0  && fSpaceType == ENone){
-            CreateHDivKernelBoundPointEl(gel,*cmesh,fShapeType);
+            new TPZCompElH1<TPZShapePoint>(*cmesh,gel,H1Family::EH1Standard);
         }
 
         if (matid != fConfig.fDomain) continue;
@@ -449,7 +411,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
             TPZGeoElSide neighbour = gelside.Neighbour();
             if (fShapeType == HDivFamily::EHDivConstant) continue;
             if (neighbour.Element()->MaterialId() == fConfig.fPoint){
-                CreateHDivKernelBoundPointEl(neighbour.Element(),*cmesh,fShapeType);
+                new TPZCompElH1<TPZShapePoint>(*cmesh,neighbour.Element(),H1Family::EH1Standard);
             } else {
                 std::cout << "You need to provide a geometric point to each element for the hybridization in 2D\n" ;
                 DebugStop();
@@ -638,7 +600,7 @@ template<class TVar>
 TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivConstant()
 {
     std::set<int> matIdVec = fConfig.fBCHybridMatId;
-    if (fShapeType != HDivFamily::EHDivConstant) matIdVec.insert(fConfig.fLagrange);
+    matIdVec.insert(fConfig.fLagrange);
     
     fGeoMesh->ResetReference();
     TPZCompMesh *cmesh = new TPZCompMesh(fGeoMesh);
@@ -652,75 +614,31 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivC
         mat->SetBigNumber(fBigNumber);
     }
 
-    if (fShapeType == HDivFamily::EHDivConstant){
-        TPZNullMaterial<> *mat = new TPZNullMaterial<>(fConfig.fLagrange);
-        mat->SetDimension(fDimension-1);
-        cmesh->InsertMaterialObject(mat);
-        mat -> SetBigNumber(fBigNumber);
-
-        cmesh->SetAllCreateFunctionsDiscontinuous();
-
-        cmesh->SetDefaultOrder(fDefaultPOrder-1);
-        if (isCube) {
-            cmesh->SetDefaultOrder(fDefaultPOrder);
-        }
+    if(fSpaceType == ESemiHybrid){
+        cmesh->SetDefaultOrder(0);
         cmesh->SetDimModel(fDimension-1);
-        cmesh->AutoBuild();
-
-        int ncon = cmesh->NConnects();
-        for(int i=0; i<ncon; i++)
-        {
-            TPZConnect &newnod = cmesh->ConnectVec()[i]; 
-            newnod.SetLagrangeMultiplier(1);
-        }
-
-        // int nel = cmesh->NElements();
-        // for(int i=0; i<nel; i++){
-        //     TPZCompEl *cel = cmesh->ElementVec()[i];
-        //     TPZCompElDisc *celdisc = dynamic_cast<TPZCompElDisc *>(cel);
-        //     if(!celdisc) continue;
-        //     celdisc->SetConstC(1.);
-        //     celdisc->SetTrueUseQsiEta();
-        //     // espera-se elemento de pressao apenas para o contorno
-        //     auto aaa = celdisc->Reference()->Dimension();
-        //     // if(celdisc && celdisc->Reference()->Dimension() == cmesh->Dimension())
-        //     // {
-        //     //     DebugStop();
-        //     // }
-        // }
+        cmesh->SetAllCreateFunctionsDiscontinuous();
+        // cmesh->ApproxSpace().CreateDisconnectedElements(true);
     } else {
-
-        cmesh->InitializeBlock();
-
-        if(fSpaceType == ESemiHybrid || (fDefaultPOrder <= 1 && isCube==false) ){
-            cmesh->SetDefaultOrder(0);
-            cmesh->SetDimModel(fDimension-1);
-            cmesh->SetAllCreateFunctionsDiscontinuous();
-            // cmesh->ApproxSpace().CreateDisconnectedElements(true);
-        } else {
-            cmesh->SetAllCreateFunctionsContinuous();
-            cmesh->ApproxSpace().CreateDisconnectedElements(true);
-            if (isCube){
-                cmesh->SetDefaultOrder(fDefaultPOrder);
-            } else {
-                cmesh->SetDefaultOrder(fDefaultPOrder-1);
-            }
-            cmesh->SetDimModel(fDimension-1);
-        }
-        
-        cmesh->AutoBuild(matIdVec);
-        
-        if (fSpaceType == ESemiHybrid){
-            DebugStop();
-            hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
-        }
-
-        
-        for(auto &newnod : cmesh->ConnectVec())
-        {
-            newnod.SetLagrangeMultiplier(1);
-        }
+        cmesh->SetAllCreateFunctionsContinuous();
+        cmesh->ApproxSpace().CreateDisconnectedElements(true);
+        cmesh->SetDefaultOrder(fDefaultPOrder);
+        cmesh->SetDimModel(fDimension-1);
     }
+    
+    cmesh->AutoBuild(matIdVec);
+    
+    // if (fSpaceType == ESemiHybrid){
+    //     // DebugStop();
+    //     hybridizer.SemiHybridizePressure(cmesh,fDefaultPOrder,fConfig.fBCHybridMatId);
+    // }
+
+    
+    for(auto &newnod : cmesh->ConnectVec())
+    {
+        newnod.SetLagrangeMultiplier(1);
+    }
+
     return cmesh;
 }
 

@@ -40,6 +40,11 @@ public:
 
     virtual int64_t ConnectIndex(int con) const override;
 
+    /** 
+     * @brief return the local index for connect
+	 **/
+	virtual int SideConnectLocId(int node, int side) const override;
+    
 protected:
     
 	

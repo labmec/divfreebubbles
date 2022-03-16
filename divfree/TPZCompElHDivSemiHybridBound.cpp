@@ -4,6 +4,7 @@
 #include "TPZShapeHDivConstantBound.h"
 #include "pzlog.h"
 #include "pzcmesh.h"
+#include <sstream>
 
 #ifdef PZ_LOG
 static TPZLogger logger("pz.mesh.TPZCompElHDiv");
@@ -14,45 +15,18 @@ template<class TSHAPE>
 TPZCompElHDivSemiHybridBound<TSHAPE>::TPZCompElHDivSemiHybridBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
 TPZRegisterClassId(&TPZCompElHDivSemiHybridBound::ClassId), TPZCompElHDivBound2<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
-    std::cout << "ConIndex " << this->fConnectIndexes << std::endl;
-    this->fConnectIndexes.Resize(2);
-    //Allocate new connects for the faces
-    this->fConnectIndexes[1] =  this->fConnectIndexes[0] + 5;//mesh.AllocateNewConnect(0,1,pOrder);
-    // this->fConnectIndexes[1]= this->CreateMidSideConnect(TSHAPE::NSides-1);;
-    // mesh.ConnectVec()[this->fConnectIndexes[1]].IncrementElConnected();
+    this->fConnectIndexes.Resize(2);//Change it to 3D
 
-    
-    std::cout << "Connect " << this->ConnectVec() << std::endl;
+    //Get the index of the additional created connect
+    this->fConnectIndexes[1] = this->CreateMidSideConnect(TSHAPE::NSides-1);
 
-    constexpr auto nNodes = TSHAPE::NCornerNodes;
-    auto ncon = 2;//this->NConnects();
-    for(int icon = 0; icon < ncon; icon++){
-        const int connect = icon;//this->MidSideConnectLocId(icon+1);
-        TPZConnect &c = this->Connect(connect);
-        const int nshape =this->NConnectShapeF(connect,c.Order());
-        c.SetNShape(nshape);
-        const auto seqnum = c.SequenceNumber();
-        const int nStateVars = [&](){
-            TPZMaterial * mat =this-> Material();
-            if(mat) return mat->NStateVariables();
-            else {
-                return 1;
-            }
-        }();
-        this-> Mesh()->Block().Set(seqnum,nshape*nStateVars);
-    }
-
-
-    for (int i = 0; i<NConnects(); i++)
-    {
-        auto con = this->ConnectVec()[i];
-        std::cout << "C = " << con << std::endl;
-    }
-    
-    // for (int i = 0; i < this->Mesh()->ConnectVec().Size(); i++)
+    // for (int i = 0; i<NConnects(); i++)
     // {
-    //     std::cout << "Connect " << i << " " << this->Mesh()->Connect(i) << std::endl;
+    //     TPZConnect con = this->Connect(i);
+    //     std::cout << "C = " << con << std::endl;
+    //     std::cout << "NShape = " << con.NShape() << std::endl;
     // }
+    // std::cout << "\n\n\n";
     
 
 }
@@ -95,7 +69,13 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connec
         }    
         break;
     case HDivFamily::EHDivConstant:
-        return TPZShapeHDivConstantBound<TSHAPE>::ComputeNConnectShapeF(connect,connectorder);
+        {
+            int conCorrect = connect/2;
+            int res = connect % 2;
+            int nshape = TPZShapeHDivConstantBound<TSHAPE>::ComputeNConnectShapeF(connect,connectorder);
+            if (res == 1) nshape = 0;
+            return nshape;
+        }
         break;
     
     default:
@@ -107,19 +87,6 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connec
  }
 
 
-// NAO TESTADO
-template<class TSHAPE>
-void TPZCompElHDivSemiHybridBound<TSHAPE>::SetSideOrient(int side, int sideorient)
-{
-    this->fSideOrient = sideorient;
-}
-
-// NAO TESTADO
-template<class TSHAPE>
-int TPZCompElHDivSemiHybridBound<TSHAPE>::GetSideOrient(int side)
-{
-    return this->fSideOrient[0];
-}
 
 
 
@@ -150,6 +117,45 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::SideConnectLocId(int node, int side) c
 	return -1;
 	}
 	
+}
+
+template<class TSHAPE>
+int64_t TPZCompElHDivSemiHybridBound<TSHAPE>::CreateMidSideConnect(int side) {
+    TPZCompMesh *cmesh = this->Mesh();
+    TPZMaterial * mat = this->Material();
+#ifdef PZDEBUG
+    if (!mat) {
+        std::cout << __PRETTY_FUNCTION__ << " no material associated with matid " << this->Reference()->MaterialId() << std::endl;
+    }
+#endif
+    int nvar = 1;
+    if (mat) nvar = mat->NStateVariables();
+    int64_t newnodeindex = -1;
+    int64_t il;
+    int64_t nodloc = this->MidSideConnectLocId(side);
+
+    TPZStack<TPZCompElSide> elvec;
+    TPZCompElSide thisside(this, side);
+
+    // Connect looks for a connecting element of equal or lower level
+    TPZInterpolatedElement *cel = 0;
+    int side_neig = 0;
+    thisside.EqualLevelElementList(elvec, 1, 0);
+    int64_t nelem = elvec.NElements();
+    // find an element in the list which is interpolated
+    if (nelem) {
+        cel = dynamic_cast<TPZInterpolatedElement *> (elvec[0].Element());
+        side_neig = elvec[0].Side();
+    }
+    int64_t newnodecreated = 0;
+    if (cel) {
+        auto cind = cel->MidSideConnectLocId(side_neig);
+        newnodeindex = cel->ConnectIndex(cind+1);
+        return newnodeindex;    
+    } else {
+        DebugStop();
+    }
+    return newnodeindex;
 }
 
 

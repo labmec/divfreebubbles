@@ -51,7 +51,6 @@
 #include "TPZMatDivFreeBubbles.h"
 #include "Projection/TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHDiv.h"
-#include "TPZCompElKernelHDivBC.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
@@ -167,7 +166,7 @@ TPZLogger::InitializePZLOG();
         
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    HDivFamily::EHCurlNoGrads); // Shape Type
+                                                    HDivFamily::EHDivKernel); // Shape Type
 
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
@@ -384,7 +383,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *
         cmesh->InsertMaterialObject(mat);
     }
     
-    cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHCurlNoGrads);
+    cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHDivKernel);
     cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
     
     // cmesh->ApproxSpace().SetHCurlFamily(HCurlFamily::EHCurlNoGrads);

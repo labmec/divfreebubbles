@@ -24,7 +24,6 @@
 #include "TPZMatDivFreeBubbles.h"
 #include "Projection/TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHDiv.h"
-#include "TPZCompElKernelHDivBC.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZCompElH1.h"
@@ -369,7 +368,7 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMes
             // nullmat->SetDimension(0);
         } else if (type == EOned){
             // if (matid == ERight){
-            //     new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,gel,index);
+            //     new TPZCompElKernelHDiv<TPZShapeLinear>(*cmesh,gel,index);
             //     TPZMaterial *mat = cmesh->FindMaterial(matid);
             //     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
             //     nullmat->SetDimension(1);
@@ -395,14 +394,14 @@ TPZCompMesh *FluxCMeshDFB(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMes
                 if (neighbour.Element()->Dimension() != dim-1) continue;
 
                 if (neighbour.Element()->MaterialId() == EWrap){
-                    new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element());
+                    new TPZCompElKernelHDiv<TPZShapeLinear>(*cmesh,neighbour.Element());
                     TPZMaterial *mat = cmesh->FindMaterial(EWrap);
                     TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                     nullmat->SetDimension(1);
                     neighbour.Element()->ResetReference();
                 } else {
                     if (allmat.find(neighbour.Element()->MaterialId()) != allmat.end()){
-                        new TPZCompElKernelHDivBC<TPZShapeLinear>(*cmesh,neighbour.Element());
+                        new TPZCompElKernelHDiv<TPZShapeLinear>(*cmesh,neighbour.Element());
                         TPZMaterial *mat = cmesh->FindMaterial(neighbour.Element()->MaterialId());
                         TPZNullMaterial<> *nullmat = dynamic_cast<TPZNullMaterial<> *>(mat);
                         nullmat->SetDimension(1);

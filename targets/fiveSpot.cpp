@@ -47,7 +47,6 @@
 #include "TPZMatDivFreeBubbles.h"
 #include "Projection/TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHDiv.h"
-#include "TPZCompElKernelHDivBC.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"

@@ -38,12 +38,13 @@ public:
 
     virtual int NSideConnects(int side) const override;
 
-    virtual void SetSideOrient(int side, int sideorient) override;
-    virtual int GetSideOrient(int side) override;
-
     virtual int64_t ConnectIndex(int con) const override;
 
-    	virtual int SideConnectLocId(int node, int side) const override;
+    virtual int SideConnectLocId(int node, int side) const override;
+
+    /** @brief It creates new conect that it associates the degrees of freedom of the element and returns its index */
+	virtual int64_t CreateMidSideConnect(int side) override;
+
 
 protected:
     

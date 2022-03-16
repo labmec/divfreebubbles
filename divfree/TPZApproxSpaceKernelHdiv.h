@@ -16,7 +16,6 @@
 #include "TPZMatTypes.h"
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
-#include "TPZCompElKernelHDivBC3D.h"
 #include "TPZEnumApproxFamily.h"
 
 class TPZCompMesh;
@@ -57,8 +56,6 @@ private:
 
     /// The util
     TPZKernelHdivUtils<TVar> * util;
-
-    bool isCube = false;// a bool variable to know if it is an hexahedral mesh
 
     REAL fBigNumber = 1.e10;
 

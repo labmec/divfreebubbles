@@ -23,7 +23,6 @@
 #include "TPZMatDivFreeBubbles.h"
 #include "Projection/TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHDiv.h"
-#include "TPZCompElKernelHDivBC.h"
 
 using namespace std;
 // ----- Functions -----

@@ -51,7 +51,6 @@
 #include "TPZMatDivFreeBubbles.h"
 #include "Projection/TPZL2ProjectionCS.h"
 #include "TPZCompElKernelHDiv.h"
-#include "TPZCompElKernelHDivBC.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZApproxSpaceKernelHdiv.h"
@@ -106,6 +105,11 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
     gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    
+const auto &d = 1.; // distanc between injection and production wells
+    u[0]= x*x-y*y ;
+    gradU(0,0) = -2*x;
+    gradU(1,0) = 2.*y;
 };
 
 
@@ -115,39 +119,39 @@ int main(int argc, char* argv[])
 {
     //dimension of the problem
     constexpr int dim{3};
-    constexpr int pOrder{4};
+    constexpr int pOrder{1};
       
 
 #ifdef PZ_LOG
 TPZLogger::InitializePZLOG();
 #endif
     
-    // //read mesh from gmsh
-    // TPZGeoMesh *gmesh;
-    // gmesh = new TPZGeoMesh();
-    // {
-    //     TPZGmshReader reader;
-    //     // essa interface permite voce mapear os nomes dos physical groups para
-    //     // o matid que voce mesmo escolher
-    //     TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-    //     stringtoint[3]["Domain"] = 1;
-    //     stringtoint[2]["Surfaces"] = 2;
-    //     // stringtoint[2]["Hybrid"] = 3;
-    //     reader.SetDimNamePhysical(stringtoint);
-    //     reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
-    //     std::ofstream out("gmesh.vtk");
-    //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
-    // }
+    //read mesh from gmsh
+    TPZGeoMesh *gmesh;
+    gmesh = new TPZGeoMesh();
+    {
+        TPZGmshReader reader;
+        // essa interface permite voce mapear os nomes dos physical groups para
+        // o matid que voce mesmo escolher
+        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+        stringtoint[3]["Domain"] = 1;
+        stringtoint[2]["Surfaces"] = 2;
+        // stringtoint[2]["Hybrid"] = 3;
+        reader.SetDimNamePhysical(stringtoint);
+        reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
+        std::ofstream out("gmesh.vtk");
+        TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
+    }
     
-    //for now this should suffice
-    const int xdiv = 16;
-    // const int ydiv = 2;
-    // const int zdiv = 2;
-    const MMeshType meshType = MMeshType::EHexahedral;
-    const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
+    // //for now this should suffice
+    // const int xdiv = 16;
+    // // const int ydiv = 2;
+    // // const int zdiv = 2;
+    // const MMeshType meshType = MMeshType::EHexahedral;
+    // const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
 
-    TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
+    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
 
     TPZKernelHdivUtils<STATE> util;
@@ -176,9 +180,13 @@ TPZLogger::InitializePZLOG();
 
         //Flux mesh
         cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);     
-
+        std::string fluxFile = "FluxCMesh";
+        util.PrintCompMesh(cmeshflux,fluxFile);
+        
         //Pressure mesh
         cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+        std::string presFile = "PressureCMesh";
+        util.PrintCompMesh(cmeshpressure,presFile);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvector(2);
@@ -192,7 +200,7 @@ TPZLogger::InitializePZLOG();
         std::cout << "Equations without condense = " << cmesh->NEquations()<< std::endl;
         // Group and condense the elements
         // createSpace.Condense(cmesh);
-        TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
+        // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
 
         std::string multiphysicsFile1 = "MultiPhysicsMeshNew2";
         util.PrintCompMesh(cmesh,multiphysicsFile1);
