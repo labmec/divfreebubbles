@@ -275,8 +275,8 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     for (auto matId : BCDirichlet)
     {
         TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 0, val1, val2);
-        BCond->SetForcingFunctionBC(exactSol);
-        // BCond->SetForcingFunctionBC(exactSol,2);
+        // BCond->SetForcingFunctionBC(exactSol);
+        BCond->SetForcingFunctionBC(exactSol,2);
         cmesh->InsertMaterialObject(BCond);
     }
 
@@ -284,7 +284,7 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
     for (auto matId : BCNeumann)
     {
         TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 1, val1, val2);
-        BCond->SetForcingFunctionBC(exactSol);
+        BCond->SetForcingFunctionBC(exactSol,2);
         cmesh->InsertMaterialObject(BCond);
     }
 
@@ -332,7 +332,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
 {   
     for(auto gel : fGeoMesh->ElementVec())
     {
-        if (gel->Dimension() < fGeoMesh->Dimension()) continue;
+        if (!gel || gel->Dimension() < fGeoMesh->Dimension()) continue;
         
         int nSides = gel->NSides();
         //For tetrahedra only, loop over the surface sides

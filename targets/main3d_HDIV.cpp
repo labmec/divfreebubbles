@@ -61,6 +61,7 @@
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
+TPZCompMesh *CreateL2PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh);
 TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
 TPZGeoMesh *CreateGeoMeshTetra(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
@@ -90,26 +91,22 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -2.*y;//(x*x*x*z - 3.*y*y*x*z);
     // gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 
-    // u[0] = x*x+y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
-    // gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
-    // gradU(1,0) = 2.*y;//(x*x*x*z - 3.*y*y*x*z);
-    // gradU(2,0) = 2.*z;//(x*x*x*y - y*y*y*x);
+    u[0] = x*x-2.*y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
+    gradU(0,0) = -2.*x;//(3.*x*x*y*z - y*y*y*z);
+    gradU(1,0) = 4.*y;//(x*x*x*z - 3.*y*y*x*z);
+    gradU(2,0) = -2.*z;//(x*x*x*y - y*y*y*x);
 
     // u[0] = x*x*x*y*z - y*y*y*x*z;
     // gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
     // gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
     // gradU(2,0) = (x*x*x*y - y*y*y*x);
 
-    REAL aux = 1./sinh(sqrt(2)*M_PI);
-    u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    // REAL aux = 1./sinh(sqrt(2)*M_PI);
+    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
     
-const auto &d = 1.; // distanc between injection and production wells
-    u[0]= x*x-y*y ;
-    gradU(0,0) = -2*x;
-    gradU(1,0) = 2.*y;
 };
 
 
@@ -126,32 +123,32 @@ int main(int argc, char* argv[])
 TPZLogger::InitializePZLOG();
 #endif
     
-    //read mesh from gmsh
-    TPZGeoMesh *gmesh;
-    gmesh = new TPZGeoMesh();
-    {
-        TPZGmshReader reader;
-        // essa interface permite voce mapear os nomes dos physical groups para
-        // o matid que voce mesmo escolher
-        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-        stringtoint[3]["Domain"] = 1;
-        stringtoint[2]["Surfaces"] = 2;
-        // stringtoint[2]["Hybrid"] = 3;
-        reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
-        std::ofstream out("gmesh.vtk");
-        TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
-    }
+    // //read mesh from gmsh
+    // TPZGeoMesh *gmesh;
+    // gmesh = new TPZGeoMesh();
+    // {
+    //     TPZGmshReader reader;
+    //     // essa interface permite voce mapear os nomes dos physical groups para
+    //     // o matid que voce mesmo escolher
+    //     TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+    //     stringtoint[3]["Domain"] = 1;
+    //     stringtoint[2]["Surfaces"] = 2;
+    //     // stringtoint[2]["Hybrid"] = 3;
+    //     reader.SetDimNamePhysical(stringtoint);
+    //     reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
+    //     std::ofstream out("gmesh.vtk");
+    //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
+    // }
     
-    // //for now this should suffice
-    // const int xdiv = 16;
-    // // const int ydiv = 2;
-    // // const int zdiv = 2;
-    // const MMeshType meshType = MMeshType::EHexahedral;
-    // const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
+    //for now this should suffice
+    const int xdiv = 1;
+    // const int ydiv = 2;
+    // const int zdiv = 2;
+    const MMeshType meshType = MMeshType::ETetrahedral;
+    const TPZManVector<int,3> nDivs = {xdiv,1,1};
 
     // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    // // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
+    TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
 
     TPZKernelHdivUtils<STATE> util;
@@ -169,8 +166,8 @@ TPZLogger::InitializePZLOG();
         
         TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
                                                     TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-                                                    HDivFamily::EHDivKernel); // Shape Type
-
+                                                    HDivFamily::EHDivStandard); // Shape Type
+ 
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
         createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
@@ -223,155 +220,6 @@ TPZLogger::InitializePZLOG();
         util.ComputeError(an,anPostProcessFileHdiv);
     }
 
-
-
-
-    // //............................Div Free Bubbles............................
-    // {
-    //     TPZCompMesh * cmeshflux = 0;
-    //     TPZCompMesh * cmeshpressure = 0;    
-
-    //     //Insert here the BC material id's to be hybridized 
-    //     std::set<int> matBCHybrid={};
-    //     //Insert here the type of all boundary conditions
-    //     std::set<int> matIDNeumann{};
-    //     std::set<int> matIDDirichlet{ESurfaces};
-    //     /// All bc's mat ID's
-    //     std::set<int> matBC;
-    //     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
-
-    //     /// Creates the approximation space - Set the type of domain hybridization
-    //     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
-    //                                                 TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
-    //                                                 TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel); // Shape Type
-
-    //     //Setting material ids
-    //     createSpace.fConfig.fDomain = EDomain;
-    //     createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
-    //     // createSpace.SetEdgeRemove(EEdgeRemove);
-    //     createSpace.SetPOrder(pOrder);
-    //     createSpace.Initialize();
-    //     // util.PrintGeoMesh(gmesh);
-
-    //     //Flux mesh
-    //     TPZCompMesh * cmeshfluxNew = createSpace.CreateFluxCMesh();
-    //     // std::cout << "FLUX \n";
-    //     // util.PrintCMeshConnects(cmeshfluxNew);
-    //     // std::string fluxFile = "FluxCMesh";
-    //     // util.PrintCompMesh(cmeshfluxNew,fluxFile);
-        
-    //     // auto con = cmeshfluxNew->ConnectVec();
-    //     // for (auto con :cmeshfluxNew->ConnectVec())
-    //     // {
-    //     //     std::cout << "con " << con << std::endl;
-    //     // }
-        
-
-
-    //     //Pressure mesh
-    //     TPZCompMesh * cmeshpressureNew = createSpace.CreatePressureCMesh();
-    //     // std::cout << "PRESSURE \n";
-    //     // util.PrintCMeshConnects(cmeshpressureNew);
-    //     // std::string pressureFile = "PressureCMesh";
-    //     // util.PrintCompMesh(cmeshpressureNew,pressureFile);        
-
-    //     //Multiphysics mesh
-    //     TPZManVector< TPZCompMesh *, 2> meshvectorNew(2);
-    //     meshvectorNew[0] = cmeshfluxNew;
-    //     meshvectorNew[1] = cmeshpressureNew;      
-    //     auto * cmeshNew = createSpace.CreateMultiphysicsCMesh(meshvectorNew,exactSol,matIDNeumann,matIDDirichlet);
-    //     // std::cout << "MULTIPHYSICS \n";
-    //     // util.PrintCMeshConnects(cmeshNew);
-    //     // Group and condense the elements
-    //     // createSpace.Condense(cmeshNew);
-    //     // std::string multiphysicsFile = "MultiPhysicsMeshNew";
-    //     // util.PrintCompMesh(cmeshNew,multiphysicsFile);
-
-    //     // Solve the problem
-    //     TPZLinearAnalysis anNew(cmeshNew,false);
-    //     // for (int i = 0; i < anNew.Solution().Rows(); i++)
-    //     // {
-    //         // TPZVec<int64_t> eqs = {0};
-    //         // TPZManVector<std::string,10> scalnames(0), vecnames(1);
-    //         // vecnames[0]= "State";
-
-    //         // constexpr int resolution{2};
-    //         // std::string plotfile = "ShapeRUIM.vtk";
-    //         // anNew.DefineGraphMesh(3,scalnames,vecnames,plotfile);
-    //         // anNew.ShowShape("ShapeRUIM",eqs);
-    //     // }
-        
-        
-        
-    //     std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
-
-    //     createSpace.Solve(anNew, cmeshNew, true, true); 
-    //     std::cout << "Number of equations = " << anNew.Mesh()->NEquations() << std::endl;        
-    //     anNew.SetExact(exactSol,solOrder);
-    //     //Print results
-        
-    //     // // anNew.Solution().Zero();
-    //     // const int rows = anNew.Solution().Rows();
-    //     // const int cols = anNew.Solution().Cols();
-    //     // TPZFMatrix<STATE> solNew(rows,cols,0.);
-    //     // solNew(11,0)=1.;
-        
-        
-    //     // anNew.Solution()=solNew;
-    //     // anNew.LoadSolution();
-    //     // std::ofstream outSol("Solution.txt");
-    //     // anNew.Solution().Print("Sol",outSol,EMathematicaInput);
-
-    //     // {
-    //     //     TPZLinearAnalysis anFlux(cmeshfluxNew,false);
-    //     //     for (int i = 0; i < rows; i++)
-    //     //     {   
-    //     //         solNew.Zero();
-    //     //         solNew(i,0)=1.;
-    //     //         anFlux.Solution()=solNew;
-    //     //         anFlux.LoadSolution();
-    //     //         // cmeshfluxNew->Solution().Print("Sol");
-                
-    //     //         TPZStack<std::string> scalnames;
-    //     //         scalnames.Push("Curl");
-    //     //         TPZStack<std::string> vecnames;
-    //     //         vecnames.Push("Solution");
-    //     //         const std::string plotfile = "shapeContornoNovo.vtk";
-    //     //         std::set<int> matids = {ESurfaces};
-                
-    //     //         anFlux.DefineGraphMesh(2, matids, scalnames, vecnames, plotfile);
-    //     //         anFlux.PostProcess(2,2);
-
-
-    //     //         anNew.Solution()=solNew;
-    //     //         anNew.LoadSolution();
-
-    //     //         // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-    //     //         TPZManVector<std::string,10> scalnames2(0), vecnames2(1);
-    //     //         vecnames2[0]= "State";
-    
-    //     //         constexpr int resolution{2};
-    //     //         std::string plotfile2 = "ShapeRUIM.vtk";
-    //     //         anNew.DefineGraphMesh(3,scalnames2,vecnames2,plotfile2);
-    //     //         anNew.PostProcess(resolution,3);
-    //     //     }
-            
-           
-    //     // }
-
-    //     util.PrintResultsMultiphysics(meshvectorNew,anNew,cmeshNew);
-
-    //     anNew.SetExact(exactSol,solOrder);
-        
-
-    //     std::ofstream out4("mesh_MDFB.txt");
-    //     anNew.Print("nothing",out4);
-    //     std::ofstream anPostProcessFileMDFB("postprocessMDFB.txt");
-        
-    //     util.ComputeError(anNew,anPostProcessFileMDFB);
-    // }
-
-  
     return 0;
 }
 
@@ -391,7 +239,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *
         cmesh->InsertMaterialObject(mat);
     }
     
-    // cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHCurlNoGrads);
+    cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHDivStandard);
     cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
     
     // cmesh->ApproxSpace().SetHCurlFamily(HCurlFamily::EHCurlNoGrads);
@@ -477,7 +325,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
     auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
-    BCond0->SetForcingFunctionBC(exactSol);
+    BCond0->SetForcingFunctionBC(exactSol,3);
     cmesh->InsertMaterialObject(BCond0);
 
     TPZManVector<int> active(2,1);
@@ -643,4 +491,42 @@ void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges){
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
     
 
+}
+
+
+
+
+// Pressure computational mesh
+TPZCompMesh *CreateL2PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh)
+{
+    gmesh->ResetReference();
+    TPZCompMesh *cmesh = new TPZCompMesh(gmesh,false);
+    if(matIdVec.size() == 0) return cmesh;
+
+    TPZL2Projection<> *mat = new TPZL2Projection<>(EDomain,dim);
+    mat->SetDimension(dim);
+    // mat->SetForcingFunction(forcefunction,1);
+    cmesh->InsertMaterialObject(mat);
+
+    
+
+    // Disconnected = true faz com que os espaços sao descontinuos
+    cmesh->SetAllCreateFunctionsContinuous();
+    // cmesh->ApproxSpace().CreateDisconnectedElements(true);//???
+    cmesh->SetDefaultOrder(pOrder);
+    cmesh->SetDimModel(dim);
+    cmesh->AutoBuild();
+
+    //ForcingFunction
+    // TPZFMatrix<STATE> val1(1,1,1.);
+    // TPZManVector<STATE> val2(1,0.);
+    // auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
+    // BCond0->SetForcingFunctionBC(exactSol);
+    // cmesh->InsertMaterialObject(BCond0);
+    
+    // // Print pressure mesh
+    // std::ofstream myfile("PressureMesh.txt");
+    // cmesh->Print(myfile);
+
+    return cmesh;
 }

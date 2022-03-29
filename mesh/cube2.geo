@@ -1,6 +1,6 @@
 a = 0.5;
-layers = 2;
-layers2 = 2;
+layers = 3;
+layers2 = 3;
 layers3 = 3;
 p1 =0;
 p2 = 1;
@@ -48,11 +48,11 @@ Plane Surface(1) = {-1};
 //+
 Curve Loop(2) = {6, 3, 4, 5};
 //+
-Plane Surface(2) = {2};
+Plane Surface(2) = {-2};
 //+
 Curve Loop(3) = {5, -11, -8, 12};
 //+
-Plane Surface(3) = {3};
+Plane Surface(3) = {-3};
 //+
 Curve Loop(4) = {8, 1, -7, -9};
 //+
@@ -60,20 +60,20 @@ Plane Surface(4) = {4};
 //+
 Curve Loop(5) = {9, 10, 4, -12};
 //+
-Plane Surface(5) = {5};
+Plane Surface(5) = {-5};
 //+
 Curve Loop(6) = {2, -6, -11, 1};
 //+
-Plane Surface(6) = {6};
+Plane Surface(6) = {-6};
 //+
 Surface Loop(1) = {4, 3, 2, 6, 1, 5};
 //+
 Transfinite Surface {1,2,3,4,5,6};
-Recombine Surface {1,2,3,4,5,6};
+//Recombine Surface {1,2,3,4,5,6};
 Volume(1) = {1};
 Transfinite Volume {1};
-Recombine Volume {1};
+//Recombine Volume {1};
 //+
 Physical Volume("Domain") = {1};
-
-Physical Surface("Surfaces") = {4, 3, 5, 2, 1, 6};
+//+
+Physical Surface("Surfaces") = {3, 6, 2, 5, 1, 4};

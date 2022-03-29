@@ -133,6 +133,8 @@ public:
      */
     TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
     
+    HDivFamily GetHDivFamily() {return fShapeType;}
+
     /// Parameters needed for creating a hybrid KernelHdiv space
     struct TConfig
     {

@@ -278,7 +278,7 @@ TPZLogger::InitializePZLOG();
 }
 
 //Analytical solution
-constexpr int solOrder{2};
+constexpr int solOrder{4};
 auto exactSol = [](const TPZVec<REAL> &loc,
   TPZVec<STATE>&u,
   TPZFMatrix<STATE>&gradU){
@@ -570,8 +570,8 @@ TPZMultiphysicsCompMesh *   MultiphysicCMesh(int dim, int pOrder, std::set<int> 
     TPZFMatrix<STATE> val3(1,1,1.); 
     TPZManVector<STATE> val4(1,0.);
     auto * BCond1 = mat->CreateBC(mat, EProduction, bc1, val3, val4);
-    BCond0->SetForcingFunctionBC(exactSolError);
-    BCond1->SetForcingFunctionBC(exactSolError);
+    BCond0->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond1->SetForcingFunctionBC(exactSolError,solOrder);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
 
@@ -583,10 +583,10 @@ TPZMultiphysicsCompMesh *   MultiphysicCMesh(int dim, int pOrder, std::set<int> 
     auto * BCond4 = mat->CreateBC(mat, ELeft, bc2, val5, val6);
     auto * BCond5 = mat->CreateBC(mat, ERight, bc2, val5, val6);
     // auto * BCond6 = mat->CreateBC(mat, EPont, 0, val5, val6);
-    BCond2->SetForcingFunctionBC(exactSolError);
-    BCond3->SetForcingFunctionBC(exactSolError);
-    BCond4->SetForcingFunctionBC(exactSolError);
-    BCond5->SetForcingFunctionBC(exactSolError);
+    BCond2->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond3->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond4->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond5->SetForcingFunctionBC(exactSolError,solOrder);
     // BCond6->SetForcingFunctionBC(exactSolError);
     cmesh->InsertMaterialObject(BCond2);
     cmesh->InsertMaterialObject(BCond3);
@@ -640,8 +640,8 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, std::set<int> 
     TPZFMatrix<STATE> val3(1,1,1.); 
     TPZManVector<STATE> val4(1,0.);
     auto * BCond1 = mat->CreateBC(mat, EProduction, 1, val3, val4);
-    BCond0->SetForcingFunctionBC(exactSolError);
-    BCond1->SetForcingFunctionBC(exactSolError);
+    BCond0->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond1->SetForcingFunctionBC(exactSolError,solOrder);
     cmesh->InsertMaterialObject(BCond1);
     cmesh->InsertMaterialObject(BCond0);
 
@@ -652,11 +652,11 @@ TPZMultiphysicsCompMesh *MultiphysicCMeshDFB(int dim, int pOrder, std::set<int> 
     auto * BCond4 = mat->CreateBC(mat, ELeft, 1, val5, val6);
     auto * BCond5 = mat->CreateBC(mat, ERight, 1, val5, val6);
     auto * BCond6 = mat->CreateBC(mat, EPont, 0, val5, val6);
-    BCond2->SetForcingFunctionBC(exactSolError);
-    BCond3->SetForcingFunctionBC(exactSolError);
-    BCond4->SetForcingFunctionBC(exactSolError);
-    BCond5->SetForcingFunctionBC(exactSolError);
-    BCond6->SetForcingFunctionBC(exactSol);
+    BCond2->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond3->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond4->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond5->SetForcingFunctionBC(exactSolError,solOrder);
+    BCond6->SetForcingFunctionBC(exactSol,solOrder);
     cmesh->InsertMaterialObject(BCond2);
     cmesh->InsertMaterialObject(BCond3);
     cmesh->InsertMaterialObject(BCond4);
@@ -872,10 +872,10 @@ TPZCompMesh *CMeshDivFreeBubbles(int dim, int pOrder, std::set<int> matIdVec, TP
   auto * BCond3 = mat->CreateBC(mat, ETop, 0, val3, val5);//Top
   auto * BCond4 = mat->CreateBC(mat, ELeft, 0, val3, val5);//Left
   auto * BCond5 = mat->CreateBC(mat, ERight, 0, val3, val5);//Right
-  BCond2->SetForcingFunctionBC(exactSol);
-  BCond3->SetForcingFunctionBC(exactSol);
-  BCond4->SetForcingFunctionBC(exactSol);
-  BCond5->SetForcingFunctionBC(exactSol);
+  BCond2->SetForcingFunctionBC(exactSol,solOrder);
+  BCond3->SetForcingFunctionBC(exactSol,solOrder);
+  BCond4->SetForcingFunctionBC(exactSol,solOrder);
+  BCond5->SetForcingFunctionBC(exactSol,solOrder);
   cmesh->InsertMaterialObject(BCond2);
   cmesh->InsertMaterialObject(BCond3);
   cmesh->InsertMaterialObject(BCond4);

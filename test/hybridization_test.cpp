@@ -100,10 +100,10 @@ TEST_CASE("Hybridization test")
     const int xdiv = GENERATE(2);
     const int pOrder = GENERATE(1);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
-    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
+    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
+    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);//,
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
     
