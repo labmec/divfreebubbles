@@ -53,7 +53,7 @@
 #include "TPZCompElKernelHDiv.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
-#include "TPZApproxSpaceKernelHdiv.h"
+#include "TPZHDivApproxSpaceCreator.h"
 #include <TPZGeoMeshTools.h>
 #include "TPZCompElHCurlNoGrads.h"
 #include "TPZMatCurlDotCurl.h"
@@ -164,15 +164,14 @@ TPZLogger::InitializePZLOG();
         std::set<int> matBCHybrid = {};
         std::set<int> matBC = {ESurfaces};
         
-        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
-                                                    TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
+        TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh,
+                                                    TPZHDivApproxSpaceCreator<STATE>::ENone,        //Hybridization
                                                     HDivFamily::EHDivStandard); // Shape Type
  
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
-        createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
+        createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.Initialize();
-        createSpace.SetEdgeRemove(EEdgeRemove);
         // util.PrintGeoMesh(gmesh);
 
         //Flux mesh

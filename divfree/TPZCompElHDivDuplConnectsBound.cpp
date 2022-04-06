@@ -1,4 +1,4 @@
-#include "TPZCompElHDivSemiHybridBound.h"
+#include "TPZCompElHDivDuplConnectsBound.h"
 #include "TPZMaterial.h"
 #include "TPZShapeHDiv.h"
 #include "TPZShapeHDivConstantBound.h"
@@ -12,22 +12,20 @@ static TPZLogger loggerdiv("pz.mesh.tpzinterpolatedelement.divide");
 #endif
 
 template<class TSHAPE>
-TPZCompElHDivSemiHybridBound<TSHAPE>::TPZCompElHDivSemiHybridBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
-TPZRegisterClassId(&TPZCompElHDivSemiHybridBound::ClassId), TPZCompElHDivBound2<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
+TPZCompElHDivDuplConnectsBound<TSHAPE>::TPZCompElHDivDuplConnectsBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
+TPZRegisterClassId(&TPZCompElHDivDuplConnectsBound::ClassId), TPZCompElHDivBound2<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
     this->fConnectIndexes.Resize(2);//Change it to 3D
 
 }
 
-
-
 template<class TSHAPE>
-int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnects() const {
+int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnects() const {
 	return 2;
 }
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybridBound<TSHAPE>::NSideConnects(int side) const{
+int TPZCompElHDivDuplConnectsBound<TSHAPE>::NSideConnects(int side) const{
 	if(side == TSHAPE::NSides-1)
 	{
 		return 2;
@@ -36,7 +34,7 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NSideConnects(int side) const{
 }
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connectorder)const
+int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnectShapeF(int connect, int connectorder)const
 {
 #ifdef DEBUG
     if (connect < 0 || connect > TSHAPE::NFacets) {
@@ -82,10 +80,10 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connec
  }
 
 template<class TSHAPE>
-int64_t TPZCompElHDivSemiHybridBound<TSHAPE>::ConnectIndex(int con) const{
+int64_t TPZCompElHDivDuplConnectsBound<TSHAPE>::ConnectIndex(int con) const{
 #ifndef PZNODEBUG
 	if(con<0 || con > 2) {
-		std::cout << "TPZCompElHDivSemiHybridBound::ConnectIndex wrong parameter connect " << con <<
+		std::cout << "TPZCompElHDivDuplConnectsBound::ConnectIndex wrong parameter connect " << con <<
 		" NConnects " << TSHAPE::NFacets << std::endl;
 		DebugStop();
 		return -1;
@@ -97,7 +95,7 @@ int64_t TPZCompElHDivSemiHybridBound<TSHAPE>::ConnectIndex(int con) const{
 }
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybridBound<TSHAPE>::SideConnectLocId(int node, int side) const
+int TPZCompElHDivDuplConnectsBound<TSHAPE>::SideConnectLocId(int node, int side) const
 {
 	if(side == TSHAPE::NSides-1 && node <2)
 	{
@@ -110,7 +108,7 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::SideConnectLocId(int node, int side) c
 }
 
 template<class TSHAPE>
-void TPZCompElHDivSemiHybridBound<TSHAPE>::SetConnectIndex(int i, int64_t connectindex)
+void TPZCompElHDivDuplConnectsBound<TSHAPE>::SetConnectIndex(int i, int64_t connectindex)
 {
 	this->fConnectIndexes[i] = connectindex;
 }
@@ -123,7 +121,7 @@ void TPZCompElHDivSemiHybridBound<TSHAPE>::SetConnectIndex(int i, int64_t connec
 #include "pzshapetetra.h"
 using namespace pzshape;
 
-template class TPZCompElHDivSemiHybridBound<TPZShapeLinear>;
+template class TPZCompElHDivDuplConnectsBound<TPZShapeLinear>;
 
 
 

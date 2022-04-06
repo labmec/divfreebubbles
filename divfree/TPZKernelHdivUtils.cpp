@@ -344,7 +344,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
     TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(cmesh);
     BDFmatrix.SetEquationRange(nEqPres,nEqFull);
     // BDFmatrix.SetEquationRange(nEqFlux,nEqFull);
-    TPZBlockDiagonal<REAL> KBD;
+    TPZBlockDiagonal<REAL> KBD, KBD_K11Red;
     BDFmatrix.CreateAssemble(rhsAux,guiInterface);
     BDFmatrix.EndCreateAssemble(&KBD);
     
@@ -362,6 +362,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
     TPZFMatrix<STATE> K11 = matRed->K11();
     K11.Print("K11=",out,EMathematicaInput);
     KBD.Print("KBD",out,EMathematicaInput);
+    
 
     //Creates the preconditioner 
     // TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &matRed->K11() );
@@ -418,9 +419,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
         // if (tol < 1.e-10) break;
         // errors[iter-1] = error[1];
     // }
-
 }
-
 
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux)
@@ -451,7 +450,7 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
             auxConnectsP.insert(gel->Reference()->ConnectIndex(2*i  ));
         }
         //The internal connect will not be condensed
-        auxConnectsP.insert(gel->Reference()->ConnectIndex(2*nFacets));
+        // auxConnectsP.insert(gel->Reference()->ConnectIndex(2*nFacets));
         //Pressure degrees of freedom will not be condensed
         for (size_t i = 2*nFacets+1; i < nconnects; i++){
             auxConnectsP.insert(gel->Reference()->ConnectIndex(i));

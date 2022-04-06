@@ -5,7 +5,7 @@
 */
 #include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
-#include "TPZApproxSpaceKernelHdiv.h"
+#include "TPZHDivApproxSpaceCreator.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
 #include <TPZGmshReader.h>
@@ -44,29 +44,29 @@ inline std::string MHDivFamily_Name(HDivFamily hdivfam)
 }
 
 /** @brief Returns the name of the Hybridization type. */
-inline std::string ApproxSpaceKernelHDiv_Name(TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace)
+inline std::string ApproxSpaceKernelHDiv_Name(TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace)
 {
 	switch (approxSpace)
 	{
-		case TPZApproxSpaceKernelHdiv<STATE>::ENone:
+		case TPZHDivApproxSpaceCreator<STATE>::ENone:
 		{
 			return "ENone";
 		}
-		case TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid:
+		case TPZHDivApproxSpaceCreator<STATE>::EFullHybrid:
 		{
 			return "EFullHybrid";
 		}
-		case TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid:
+		case TPZHDivApproxSpaceCreator<STATE>::ESemiHybrid:
 		{
 			return "ESemiHybrid";
 		}
-		case TPZApproxSpaceKernelHdiv<STATE>::EDuplicatedConnects:
+		case TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects:
 		{
 			return "EDuplicatedConnects";
 		}
 		default:
         {
-            return "TPZApproxSpaceKernelHdiv not found!";
+            return "TPZHDivApproxSpaceCreator not found!";
         }
     }
     DebugStop();
@@ -98,20 +98,20 @@ ReadMeshFromGmsh(std::string file_name);
 
 // The test function
 template<class tshape>
-void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZApproxSpaceKernelHdiv<STATE>::MSpaceType &approxSpace);
+void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivApproxSpaceCreator<STATE>::MSpaceType &approxSpace);
 
 TEST_CASE("Hybridization test")
 {
     const int xdiv = GENERATE(1);
-    const int pOrder = GENERATE(1);
+    const int pOrder = GENERATE(3);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
-                                                                    //    TPZApproxSpaceKernelHdiv<STATE>::EDuplicatedConnects);//,
-                                                                    //    TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);//,
-                                                                    //    TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
+                                                                    //    TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);//,
+                                                                    //    TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);//,
+                                                                    //    TPZHDivApproxSpaceCreator<STATE>::ESemiHybrid);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
     TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
@@ -165,7 +165,7 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 
 
 template<class tshape>
-void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZApproxSpaceKernelHdiv<STATE>::MSpaceType &approxSpace)
+void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivApproxSpaceCreator<STATE>::MSpaceType &approxSpace)
 {
 #ifdef PZ_LOG
     TPZLogger::InitializePZLOG();
@@ -190,7 +190,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZKernelHdivUtils<STATE> util;
 
     // Creates the approximation space generator
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh, approxSpace, hdivfamily);
+    TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh, approxSpace, hdivfamily);
 
     //Insert here the BC material id's to be hybridized
     std::set<int> matBCHybrid={};
@@ -201,14 +201,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Setting material ids      
     createSpace.fConfig.fDomain = EDomain;
-    createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
+    createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
     // util.PrintGeoMesh(gmesh);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
     int nMeshes = 2;
-    if (approxSpace != TPZApproxSpaceKernelHdiv<STATE>::ENone && hdivfamily != HDivFamily::EHDivKernel) {
+    if (approxSpace != TPZHDivApproxSpaceCreator<STATE>::ENone && hdivfamily != HDivFamily::EHDivKernel) {
         nMeshes = 3;
     }
     TPZVec<TPZCompMesh *> meshvector;
@@ -218,36 +218,35 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     meshvector[0] = createSpace.CreateFluxCMesh();
     std::string fluxFile = "FluxCMesh";
     util.PrintCompMesh(meshvector[0],fluxFile);
-    std::cout << "Flux mesh \n";
-    util.PrintCMeshConnects(meshvector[0]);
+    // std::cout << "Flux mesh \n";
+    // util.PrintCMeshConnects(meshvector[0]);
     
     //Pressure mesh
     meshvector[1]  = createSpace.CreatePressureCMesh();
     std::string presFile = "PressureCMesh";
     util.PrintCompMesh(meshvector[1],presFile);
-    std::cout << "Pressure mesh \n";
-    util.PrintCMeshConnects(meshvector[1]);
+    // std::cout << "Pressure mesh \n";
+    // util.PrintCMeshConnects(meshvector[1]);
 
-    if (approxSpace != TPZApproxSpaceKernelHdiv<STATE>::ENone && hdivfamily != HDivFamily::EHDivKernel) {
+    if (approxSpace != TPZHDivApproxSpaceCreator<STATE>::ENone && hdivfamily != HDivFamily::EHDivKernel) {
         meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
         util.PrintCompMesh(meshvector[1],presFile);
-        std::cout << "Pressure mesh2 \n";
-        util.PrintCMeshConnects(meshvector[2]);
+        // std::cout << "Pressure mesh2 \n";
+        // util.PrintCMeshConnects(meshvector[2]);
     }
     
     //Multiphysics mesh
     auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
+    TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
     std::string multFile = "MultiCMesh";
     util.PrintCompMesh(cmesh,multFile);
-    std::cout << "Multi mesh \n";
-    util.PrintCMeshConnects(cmesh);
+    // std::cout << "Multi mesh \n";
+    // util.PrintCMeshConnects(cmesh);
 
     // Number of equations without condense elements
     int nEquationsFull = cmesh->NEquations();
     std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
-
-    // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
     // Group and condense the elements
     if (DIM == 2){
         // createSpace.Condense(cmesh);
@@ -258,16 +257,17 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Create analysis environment
     TPZLinearAnalysis an(cmesh,false);
-    
     an.SetExact(exactSol,pOrder);
-    //Solve problem
-    bool filter = false;
-    if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-    // createSpace.Solve(an, cmesh, true, filter);
 
-    // if (approxSpace == )
-    util.SolveProblemMatRed(an, cmesh);
-    
+    //Solve problem
+    if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
+        util.SolveProblemMatRed(an, cmesh);
+    } else {
+        //Equation filter (spanning trees), true if 3D and HDivKernel 
+        bool filter = false;
+        if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
+        createSpace.Solve(an, cmesh, true, filter);
+    }
 
     //Print results
     util.PrintResultsMultiphysics(meshvector,an,cmesh);
@@ -290,6 +290,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "ERROR[4] = " << error[4] << std::endl;
     REQUIRE(error[1] < tolerance);
 
+    //Trying to design other criteria besides the approximation error
     //Contar numero de equações condensadas = numero de arestas internas * porder
     int nInternalEdges = 0;
     switch (tshape::Type()){

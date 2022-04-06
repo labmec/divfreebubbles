@@ -236,7 +236,7 @@ TPZLogger::InitializePZLOG();
     //     TPZKernelHdivHybridizer hybridizer;
 
     //     std::set<int> matIdNeumannNew={EInjection,EProduction,EBottom,ETop,ELeft,ERight};
-    //     hybridizer.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,EDomain);
+    //     hybridizer.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,EDomain);
     //     hybridizer.CreateWrapElements(gmesh,matIdNeumannNew,true);
     //     // hybridizer.PrintGeoMesh(gmesh);
 

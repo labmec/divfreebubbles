@@ -1,10 +1,10 @@
 /**
  * @file
- * @brief Contains declaration of TPZCompElHDivSemiHybridBound
+ * @brief Contains declaration of TPZCompElHDivDuplConnectsBound
  */
 
-#ifndef PZELCHDIVBOUND_SEMI_HYBRID
-#define PZELCHDIVBOUND_SEMI_HYBRID
+#ifndef PZELCHDIVBOUND_DUPL_CONNECTS
+#define PZELCHDIVBOUND_DUPL_CONNECTS
 
 #include "pzelchdivbound2.h"
 
@@ -17,14 +17,14 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElHDivSemiHybridBound : public TPZCompElHDivBound2<TSHAPE> {
+class TPZCompElHDivDuplConnectsBound : public TPZCompElHDivBound2<TSHAPE> {
 
     /// vector which defines whether the normal is outward or not
     TPZManVector<int, TSHAPE::NFacets> fSideOrient;
 
 public:
 
-    TPZCompElHDivSemiHybridBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam = DefaultFamily::fHDivDefaultValue);
+    TPZCompElHDivDuplConnectsBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam = DefaultFamily::fHDivDefaultValue);
 
     virtual int NConnects() const override;
 
@@ -42,9 +42,7 @@ public:
 
     virtual int SideConnectLocId(int node, int side) const override;
 
-    void SetConnectIndex(int i, int64_t connectindex) override;
-protected:
-    
+    void SetConnectIndex(int i, int64_t connectindex) override;    
 	
 	
 };

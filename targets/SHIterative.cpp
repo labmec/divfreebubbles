@@ -49,7 +49,7 @@
 #include "TPZCompElKernelHDiv.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
-#include "TPZApproxSpaceKernelHdiv.h"
+#include "TPZHDivApproxSpaceCreator.h"
 #include "pzbdstrmatrix.h"
 #include "pzblockdiag.h"
 #include "tpzsparseblockdiagonal.h"
@@ -124,11 +124,11 @@ TPZLogger::InitializePZLOG();
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+    TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh,TPZHDivApproxSpaceCreator<STATE>::ESemiHybrid);
 
     //Setting material ids
     createSpace.fConfig.fDomain = EDomain;
-    createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
+    createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
     createSpace.SetPOrder(pOrder+1);
     createSpace.Initialize();
     // util.PrintGeoMesh(gmesh);

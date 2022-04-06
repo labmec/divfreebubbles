@@ -205,7 +205,7 @@ TPZLogger::InitializePZLOG();
 
         //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
-        createSpace.SetPeriferalMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
+        createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         // createSpace.SetEdgeRemove(EEdgeRemove);
         createSpace.SetPOrder(pOrder);
         createSpace.Initialize();

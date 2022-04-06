@@ -1,5 +1,5 @@
-#include "TPZCompElHDivSemiHybrid.h"
-#include "TPZCompElHDivSemiHybridBound.h"
+#include "TPZCompElHDivDuplConnects.h"
+#include "TPZCompElHDivDuplConnectsBound.h"
 #include "TPZMaterial.h"
 #include "TPZShapeHDiv.h"
 #include "TPZShapeHDivConstant.h"
@@ -11,8 +11,8 @@ static TPZLogger loggerdiv("pz.mesh.tpzinterpolatedelement.divide");
 #endif
 
 template<class TSHAPE>
-TPZCompElHDivSemiHybrid<TSHAPE>::TPZCompElHDivSemiHybrid(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
-TPZRegisterClassId(&TPZCompElHDivSemiHybrid::ClassId), TPZCompElHDiv<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
+TPZCompElHDivDuplConnects<TSHAPE>::TPZCompElHDivDuplConnects(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
+TPZRegisterClassId(&TPZCompElHDivDuplConnects::ClassId), TPZCompElHDiv<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
     this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
 
@@ -28,12 +28,12 @@ TPZRegisterClassId(&TPZCompElHDivSemiHybrid::ClassId), TPZCompElHDiv<TSHAPE>(mes
 
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybrid<TSHAPE>::NConnects() const {
+int TPZCompElHDivDuplConnects<TSHAPE>::NConnects() const {
 	return this->fConnectIndexes.size();
 }
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybrid<TSHAPE>::NSideConnects(int side) const{
+int TPZCompElHDivDuplConnects<TSHAPE>::NSideConnects(int side) const{
 	if(TSHAPE::SideDimension(side)<= this->Dimension()-2) return 0;
 	if(TSHAPE::SideDimension(side)== this->Dimension()-1) return 2;
 	if(TSHAPE::SideDimension(side)== this->Dimension()) {
@@ -52,7 +52,7 @@ int TPZCompElHDivSemiHybrid<TSHAPE>::NSideConnects(int side) const{
 }
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybrid<TSHAPE>::NConnectShapeF(int connect, int order)const
+int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)const
 {
 #ifdef DEBUG
     if (connect < 0 || connect > TSHAPE::NFacets*2) {
@@ -91,10 +91,10 @@ int TPZCompElHDivSemiHybrid<TSHAPE>::NConnectShapeF(int connect, int order)const
 
 
 template<class TSHAPE>
-int64_t TPZCompElHDivSemiHybrid<TSHAPE>::ConnectIndex(int con) const{
+int64_t TPZCompElHDivDuplConnects<TSHAPE>::ConnectIndex(int con) const{
 #ifndef PZNODEBUG
 	if(con<0 || con > TSHAPE::NFacets*2) {
-		std::cout << "TPZCompElHDivSemiHybrid::ConnectIndex wrong parameter connect " << con <<
+		std::cout << "TPZCompElHDivDuplConnects::ConnectIndex wrong parameter connect " << con <<
 		" NConnects " << TSHAPE::NFacets << std::endl;
 		DebugStop();
 		return -1;
@@ -107,7 +107,7 @@ int64_t TPZCompElHDivSemiHybrid<TSHAPE>::ConnectIndex(int con) const{
 
 
 template<class TSHAPE>
-int TPZCompElHDivSemiHybrid<TSHAPE>::SideConnectLocId(int node,int side) const {
+int TPZCompElHDivDuplConnects<TSHAPE>::SideConnectLocId(int node,int side) const {
     if (TSHAPE::Dimension == 3){
         std::cout << "this will not work for 3D\n"; 
         DebugStop();
@@ -116,9 +116,6 @@ int TPZCompElHDivSemiHybrid<TSHAPE>::SideConnectLocId(int node,int side) const {
     return 2*(side-TSHAPE::NCornerNodes);
 }
 
-
-
-
 #include "pzshapelinear.h"
 #include "pzshapetriang.h"
 #include "pzshapequad.h"
@@ -126,38 +123,37 @@ int TPZCompElHDivSemiHybrid<TSHAPE>::SideConnectLocId(int node,int side) const {
 #include "pzshapetetra.h"
 using namespace pzshape;
 
-// template class TPZRestoreClass< TPZCompElHDivSemiHybrid<TPZShapeLinear>>;
-// template class TPZRestoreClass< TPZCompElHDivSemiHybrid<TPZShapeTriang>>;
-// template class TPZRestoreClass< TPZCompElHDivSemiHybrid<TPZShapeQuad>>;
-// template class TPZRestoreClass< TPZCompElHDivSemiHybrid<TPZShapeCube>>;
-// template class TPZRestoreClass< TPZCompElHDivSemiHybrid<TPZShapeTetra>>;
+// template class TPZRestoreClass< TPZCompElHDivDuplConnects<TPZShapeLinear>>;
+// template class TPZRestoreClass< TPZCompElHDivDuplConnects<TPZShapeTriang>>;
+// template class TPZRestoreClass< TPZCompElHDivDuplConnects<TPZShapeQuad>>;
+// template class TPZRestoreClass< TPZCompElHDivDuplConnects<TPZShapeCube>>;
+// template class TPZRestoreClass< TPZCompElHDivDuplConnects<TPZShapeTetra>>;
 
-// template class TPZCompElHDivSemiHybrid<TPZShapeLinear>;
-template class TPZCompElHDivSemiHybrid<TPZShapeTriang>;
-template class TPZCompElHDivSemiHybrid<TPZShapeQuad>;
-template class TPZCompElHDivSemiHybrid<TPZShapeTetra>;
-template class TPZCompElHDivSemiHybrid<TPZShapeCube>;
+// template class TPZCompElHDivDuplConnects<TPZShapeLinear>;
+template class TPZCompElHDivDuplConnects<TPZShapeTriang>;
+template class TPZCompElHDivDuplConnects<TPZShapeQuad>;
+template class TPZCompElHDivDuplConnects<TPZShapeTetra>;
+template class TPZCompElHDivDuplConnects<TPZShapeCube>;
 
 
-TPZCompEl * CreateHDivSemiHybridLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
-    return new TPZCompElHDivSemiHybridBound< TPZShapeLinear>(mesh,gel,hdivfam);
-    // return new TPZCompElHDivBound2< TPZShapeLinear>(mesh,gel,hdivfam);
+TPZCompEl * CreateHDivDuplConnectsLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+    return new TPZCompElHDivDuplConnectsBound< TPZShapeLinear>(mesh,gel,hdivfam);
 }
 
-TPZCompEl * CreateHDivSemiHybridQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
-	return new TPZCompElHDivSemiHybrid< TPZShapeQuad>(mesh,gel,hdivfam);
+TPZCompEl * CreateHDivDuplConnectsQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+	return new TPZCompElHDivDuplConnects< TPZShapeQuad>(mesh,gel,hdivfam);
 }
 
-TPZCompEl * CreateHDivSemiHybridTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
-	return new TPZCompElHDivSemiHybrid< TPZShapeTriang >(mesh,gel,hdivfam);
+TPZCompEl * CreateHDivDuplConnectsTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+	return new TPZCompElHDivDuplConnects< TPZShapeTriang >(mesh,gel,hdivfam);
 }
 
-TPZCompEl * CreateHDivSemiHybridCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
-	return new TPZCompElHDivSemiHybrid< TPZShapeCube >(mesh,gel,hdivfam);
+TPZCompEl * CreateHDivDuplConnectsCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+	return new TPZCompElHDivDuplConnects< TPZShapeCube >(mesh,gel,hdivfam);
 }
 
-TPZCompEl * CreateHDivSemiHybridTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
-	return new TPZCompElHDivSemiHybrid< TPZShapeTetra >(mesh,gel,hdivfam);
+TPZCompEl * CreateHDivDuplConnectsTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+	return new TPZCompElHDivDuplConnects< TPZShapeTetra >(mesh,gel,hdivfam);
 }
 
 

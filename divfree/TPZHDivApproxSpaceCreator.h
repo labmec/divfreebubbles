@@ -1,14 +1,13 @@
 //
-//  TPZApprxSpaceKernelHdiv.h
+//  TPZHDivApproxSpaceCreator.h
 //  DivFreeBubbles project
 //
 //  Created by Jeferson Fernandes on 18/08/21.
 //
-//  Based on TPZCreateMultiphysicsSpace from ErrorEstimate project
 //
 
-#ifndef TPZApproxSpaceKernelHdiv_hpp
-#define TPZApproxSpaceKernelHdiv_hpp
+#ifndef TPZHDiv_ApproxSpace_Creator
+#define TPZHDiv_ApproxSpace_Creator
 
 #include <stdio.h>
 #include <set>
@@ -25,7 +24,7 @@ class TPZCompEl;
 class TPZGeoElSide;
 
 template <class TVar>
-class TPZApproxSpaceKernelHdiv
+class TPZHDivApproxSpaceCreator
 {
 public:
     /// types of spaces this class can create
@@ -60,13 +59,13 @@ private:
 
 public:
     /// default constructor
-    TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, HDivFamily shapetype = HDivFamily::EHDivKernel);
+    TPZHDivApproxSpaceCreator(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, HDivFamily shapetype = HDivFamily::EHDivKernel);
     
     /// copy constructor
-    TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv &copy);
+    TPZHDivApproxSpaceCreator(const TPZHDivApproxSpaceCreator &copy);
     
     /// = operator
-    TPZApproxSpaceKernelHdiv &operator=(const TPZApproxSpaceKernelHdiv &copy);
+    TPZHDivApproxSpaceCreator &operator=(const TPZHDivApproxSpaceCreator &copy);
 
     //Sets polynomial order
     void SetPOrder(int order){
@@ -152,9 +151,6 @@ public:
         /// Lagrange Multiplier Material ID
         int fLagrange = -1;
 
-        /// Edge to be removed Material ID
-        int fEdgeRemove = -1;
-
         /// Hybridized Boundary conditions material ID's
         std::set<int> fBCHybridMatId = {};
         
@@ -186,7 +182,7 @@ public:
      * @param matBChybrid 
      * @param matBC 
      */
-    void SetPeriferalMaterialIds(int Wrap, int Lagrange, int Interface, int Point, std::set<int > &matBChybrid, std::set<int > &matBC)
+    void SetMaterialIds(int Wrap, int Lagrange, int Interface, int Point, std::set<int > &matBChybrid, std::set<int > &matBC)
     {
         fConfig.fWrap = Wrap;
         fConfig.fLagrange = Lagrange;
@@ -194,10 +190,6 @@ public:
         fConfig.fPoint = Point;
         fConfig.fBCHybridMatId = matBChybrid;
         fConfig.fBCMatId = matBC;
-    }
-
-    void SetEdgeRemove(int edge){
-        fConfig.fEdgeRemove = edge;
     }
 
     void CreateOrientedBoundaryElements();
@@ -208,4 +200,4 @@ public:
     void DuplicateInternalConnects(TPZCompMesh *cmesh);
 };
 
-#endif //TPZApproxSpaceKernelHdiv
+#endif //TPZHDivApproxSpaceCreator

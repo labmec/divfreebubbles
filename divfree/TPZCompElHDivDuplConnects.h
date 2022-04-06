@@ -1,10 +1,10 @@
 /**
  * @file
- * @brief Contains declaration of TPZCompElHDivSemiHybrid
+ * @brief Contains declaration of TPZCompElHDivDuplConnects
  */
 
-#ifndef PZELCHDIV_SEMI_HYBRID
-#define PZELCHDIV_SEMI_HYBRID
+#ifndef PZELCHDIV_DUPL_CONNECTS
+#define PZELCHDIV_DUPL_CONNECTS
 
 #include "pzelchdiv.h"
 
@@ -17,14 +17,14 @@
  * By varying the classes passed as template arguments, the complete family of computational elements are implemented
  */
 template<class TSHAPE>
-class TPZCompElHDivSemiHybrid : public TPZCompElHDiv<TSHAPE> {
+class TPZCompElHDivDuplConnects : public TPZCompElHDiv<TSHAPE> {
 
     /// vector which defines whether the normal is outward or not
     TPZManVector<int, TSHAPE::NFacets> fSideOrient;
 
 public:
 
-    TPZCompElHDivSemiHybrid(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam = DefaultFamily::fHDivDefaultValue);
+    TPZCompElHDivDuplConnects(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam = DefaultFamily::fHDivDefaultValue);
 
     virtual int NConnects() const override;
 
@@ -35,7 +35,6 @@ public:
      */
 	virtual int NConnectShapeF(int connect, int order) const override;
 	
-
     virtual int NSideConnects(int side) const override;
 
     virtual int64_t ConnectIndex(int con) const override;
@@ -44,28 +43,20 @@ public:
      * @brief return the local index for connect
 	 **/
 	virtual int SideConnectLocId(int node, int side) const override;
-    
-protected:
-    
-	
 	
 };
 
 
-
-
-
-
 /** @brief Creates computational linear element for HDiv approximate space */
-TPZCompEl *CreateHDivSemiHybridLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 /** @brief Creates computational quadrilateral element for HDiv approximate space */
-TPZCompEl *CreateHDivSemiHybridQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 /** @brief Creates computational triangular element for HDiv approximate space */
-TPZCompEl *CreateHDivSemiHybridTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsTriangleEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 /** @brief Creates computational cube element for HDiv approximate space */
-TPZCompEl *CreateHDivSemiHybridCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsCubeEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 /** @brief Creates computational tetrahedral element for HDiv approximate space */
-TPZCompEl *CreateHDivSemiHybridTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsTetraEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 
 
 #endif

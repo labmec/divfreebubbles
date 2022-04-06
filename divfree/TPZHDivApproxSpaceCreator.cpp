@@ -7,7 +7,7 @@
 //  Based on TPZCreateMultiphysicsSpace from ErrorEstimate project
 //
 
-#include "TPZApproxSpaceKernelHdiv.h"
+#include "TPZHDivApproxSpaceCreator.h"
 
 #include "pzgmesh.h"
 #include "pzcmesh.h"
@@ -26,8 +26,8 @@
 #include "Projection/TPZHCurlProjection.h"
 #include "pzelchdiv.h"
 #include "pzelchdivbound2.h"
-#include "TPZCompElHDivSemiHybrid.h"
-#include "TPZCompElHDivSemiHybridBound.h"
+#include "TPZCompElHDivDuplConnects.h"
+#include "TPZCompElHDivDuplConnectsBound.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -49,39 +49,36 @@ auto forcefunction = [](const TPZVec<REAL> &loc,
 
 
 template<class TVar>
-TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(TPZGeoMesh *gmesh, MSpaceType spacetype, HDivFamily shapetype) :
+TPZHDivApproxSpaceCreator<TVar>::TPZHDivApproxSpaceCreator(TPZGeoMesh *gmesh, MSpaceType spacetype, HDivFamily shapetype) :
             fSpaceType(spacetype), fShapeType(shapetype), fGeoMesh(gmesh) {
     fDimension = gmesh->Dimension();
 }
 
 /// copy constructor
 template<class TVar>
-TPZApproxSpaceKernelHdiv<TVar>::TPZApproxSpaceKernelHdiv(const TPZApproxSpaceKernelHdiv<TVar> &copy)
+TPZHDivApproxSpaceCreator<TVar>::TPZHDivApproxSpaceCreator(const TPZHDivApproxSpaceCreator<TVar> &copy)
 {
     
 }
 
 /// = operator
 template<class TVar>
-TPZApproxSpaceKernelHdiv<TVar> & TPZApproxSpaceKernelHdiv<TVar>::operator=(const TPZApproxSpaceKernelHdiv<TVar> &copy)
+TPZHDivApproxSpaceCreator<TVar> & TPZHDivApproxSpaceCreator<TVar>::operator=(const TPZHDivApproxSpaceCreator<TVar> &copy)
 {
     return *this;
 }
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
+void TPZHDivApproxSpaceCreator<TVar>::Initialize()
 {
     if (fSpaceType != ENone)
     {
-        hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
-        hybridizer.SetEdgeRemove(fConfig.fEdgeRemove);
-        if (fSpaceType != ESemiHybrid && fShapeType != HDivFamily::EHDivKernel) {
-            //In this case a different approach is used. Instead of using a geometric elements to hybridize the formu Dont create the wrap elements
-        } else {
+        hybridizer.SetMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
+        if (fSpaceType != EDuplicatedConnects) {
             hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,true,fShapeType);
         }
     } else {
-        hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
+        hybridizer.SetMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false,fShapeType);
     }
 
@@ -91,7 +88,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
 
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct, bool filterEquations)
+void TPZHDivApproxSpaceCreator<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * cmesh, bool direct, bool filterEquations)
 {
     if (direct)
     {
@@ -105,7 +102,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::Solve(TPZLinearAnalysis &an, TPZCompMesh * 
 
 //Creates the flux mesh
 template<class TVar>
-TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
+TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateFluxCMesh()
 {   
     fGeoMesh->ResetReference();
     TPZCompMesh *cmesh = new TPZCompMesh(fGeoMesh);
@@ -119,7 +116,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
     allMat.insert(fConfig.fDomain);
     allMat.insert(fConfig.fPoint);
     allMat.insert(fConfig.fWrap);
-    // allMat.insert(fConfig.fEdgeRemove);
     std::set<int> domainBC;// = fConfig.fBCMatId;
     domainBC.insert(fConfig.fDomain);
 
@@ -129,7 +125,6 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
         cmesh->InsertMaterialObject(mat);
         mat->SetDimension(fDimension);
-        if (*it == fConfig.fEdgeRemove) mat->SetDimension(1);
         mat->SetBigNumber(fBigNumber);
     } 
 
@@ -164,7 +159,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateFluxCMesh()
 }
 
 template<class TVar>
-TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
+TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
 {
     std::set<int> matIdVec = fConfig.fBCHybridMatId;
     if (fShapeType != HDivFamily::EHDivConstant) matIdVec.insert(fConfig.fLagrange);
@@ -254,7 +249,7 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMesh()
 }
 
 template<class TVar>
-TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet)
+TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet)
 {
     // gmesh->ResetReference();
     auto cmesh = new TPZMultiphysicsCompMesh(fGeoMesh);
@@ -293,12 +288,6 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
         cmesh->InsertMaterialObject(BCond);
     }
 
-    if (fConfig.fEdgeRemove > 0){
-        TPZL2ProjectionCS<> *matEdge = new TPZL2ProjectionCS<>(fConfig.fEdgeRemove,0,1);
-        matEdge->SetScaleFactor(1.e10);
-        cmesh->InsertMaterialObject(matEdge);
-    }
-
     auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
     cmesh->InsertMaterialObject(matL2);
 
@@ -333,7 +322,7 @@ TPZMultiphysicsCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreateMultiphysicsCMes
 
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
+void TPZHDivApproxSpaceCreator<TVar>::CreateOrientedBoundaryElements()
 {   
     for(auto gel : fGeoMesh->ElementVec())
     {
@@ -362,7 +351,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateOrientedBoundaryElements()
 
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh *cmesh)
+void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh *cmesh)
 {   
     int64_t nel = fGeoMesh->NElements();
 
@@ -470,7 +459,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh 
 }
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh)
+void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh)
 {   
     int64_t nel = fGeoMesh->NElements();
 
@@ -489,8 +478,8 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
         if (fDimension == 2){
             switch (type){
             case ETriangle:
-                if (fSpaceType == ESemiHybrid){
-                    CreateHDivSemiHybridTriangleEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == EDuplicatedConnects){
+                    CreateHDivDuplConnectsTriangleEl(gel,*cmesh,fShapeType);
                 } else if (fSpaceType == EFullHybrid){
                     CreateHDivTriangleEl(gel,*cmesh,fShapeType);
                 } else {
@@ -498,8 +487,8 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
                 }
                 break;
             case EQuadrilateral:
-                if (fSpaceType == ESemiHybrid){
-                    CreateHDivSemiHybridQuadEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == EDuplicatedConnects){
+                    CreateHDivDuplConnectsQuadEl(gel,*cmesh,fShapeType);
                 } else if (fSpaceType == EFullHybrid){
                     CreateHDivQuadEl(gel,*cmesh,fShapeType);
                 } else {
@@ -513,8 +502,8 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
         } else if (fDimension == 3){
             switch (type){
             case ECube:
-                if (fSpaceType == ESemiHybrid){
-                    CreateHDivSemiHybridCubeEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == EDuplicatedConnects){
+                    CreateHDivDuplConnectsCubeEl(gel,*cmesh,fShapeType);
                 } else if (fSpaceType == EFullHybrid){
                     CreateHDivCubeEl(gel,*cmesh,fShapeType);
                 } else {
@@ -522,8 +511,8 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
                 }
                 break;
             case ETetraedro:
-                if (fSpaceType == ESemiHybrid){
-                    CreateHDivSemiHybridTetraEl(gel,*cmesh,fShapeType);
+                if (fSpaceType == EDuplicatedConnects){
+                    CreateHDivDuplConnectsTetraEl(gel,*cmesh,fShapeType);
                 } else if (fSpaceType == EFullHybrid){
                     CreateHDivTetraEl(gel,*cmesh,fShapeType);
                 } else {
@@ -545,9 +534,9 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
 
             //Creates the computational elements. Both wrap, BC and interface
             if (fDimension == 2){
-                if (fSpaceType == ESemiHybrid){
+                if (fSpaceType == EDuplicatedConnects){
                     if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
-                        CreateHDivSemiHybridLinearEl(neighbour.Element(),*cmesh,fShapeType);
+                        CreateHDivDuplConnectsLinearEl(neighbour.Element(),*cmesh,fShapeType);
                     }
                 }else {
                     CreateHDivBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);   
@@ -577,7 +566,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
         }
     } 
 
-    if (fSpaceType == ESemiHybrid){
+    if (fSpaceType == EDuplicatedConnects){
         DuplicateInternalConnects(cmesh);
     }
 
@@ -611,7 +600,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
 
 
 template<class TVar>
-TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivConstant()
+TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDivConstant()
 {
     std::set<int> matIdVec = fConfig.fBCHybridMatId;
     matIdVec.insert(fConfig.fLagrange);
@@ -657,11 +646,9 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivC
 }
 
 template<class TVar>
-void TPZApproxSpaceKernelHdiv<TVar>::DuplicateInternalConnects(TPZCompMesh *cmesh)
+void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cmesh)
 {
     std::map<int64_t,int64_t> conn2duplConn; 
-    util->PrintCMeshConnects(cmesh);
-    int dim = cmesh->Dimension();
 
     //Loop over the computational elements
     for (auto cel:cmesh->ElementVec())
@@ -669,32 +656,33 @@ void TPZApproxSpaceKernelHdiv<TVar>::DuplicateInternalConnects(TPZCompMesh *cmes
         auto gel = cel->Reference();
         if (!gel) DebugStop();
         
-        auto nFacets = gel->NSides(dim-1);
+        auto nFacets = gel->NSides(fDimension-1);
 
         //Loop over the element facets - which are the connects the be duplicated (edges in 2D and faces in 3D)
         for (int iFacet = 0; iFacet < nFacets; iFacet++)
         {
-            // Algoritmo: Percorre cada facet do elemento, verifica se o connect já está no mapa, se já está,
-            // apenas fala que o connect seguinte (duplicado) é igual ao valor retornado pelo std::map
-            // Caso contrário, aloca um novo connect e insere o seu index no std::map.
+            // Algorithm description: for each element facet, checks if the corresponding original connect is in the map conn2duplConn.
+            // If Yes, just sets the returning value from conn2duplConn to the duplicated connect in the current element;
+            // If No, allocate a new connect and inserts its index to conn2duplConn using the original connect as key
 
             auto conn = cel->ConnectIndex(2*iFacet);           
 
             if (conn2duplConn.find(conn) == conn2duplConn.end()){
                 //not found, so allocate a new connect
                 auto pOrder = cmesh->GetDefaultOrder();
-                int nshape = 0;
-                int nstate = 1;
-                int64_t newConnect = cmesh->AllocateNewConnect(nshape,nstate,pOrder);//Atualizar fConnectIndexes para ficar na ordem desejada.        
+                int nshape = 0;//It is updated in the next loop
+                int nstate = 1;//It can possibly change
+                int64_t newConnect = cmesh->AllocateNewConnect(nshape,nstate,pOrder);
                 conn2duplConn[conn] = newConnect;
                 cel->SetConnectIndex(2*iFacet+1,newConnect);
             } else {
-                //found, so just set the proper connect index
+                //found, so just set the proper index of the duplicated connect
                 cel->SetConnectIndex(2*iFacet+1,conn2duplConn[conn]);
             }
         }
-        //Updates the number of shape functions and also the integration rule
-        TPZCompElHDivSemiHybrid<TPZShapeQuad> *celHybrid = dynamic_cast<TPZCompElHDivSemiHybrid<TPZShapeQuad> *> (cel); 
+        //Updates the number of shape functions and also the integration rule. 
+        //We need different casts because the element can be volumetric or boundary
+        TPZCompElHDivDuplConnects<TPZShapeQuad> *celHybrid = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cel); 
         if (celHybrid){     
             for (int icon = 0; icon < celHybrid->NConnects(); icon++)
             {
@@ -708,7 +696,7 @@ void TPZApproxSpaceKernelHdiv<TVar>::DuplicateInternalConnects(TPZCompMesh *cmes
                 celHybrid->Mesh()->Block().Set(seqnum, nvar * nShapeF);
             }
         }
-        TPZCompElHDivSemiHybridBound<TPZShapeLinear> *celHybBound = dynamic_cast<TPZCompElHDivSemiHybridBound<TPZShapeLinear> *> (cel);
+        TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celHybBound = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cel);
         if (celHybBound){
             for (int icon = 0; icon < celHybBound->NConnects(); icon++)
             {
@@ -721,18 +709,13 @@ void TPZApproxSpaceKernelHdiv<TVar>::DuplicateInternalConnects(TPZCompMesh *cmes
                 if (mat) nvar = mat->NStateVariables();
                 celHybBound->Mesh()->Block().Set(seqnum, nvar * nShapeF);
             }
-        
         }
-        // this->Mesh()->ExpandSolution();
-        // this->Mesh()->Block().Resequence();
     }
-    util->PrintCMeshConnects(cmesh);
-    cmesh->Block().Resequence();
+    // util->PrintCMeshConnects(cmesh);
     cmesh->ExpandSolution();
-
 }
 
-template class TPZApproxSpaceKernelHdiv<STATE>;
-// template class TPZApproxSpaceKernelHdiv<CSTATE>;
+template class TPZHDivApproxSpaceCreator<STATE>;
+// template class TPZHDivApproxSpaceCreator<CSTATE>;
 
 

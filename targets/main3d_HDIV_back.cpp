@@ -45,7 +45,7 @@
 #include "pzshapetriang.h"
 #include "pzshapetetra.h"
 #include <pzfstrmatrix.h>
-
+#include "TPZCompMeshTools.h"
 
 #include "divfree_config.h"
 #include "TPZMatDivFreeBubbles.h"
@@ -53,23 +53,19 @@
 #include "TPZCompElKernelHDiv.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
-#include "TPZHDivApproxSpaceCreator.h"
+#include "TPZApproxSpaceKernelHdiv.h"
 #include <TPZGeoMeshTools.h>
 #include "TPZCompElHCurlNoGrads.h"
 #include "TPZMatCurlDotCurl.h"
-#include "TPZHCurlEquationFilter.h"
-#include "TPZCompMeshTools.h"
 
 
 TPZCompMesh *FluxCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoMesh *gmesh);
 TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZVec<TPZCompMesh *> meshvector,TPZGeoMesh * gmesh);
 TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
-TPZGeoMesh *CreateGeoMesh2D(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
 TPZGeoMesh *CreateGeoMeshTetra(const MMeshType meshType, const TPZVec<int> &nDivs, const int volId, const int bcId);
 TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh);
-void PrintEdges(TPZGeoMesh* cmesh, std::set<int64_t> &rem_edges, std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &vertexData, std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &edgeData);
-void UniformRefinement(const int nDiv, TPZGeoMesh *gmesh, const int dim, bool allmaterial=false, const int matidtodivided=1);
+void PrintEdges(TPZGeoMesh* cmesh, std::set<int64_t> &rem_edges);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -94,32 +90,22 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -2.*y;//(x*x*x*z - 3.*y*y*x*z);
     // gradU(2,0) = 0.;//(x*x*x*y - y*y*y*x);
 
-    // u[0] = x*x-2.*y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
-    // gradU(0,0) = -2.*x;//(3.*x*x*y*z - y*y*y*z);
-    // gradU(1,0) = 4.*y;//(x*x*x*z - 3.*y*y*x*z);
-    // gradU(2,0) = -2.*z;//(x*x*x*y - y*y*y*x);
+    // u[0] = x*x+y*y+z*z;//x*x*x*y*z - y*y*y*x*z;
+    // gradU(0,0) = 2.*x;//(3.*x*x*y*z - y*y*y*z);
+    // gradU(1,0) = 2.*y;//(x*x*x*z - 3.*y*y*x*z);
+    // gradU(2,0) = 2.*z;//(x*x*x*y - y*y*y*x);
 
     // u[0] = x*x*x*y*z - y*y*y*x*z;
     // gradU(0,0) = (3.*x*x*y*z - y*y*y*z);
     // gradU(1,0) = (x*x*x*z - 3.*y*y*x*z);
     // gradU(2,0) = (x*x*x*y - y*y*y*x);
 
-    // REAL aux = 1./sinh(sqrt(2)*M_PI);
-    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    REAL aux = 1./sinh(sqrt(2)*M_PI);
+    u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
     
-    REAL a1 = 1./4;
-    REAL alpha = M_PI/2;
-    u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
-    gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
-    gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
-
-    // u[0] = 4*(exp(M_PI*x/4)*sin(M_PI*y/4) + exp(M_PI*y/4)*sin(M_PI*z/4));
-    // gradU(0,0) = -exp(M_PI*x/4)*sin(M_PI*y/4)*M_PI;
-    // gradU(1,0) = -M_PI*(exp(M_PI*x/4)*cos(M_PI*y/4) + exp(M_PI*y/4)*sin(M_PI*z/4));
-    // gradU(2,0) = -exp(M_PI*y/4)*cos(M_PI*z/4)*M_PI;
 };
 
 
@@ -128,7 +114,7 @@ enum EMatid {ENone, EDomain, ESurfaces, EPont, EWrap, EIntface, EPressureHyb, EE
 int main(int argc, char* argv[])
 {
     //dimension of the problem
-    constexpr int dim{2};
+    constexpr int dim{3};
     constexpr int pOrder{1};
       
 
@@ -148,26 +134,21 @@ TPZLogger::InitializePZLOG();
     //     stringtoint[2]["Surfaces"] = 2;
     //     // stringtoint[2]["Hybrid"] = 3;
     //     reader.SetDimNamePhysical(stringtoint);
-    //     reader.GeometricGmshMesh("../mesh/cube3.msh",gmesh);
+    //     reader.GeometricGmshMesh("../mesh/1tetra.msh",gmesh);
     //     std::ofstream out("gmesh.vtk");
     //     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, out);
     // }
     
     //for now this should suffice
-    const int xdiv = 16;
-    // const int ydiv = 1;
-    // const int zdiv = 1;
-    const MMeshType meshType = MMeshType::ETriangular;
-    // const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
-    const TPZManVector<int,2> nDivs = {xdiv,xdiv};
+    const int xdiv = 2;
+    // const int ydiv = 2;
+    // const int zdiv = 2;
+    const MMeshType meshType = MMeshType::ETetrahedral;
+    const TPZManVector<int,3> nDivs = {xdiv,xdiv,xdiv};
 
-    // TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
-    TPZGeoMesh *gmesh = CreateGeoMesh2D(meshType,nDivs,EDomain,ESurfaces);
+    TPZGeoMesh *gmesh = CreateGeoMesh(meshType,nDivs,EDomain,ESurfaces);
     // TPZGeoMesh *gmesh = CreateGeoMeshTetra(meshType,nDivs,EDomain,ESurfaces);
 
-
-   
-    // UniformRefinement(1,gmesh,dim);
 
     TPZKernelHdivUtils<STATE> util;
 
@@ -178,44 +159,44 @@ TPZLogger::InitializePZLOG();
         TPZCompMesh * cmeshpressure = 0;    
 
         std::set<int> matIdVecHdiv={EDomain,ESurfaces};
-        std::set<int> matIdNeumannHdiv = {};
-        std::set<int> matIdDirichletHdiv = {ESurfaces};
+        std::set<int> matIdNeumannHdiv;
         std::set<int> matBCHybrid = {};
         std::set<int> matBC = {ESurfaces};
         
-        TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh,
-                                                    TPZHDivApproxSpaceCreator<STATE>::ENone,        //Hybridization
-                                                    HDivFamily::EHDivConstant); // Shape Type
-
+        TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
+                                                    TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
+                                                    HDivFamily::EHDivStandard); // Shape Type
+ 
     //     //Setting material ids
         createSpace.fConfig.fDomain = EDomain;
         createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBC);
         createSpace.Initialize();
-        createSpace.SetPOrder(pOrder);
-
-        // createSpace.SetEdgeRemove(EEdgeRemove);
+        createSpace.SetEdgeRemove(EEdgeRemove);
         // util.PrintGeoMesh(gmesh);
 
         //Flux mesh
-        cmeshflux = createSpace.CreateFluxCMesh();     
-
+        cmeshflux = FluxCMesh(dim,pOrder,matIdVecHdiv,gmesh);     
+        std::string fluxFile = "FluxCMesh";
+        util.PrintCompMesh(cmeshflux,fluxFile);
+        
         //Pressure mesh
-        cmeshpressure = createSpace.CreatePressureCMesh();
+        cmeshpressure = PressureCMesh(dim,pOrder,matIdVecHdiv,gmesh);
+        std::string presFile = "PressureCMesh";
+        util.PrintCompMesh(cmeshpressure,presFile);
 
         //Multiphysics mesh
         TPZManVector< TPZCompMesh *, 2> meshvector(2);
         meshvector[0] = cmeshflux;
         meshvector[1] = cmeshpressure;
-        TPZMultiphysicsCompMesh * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matIdNeumannHdiv,matIdDirichletHdiv);
-        // TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
+        TPZMultiphysicsCompMesh * cmesh = MultiphysicCMesh(dim,pOrder,matIdVecHdiv,meshvector,gmesh);
         std::string multiphysicsFile = "MultiPhysicsMeshNew1";
         util.PrintCompMesh(cmesh,multiphysicsFile);
 
         // util.PrintCMeshConnects(cmesh);
-        std::cout << "Equations without condense = " << cmesh->NEquations() - gmesh->NNodes()+1 << std::endl;
+        std::cout << "Equations without condense = " << cmesh->NEquations()<< std::endl;
         // Group and condense the elements
         // createSpace.Condense(cmesh);
-        TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
+        // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
 
         std::string multiphysicsFile1 = "MultiPhysicsMeshNew2";
         util.PrintCompMesh(cmesh,multiphysicsFile1);
@@ -224,13 +205,11 @@ TPZLogger::InitializePZLOG();
         TPZLinearAnalysis an(cmesh,true);
         bool domainhyb=false;
                 
-        bool filter = false;
-        if (dim == 3 && createSpace.GetHDivFamily() == HDivFamily::EHDivKernel) filter = true;
-        createSpace.Solve(an, cmesh, true, filter);
-
-        std::cout << "Number of equations = " << cmesh->NEquations() << std::endl;
+        util.SolveProblemDirect(an,cmesh,false,domainhyb);
+        // util.SolveProblemIterative(an,cmesh);
+        std::cout << "Equations condensed = " << cmesh->NEquations() << std::endl;
         
-        // PrintEdges(gmesh,util.GetRemoveEdges(),util.GetVertexData(),util.GetEdgeData());
+        // PrintEdges(gmesh,util.GetRemoveEdges());
 
         //Print results
         an.SetExact(exactSol,solOrder);
@@ -258,9 +237,9 @@ TPZLogger::InitializePZLOG();
     //     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     //     /// Creates the approximation space - Set the type of domain hybridization
-    //     TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh,
-    //                                                 TPZHDivApproxSpaceCreator<STATE>::ENone,        //Hybridization
-    //                                                 TPZHDivApproxSpaceCreator<STATE>::EHDivKernel); // Shape Type
+    //     TPZApproxSpaceKernelHdiv<STATE> createSpace(gmesh,
+    //                                                 TPZApproxSpaceKernelHdiv<STATE>::ENone,        //Hybridization
+    //                                                 TPZApproxSpaceKernelHdiv<STATE>::EHDivKernel); // Shape Type
 
     //     //Setting material ids
     //     createSpace.fConfig.fDomain = EDomain;
@@ -408,7 +387,7 @@ TPZCompMesh *FluxCMesh(int dim, int pOrder,std::set<int> &matIdVec, TPZGeoMesh *
         cmesh->InsertMaterialObject(mat);
     }
     
-    cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHDivKernel);
+    cmesh->ApproxSpace().SetHDivFamily(HDivFamily::EHDivStandard);
     cmesh->ApproxSpace().SetAllCreateFunctionsHDiv(dim);
     
     // cmesh->ApproxSpace().SetHCurlFamily(HCurlFamily::EHCurlNoGrads);
@@ -430,10 +409,10 @@ TPZCompMesh *PressureCMesh(int dim, int pOrder, std::set<int> &matIdVec, TPZGeoM
     TPZCompMesh *cmesh = new TPZCompMesh(gmesh,false);
     if(matIdVec.size() == 0) return cmesh;
 
-    // TPZNullMaterial<> *mat = new TPZNullMaterial<>(EDomain);
-    // mat->SetDimension(dim);
-    // cmesh->InsertMaterialObject(mat);
-    // mat -> SetBigNumber(1.e10);
+    TPZNullMaterial<> *mat = new TPZNullMaterial<>(EDomain);
+    mat->SetDimension(dim);
+    cmesh->InsertMaterialObject(mat);
+    mat -> SetBigNumber(1.e10);
     // distincao de ordem zero
     if(pOrder == 0)
     {
@@ -494,7 +473,7 @@ TPZMultiphysicsCompMesh *MultiphysicCMesh(int dim, int pOrder, std::set<int> &ma
     TPZFMatrix<STATE> val1(1,1,1.);
     TPZManVector<STATE> val2(1,0.);
     auto * BCond0 = mat->CreateBC(mat, ESurfaces, 0, val1, val2);
-    BCond0->SetForcingFunctionBC(exactSol,3);
+    BCond0->SetForcingFunctionBC(exactSol);
     cmesh->InsertMaterialObject(BCond0);
 
     TPZManVector<int> active(2,1);
@@ -530,26 +509,6 @@ TPZGeoMesh *CreateGeoMesh(const MMeshType meshType, const TPZVec<int> &nDivs,
 
   //all bcs share the same id
   const TPZManVector<int,7> matIds(7,bcId);
-  matIds[0] = volId;
-  
-  TPZGeoMesh *gmesh = 
-    TPZGeoMeshTools::CreateGeoMeshOnGrid(dim, minX, maxX,
-            matIds, nDivs, meshType,createBoundEls);
-
-  
-  return gmesh;
-}
-
-TPZGeoMesh *CreateGeoMesh2D(const MMeshType meshType, const TPZVec<int> &nDivs,
-              const int volId, const int bcId)
-{
-  constexpr int dim{2};
-  const TPZManVector<REAL,3> minX = {0,0,0};
-  const TPZManVector<REAL,3> maxX = {1,1,0};
-  constexpr bool createBoundEls{true};
-
-  //all bcs share the same id
-  const TPZManVector<int,5> matIds(5,bcId);
   matIds[0] = volId;
   
   TPZGeoMesh *gmesh = 
@@ -640,19 +599,10 @@ TPZCompMesh *FluxCMeshCurl(int dim, int pOrder, TPZGeoMesh *gmesh)
 }
 
 
-void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges, std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &vertexData, std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &edgeData){
+void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges){
 
     int idRem=50;
     int idEdg=40;
-    int node0=idRem;
-    idRem++;
-    int nnodes = vertexData.size();
-
-    for (int i = 0; i < edgeData.size(); i++)
-    {
-        edgeData[i].status = TPZHCurlEquationFilter<STATE>::EdgeStatusType::EFreeEdge;
-    }
-    
 
     for (auto gel:gmesh->ElementVec())
     {
@@ -673,30 +623,13 @@ void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges, std::map<int64
             TPZGeoElSide gelside(gel,side);
             auto con = gel->Reference()->ConnectIndex(side-sideStart);
 
-            if (edgeData[con].status != TPZHCurlEquationFilter<STATE>::EdgeStatusType::EFreeEdge) continue;
-
-            edgeData[con].status = TPZHCurlEquationFilter<STATE>::EdgeStatusType::ERemovedEdge;
             int Nmatid = 0;
             if (rem_edges.find(con) != rem_edges.end()){
-                Nmatid = idRem++;
-                for (int iNode = 0; iNode < nnodes; iNode++)
-                {
-                    if (con == vertexData[iNode].removed_edge){
-                        int64_t index;
-                        TPZVec<int64_t> corner{iNode};
-                        if (iNode == 5){
-                            gmesh->CreateGeoElement(EPoint,corner,node0,index);
-                        } else {
-                            gmesh->CreateGeoElement(EPoint,corner,Nmatid,index);
-                        }
-                    }
-                }
+                Nmatid = idRem;
             }else{
                 Nmatid = idEdg;
             }
             TPZGeoElBC gelbcWrap(gelside, Nmatid);
-            
-            
         }
     }
     
@@ -706,41 +639,4 @@ void PrintEdges(TPZGeoMesh * gmesh, std::set<int64_t> &rem_edges, std::map<int64
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
     
 
-}
-
-
-
-void UniformRefinement(const int nDiv, TPZGeoMesh *gmesh, const int dim, bool allmaterial, const int matidtodivided) {
-    TPZManVector<TPZGeoEl*> filhos;
-    for(int D=0; D<nDiv; D++)
-    {
-        int nels = gmesh->NElements();
-        for(int elem = 0; elem < nels; elem++)
-        {
-            TPZGeoEl * gel = gmesh->ElementVec()[elem];
-            if(!gel || gel->HasSubElement())
-                continue;
-            if(dim > 0 && gel->Dimension() != dim) continue;
-            if(!allmaterial) {
-                if(gel->MaterialId() == matidtodivided){
-                    gel->Divide(filhos);
-                }
-            }
-            else{
-                gel->Divide(filhos);
-            }
-#ifdef PZDEBUG
-                REAL volgel = fabs(gel->Volume());
-                REAL sumvol = 0.;
-                for(int nsubs=0;nsubs<gel->NSubElements();nsubs++)
-                    sumvol += fabs(filhos[nsubs]->Volume());
-                if(!IsZero(volgel-sumvol)) {
-                    std::cout << "Division of geometric element " << elem << " is wrong.\n";
-                    DebugStop();
-                }
-#endif
-        }
-    }
-    gmesh->ResetConnectivities();
-    gmesh->BuildConnectivity();
 }

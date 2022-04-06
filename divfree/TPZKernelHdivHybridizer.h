@@ -71,7 +71,7 @@ struct TPZKernelHdivHybridizer {
      * @param Point 
      * @param Domain 
      */
-    void SetPeriferalMaterialIds(int Wrap, int Lagrange, int Interface, int Point, int Domain)
+    void SetMaterialIds(int Wrap, int Lagrange, int Interface, int Point, int Domain)
     {
         fEWrap = Wrap;
         fEPressureHyb = Lagrange;

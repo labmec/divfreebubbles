@@ -15,13 +15,13 @@ set(MATERIAL_SRCS
 
 
 set(MESH_HEADERS
-    TPZCompElHDivSemiHybrid.h
-    TPZCompElHDivSemiHybridBound.h
+    TPZCompElHDivDuplConnects.h
+    TPZCompElHDivDuplConnectsBound.h
   )
 
 set(MESH_SRCS
-    TPZCompElHDivSemiHybrid.cpp
-    TPZCompElHDivSemiHybridBound.cpp
+    TPZCompElHDivDuplConnects.cpp
+    TPZCompElHDivDuplConnectsBound.cpp
   )
 
 # let us create a config file with the directory containing the meshes
@@ -32,7 +32,7 @@ configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/divfree_config.h.in" ${CONFIG_H})
 
 set(UTIL_HEADERS
   divfree_config.h
-  TPZApproxSpaceKernelHdiv.h
+  TPZHDivApproxSpaceCreator.h
   TPZKernelHdivHybridizer.h
   TPZKernelHdivUtils.h
   TPZSparseMatRed.h
@@ -40,7 +40,7 @@ set(UTIL_HEADERS
 
 set(UTIL_SRCS
   TPZKernelHdivHybridizer.cpp
-  TPZApproxSpaceKernelHdiv.cpp
+  TPZHDivApproxSpaceCreator.cpp
   TPZKernelHdivUtils.cpp
   TPZSparseMatRed.cpp
   )
