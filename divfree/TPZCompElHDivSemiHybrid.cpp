@@ -16,15 +16,6 @@ TPZRegisterClassId(&TPZCompElHDivSemiHybrid::ClassId), TPZCompElHDiv<TSHAPE>(mes
     
     this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
 
-    //Allocate new connects for the faces
-    for (int i = 0; i < TSHAPE::NFacets; i++)
-    {
-        auto pOrder = this->ConnectOrder(i);
-        int nshape = 0;
-        int nstate = 1;
-        this->fConnectIndexes[TSHAPE::NFacets+1+i]= this->Mesh()->AllocateNewConnect(nshape,nstate,pOrder);//Atualizar fConnectIndexes para ficar na ordem desejada.        
-        // this->Connect(TSHAPE::NFacets+1+i).IncrementElConnected();
-    } 
     //Reorder the connects
     auto prevCon = this->fConnectIndexes;
     for (int i = 0; i < TSHAPE::NFacets; i++)
@@ -33,33 +24,6 @@ TPZRegisterClassId(&TPZCompElHDivSemiHybrid::ClassId), TPZCompElHDiv<TSHAPE>(mes
         this->fConnectIndexes[2*i+1] = prevCon[i+TSHAPE::NFacets+1];
     }
     this->fConnectIndexes[TSHAPE::NFacets*2] = prevCon[TSHAPE::NFacets];
-    
-    // std::cout << "ConIndex " << this->fConnectIndexes << std::endl;
-    // std::cout << "Connect " << this->ConnectVec() << std::endl;
-
-    // for (int i = 0; i<NConnects(); i++)
-    // {
-    //     TPZConnect con = this->Connect(i);
-    //     std::cout << "C = " << con << std::endl;
-    //     std::cout << "NShape = " << con.NShape() << std::endl;
-    // }
-    // std::cout << "\n\n\n";
-    
-    
-    //Updates the number of shape functions and also the integration rule
-    for (int icon = 0; icon < this->NConnects(); icon++)
-    {
-        TPZConnect &c = this->Connect(icon);
-        int nShapeF = NConnectShapeF(icon,c.Order());
-        c.SetNShape(nShapeF);
-        int64_t seqnum = c.SequenceNumber();
-        int nvar = 1;
-        TPZMaterial * mat = this->Material();
-        if (mat) nvar = mat->NStateVariables();
-        this->Mesh()->Block().Set(seqnum, nvar * nShapeF);
-    }
-    this->Mesh()->ExpandSolution();
-    // this->Mesh()->Block().Resequence();
 }
 
 
@@ -103,12 +67,17 @@ int TPZCompElHDivSemiHybrid<TSHAPE>::NConnectShapeF(int connect, int order)const
         return TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(connect,order);    
         break;
     case HDivFamily::EHDivConstant:
-        // ARRUMAR ISSO AQUI. ESTA PEGANDO OS NUMEROS DE SHAPE FUNCTIONS
         {
             int conCorrect = connect/2;
             int res = connect % 2;
             int nshape = TPZShapeHDivConstant<TSHAPE>::ComputeNConnectShapeF(conCorrect,order);
-            if (res == 1) nshape = 0;
+            if (res == 1){ 
+                nshape -= 1;
+            } else {
+                if (connect != 2*TSHAPE::NFacets){
+                    nshape = 1;
+                }
+            }
             return nshape;
         }
         break;
@@ -172,6 +141,7 @@ template class TPZCompElHDivSemiHybrid<TPZShapeCube>;
 
 TPZCompEl * CreateHDivSemiHybridLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
     return new TPZCompElHDivSemiHybridBound< TPZShapeLinear>(mesh,gel,hdivfam);
+    // return new TPZCompElHDivBound2< TPZShapeLinear>(mesh,gel,hdivfam);
 }
 
 TPZCompEl * CreateHDivSemiHybridQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {

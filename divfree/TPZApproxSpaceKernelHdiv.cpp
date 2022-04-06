@@ -27,6 +27,7 @@
 #include "pzelchdiv.h"
 #include "pzelchdivbound2.h"
 #include "TPZCompElHDivSemiHybrid.h"
+#include "TPZCompElHDivSemiHybridBound.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -74,7 +75,11 @@ void TPZApproxSpaceKernelHdiv<TVar>::Initialize()
     {
         hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
         hybridizer.SetEdgeRemove(fConfig.fEdgeRemove);
-        hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,true,fShapeType);
+        if (fSpaceType != ESemiHybrid && fShapeType != HDivFamily::EHDivKernel) {
+            //In this case a different approach is used. Instead of using a geometric elements to hybridize the formu Dont create the wrap elements
+        } else {
+            hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,true,fShapeType);
+        }
     } else {
         hybridizer.SetPeriferalMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false,fShapeType);
@@ -541,7 +546,9 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
             //Creates the computational elements. Both wrap, BC and interface
             if (fDimension == 2){
                 if (fSpaceType == ESemiHybrid){
-                    CreateHDivSemiHybridLinearEl(neighbour.Element(),*cmesh,fShapeType);
+                    if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
+                        CreateHDivSemiHybridLinearEl(neighbour.Element(),*cmesh,fShapeType);
+                    }
                 }else {
                     CreateHDivBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);   
                 }
@@ -560,13 +567,19 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
             }
         }
         //Finally reset the reference of all neighbours
-        for (int side = 0; side < gel->NSides(); side++)
-        {
-            TPZGeoElSide gelside(gel,side);
-            TPZGeoElSide neighbour = gelside.Neighbour();
-            neighbour.Element()->ResetReference();
+        if (fSpaceType == EFullHybrid){
+            for (int side = 0; side < gel->NSides(); side++)
+            {
+                TPZGeoElSide gelside(gel,side);
+                TPZGeoElSide neighbour = gelside.Neighbour();
+                neighbour.Element()->ResetReference();
+            }
         }
     } 
+
+    if (fSpaceType == ESemiHybrid){
+        DuplicateInternalConnects(cmesh);
+    }
 
     cmesh->InitializeBlock(); 
     cmesh->ExpandSolution();
@@ -575,20 +588,21 @@ void TPZApproxSpaceKernelHdiv<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMes
 
     // When hybridization in active, the side orient needs to be set as one so there is no need to vector compatibility
     // between elements. What is needed is that the flux orientation be outward the element.
-    for (auto cel:cmesh->ElementVec())
-    {   
-        if (cel->Reference()->Dimension() != fDimension) continue;
-        
-        TPZInterpolationSpace *intel = dynamic_cast<TPZInterpolationSpace *>(cel);
-        auto nsides = cel->Reference()->NSides();
-        auto nfacets = cel->Reference()->NSides(fDimension-1);
+    if (fSpaceType == EFullHybrid){
+        for (auto cel:cmesh->ElementVec())
+        {   
+            if (cel->Reference()->Dimension() != fDimension) continue;
+            
+            TPZInterpolationSpace *intel = dynamic_cast<TPZInterpolationSpace *>(cel);
+            auto nsides = cel->Reference()->NSides();
+            auto nfacets = cel->Reference()->NSides(fDimension-1);
 
-        int firstside = nsides-nfacets-1;
-        for (int i = firstside; i<nsides-1; i++){
-            intel->SetSideOrient(i,1);
+            int firstside = nsides-nfacets-1;
+            for (int i = firstside; i<nsides-1; i++){
+                intel->SetSideOrient(i,1);
+            }
         }
     }
-    
     // if (fSpaceType == ESemiHybrid){
     //     hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     // }
@@ -640,6 +654,82 @@ TPZCompMesh * TPZApproxSpaceKernelHdiv<TVar>::CreatePressureCMeshHybridizedHDivC
     }
 
     return cmesh;
+}
+
+template<class TVar>
+void TPZApproxSpaceKernelHdiv<TVar>::DuplicateInternalConnects(TPZCompMesh *cmesh)
+{
+    std::map<int64_t,int64_t> conn2duplConn; 
+    util->PrintCMeshConnects(cmesh);
+    int dim = cmesh->Dimension();
+
+    //Loop over the computational elements
+    for (auto cel:cmesh->ElementVec())
+    {
+        auto gel = cel->Reference();
+        if (!gel) DebugStop();
+        
+        auto nFacets = gel->NSides(dim-1);
+
+        //Loop over the element facets - which are the connects the be duplicated (edges in 2D and faces in 3D)
+        for (int iFacet = 0; iFacet < nFacets; iFacet++)
+        {
+            // Algoritmo: Percorre cada facet do elemento, verifica se o connect já está no mapa, se já está,
+            // apenas fala que o connect seguinte (duplicado) é igual ao valor retornado pelo std::map
+            // Caso contrário, aloca um novo connect e insere o seu index no std::map.
+
+            auto conn = cel->ConnectIndex(2*iFacet);           
+
+            if (conn2duplConn.find(conn) == conn2duplConn.end()){
+                //not found, so allocate a new connect
+                auto pOrder = cmesh->GetDefaultOrder();
+                int nshape = 0;
+                int nstate = 1;
+                int64_t newConnect = cmesh->AllocateNewConnect(nshape,nstate,pOrder);//Atualizar fConnectIndexes para ficar na ordem desejada.        
+                conn2duplConn[conn] = newConnect;
+                cel->SetConnectIndex(2*iFacet+1,newConnect);
+            } else {
+                //found, so just set the proper connect index
+                cel->SetConnectIndex(2*iFacet+1,conn2duplConn[conn]);
+            }
+        }
+        //Updates the number of shape functions and also the integration rule
+        TPZCompElHDivSemiHybrid<TPZShapeQuad> *celHybrid = dynamic_cast<TPZCompElHDivSemiHybrid<TPZShapeQuad> *> (cel); 
+        if (celHybrid){     
+            for (int icon = 0; icon < celHybrid->NConnects(); icon++)
+            {
+                TPZConnect &c = celHybrid->Connect(icon);
+                int nShapeF = celHybrid->NConnectShapeF(icon,c.Order());
+                c.SetNShape(nShapeF);
+                int64_t seqnum = c.SequenceNumber();
+                int nvar = 1;
+                TPZMaterial * mat = celHybrid->Material();
+                if (mat) nvar = mat->NStateVariables();
+                celHybrid->Mesh()->Block().Set(seqnum, nvar * nShapeF);
+            }
+        }
+        TPZCompElHDivSemiHybridBound<TPZShapeLinear> *celHybBound = dynamic_cast<TPZCompElHDivSemiHybridBound<TPZShapeLinear> *> (cel);
+        if (celHybBound){
+            for (int icon = 0; icon < celHybBound->NConnects(); icon++)
+            {
+                TPZConnect &c = celHybBound->Connect(icon);
+                int nShapeF = celHybBound->NConnectShapeF(icon,c.Order());
+                c.SetNShape(nShapeF);
+                int64_t seqnum = c.SequenceNumber();
+                int nvar = 1;
+                TPZMaterial * mat = celHybBound->Material();
+                if (mat) nvar = mat->NStateVariables();
+                celHybBound->Mesh()->Block().Set(seqnum, nvar * nShapeF);
+            }
+        
+        }
+        // this->Mesh()->ExpandSolution();
+        // this->Mesh()->Block().Resequence();
+    }
+    util->PrintCMeshConnects(cmesh);
+    cmesh->Block().Resequence();
+    cmesh->ExpandSolution();
+
 }
 
 template class TPZApproxSpaceKernelHdiv<STATE>;

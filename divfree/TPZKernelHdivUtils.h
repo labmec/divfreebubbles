@@ -70,6 +70,18 @@ public:
      * @param cmesh 
      */
     void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domanHybridization); 
+    
+    /**
+     * @brief Uses Mat Red class to solve the linear system
+     * 
+     * @param an 
+     * @param cmesh 
+     */
+    void SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh); 
+
+    //Reorder matrix equations
+    void ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux);
+
 
     /**
      * @brief Prints the results of a multiphysics mesh to a .vtk file

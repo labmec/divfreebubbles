@@ -16,6 +16,12 @@
 #include "pzstrmatrixflowtbb.h"
 #include "pzstrmatrixot.h"
 #include <chrono>
+#include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
+#include "pzblockdiag.h"
+#include "tpzsparseblockdiagonal.h"
+#include "pzmatred.h"
+#include "TPZSpStructMatrix.h"
+#include "pzbdstrmatrix.h"
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh
 template <class TVar>
@@ -69,6 +75,7 @@ void TPZKernelHdivUtils<TVar>::PrintCMeshConnects(TPZCompMesh *cmesh){
 template <class TVar>
 void TPZKernelHdivUtils<TVar>::PrintGeoMesh(TPZGeoMesh *gmesh){
     
+
     for (int i = 0; i < gmesh->NElements(); i++)
     {
         auto *gel = gmesh->Element(i);
@@ -270,6 +277,237 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ostream 
     // std::cout << "error 4 = " << error[3]<<'\n'; 
     // std::cout << "error 5 = " << error[4] << "\n\n";
 }
+
+
+// An Util to compute the error on Kernel Hdiv simulations
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh)
+{
+
+    //HERE STARTS THE ITERATIVE SOLVER SET
+    //sets number of threads to be used by the solver
+    constexpr int nThreads{0};
+
+    // Compute the number of equations in the system
+    int64_t nEqFull = cmesh->NEquations();
+    int64_t nEqPres, nEqFlux;
+
+    ReorderEquations(cmesh,nEqPres,nEqFlux);
+    std::cout << "NUMBER OF EQUATIONS:\n " << 
+                 "\n Full problem = " << nEqFull << 
+                 "\n Flux = " << nEqFlux << 
+                 " \n Pressure = " << nEqPres << std::endl;
+
+    // Create the RHS vectors
+    TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
+    TPZFMatrix<STATE> rhsAux(nEqFull,1,0.);
+    TPZFMatrix<STATE> rhsFlux(nEqFlux,1,0.);
+    TPZAutoPointer<TPZGuiInterface> guiInterface;
+
+    //Creates the problem matrix    
+    TPZSkylineStructMatrix<STATE> Stiffness(cmesh);
+    Stiffness.SetNumThreads(nThreads);
+
+    //Cria duas matrizes, para inverter a ordem das matrizes em bloco
+    TPZMatRed<STATE, TPZFMatrix<STATE>> *matRed;
+    matRed = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqFull,nEqPres);
+
+    //Primeiro cria a matriz auxiliar
+    TPZFMatrix<REAL> K00(nEqPres,nEqPres,0.);
+
+    TPZStepSolver<STATE> step;
+    step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    an.SetSolver(step);
+
+    //Altera range da matriz stiffness e cria a K00 correta no matRed correto.
+    Stiffness.SetEquationRange(0,nEqPres);
+    K00.Zero();
+    Stiffness.Assemble(K00,rhsAux,guiInterface);  
+
+    //Transfere as submatrizes da matriz auxiliar para a matriz correta.
+    step.SetMatrix(&K00);
+    matRed->SetSolver(&step);
+  
+    Stiffness.EquationFilter().Reset();
+    an.SetStructuralMatrix(Stiffness);
+
+    //Monta a matriz auxiliar
+    matRed->K00()->Zero();
+    rhsAux.Zero();
+    Stiffness.Assemble(*matRed,rhsAux,guiInterface);
+
+    rhsFull=rhsAux;
+    
+    // matRed->Print("MATRED "); //Deve ser a matriz de pressão, depois fluxo.
+
+
+    TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(cmesh);
+    BDFmatrix.SetEquationRange(nEqPres,nEqFull);
+    // BDFmatrix.SetEquationRange(nEqFlux,nEqFull);
+    TPZBlockDiagonal<REAL> KBD;
+    BDFmatrix.CreateAssemble(rhsAux,guiInterface);
+    BDFmatrix.EndCreateAssemble(&KBD);
+    
+    TPZFMatrix<REAL> *K11Red;
+    K11Red = new TPZFMatrix<REAL>;
+    K11Red->Redim(nEqFlux,nEqFlux);
+
+    matRed->SetF(rhsFull);
+    
+    matRed->K11Reduced(*K11Red,rhsFlux);
+    std::ofstream out("out.txt");
+    K11Red->Print("K11Red=",out,EMathematicaInput);
+    matRed->F1Red(rhsFlux);
+    matRed->SetF(rhsFull);
+    TPZFMatrix<STATE> K11 = matRed->K11();
+    K11.Print("K11=",out,EMathematicaInput);
+    KBD.Print("KBD",out,EMathematicaInput);
+
+    //Creates the preconditioner 
+    // TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &matRed->K11() );
+    TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
+    precond->SetDirect(ELDLt);
+    // precond->SetJacobi(1,1.e-6,0);
+    // precond->Solve(matRed->F1(),rhsAux);
+    // std::cout << "matRed->F1() " << matRed->F1() << std::endl;
+    // std::cout << "rhsAux " << rhsAux << std::endl;
+    int64_t nMaxIter = 30;
+    TPZVec<REAL> errors(nMaxIter);
+    errors.Fill(0.);
+
+    // for (int64_t iter = 1; iter < nMaxIter; iter++){
+        
+        // std::cout << "ITER = " << iter << std::endl;
+        TPZFMatrix<STATE> residual(nMaxIter,1,0.);
+        REAL tol = 1.e-10;
+        TPZFMatrix<STATE> solution(nEqFlux,1,0.);
+        K11Red->SolveCG(nMaxIter,*precond,rhsFlux,solution,&residual,tol);
+        REAL norm = 0.;
+        
+        TPZFMatrix<STATE> press(nEqPres,1,0.);
+        matRed->UGlobal(solution,press);
+
+        //Update solution in Analysis
+        for (int i = 0; i < nEqFlux; i++){
+            rhsFull(nEqPres+i,0) = solution(i,0);
+        }
+        for (int i = 0; i < nEqPres; i++){
+            rhsFull(i,0) = press(i,0);
+        }
+
+        an.Solution()=rhsFull;
+        an.LoadSolution();
+        // rhsFull.Print("Solution = ");
+                        
+        ///Calculating approximation error  
+        TPZManVector<REAL,5> error;
+
+        // auto cmeshAux = an.Mesh();
+        // int64_t nelem = cmeshAux->NElements();
+        // cmeshAux->LoadSolution(cmeshAux->Solution());
+        // cmeshAux->ExpandSolution();
+        // an.Mesh()->ElementSolution().Redim(an.Mesh()->NElements(), 5);
+
+        // an.PostProcessError(error);
+            
+        // std::cout << "\nApproximation error:\n";
+        // std::cout << "H1 Norm = " << std::scientific << std::setprecision(15) << error[0]<<'\n';
+        // std::cout << "L1 Norm = " << std::scientific << std::setprecision(15) << error[1]<<'\n'; 
+        // std::cout << "H1 Seminorm = " << std::scientific << std::setprecision(15) << error[2]<<'\n'; 
+
+        // if (tol < 1.e-10) break;
+        // errors[iter-1] = error[1];
+    // }
+
+}
+
+
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux)
+{
+    cmesh->LoadReferences();
+    std::set<int64_t> auxConnectsP, auxConnectsF;
+    TPZSkylineStructMatrix<STATE> Pmatrix(cmesh);
+    TPZSkylineStructMatrix<STATE> Fmatrix(cmesh);
+    auto neqsTotal = cmesh->NEquations();
+
+    auto gmesh = cmesh->Reference();
+    nEqPres = 0;
+    nEqFlux = 0;
+
+    // loop over the connects and create two std::sets one to the "pressure" ones, representing the 
+    // degrees of freedom to be condensed. The second set contains the "flux" connects, which will not be condensed
+    // This can change depending on the problem.
+    for (auto gel:gmesh->ElementVec()){
+        // if (gel->MaterialId() != EPressureHyb) continue;
+        if (gel->Dimension() != gmesh->Dimension()) continue;
+        auto nconnects = gel->Reference()->NConnects();
+        int nFacets = gel->NSides(gmesh->Dimension()-1);
+        for (size_t i = 0; i < nFacets; i++)
+        {
+            //High order edge functions will not be condensed
+            auxConnectsF.insert(gel->Reference()->ConnectIndex(2*i+1));
+            //Lower order edge functions will be condensed
+            auxConnectsP.insert(gel->Reference()->ConnectIndex(2*i  ));
+        }
+        //The internal connect will not be condensed
+        auxConnectsP.insert(gel->Reference()->ConnectIndex(2*nFacets));
+        //Pressure degrees of freedom will not be condensed
+        for (size_t i = 2*nFacets+1; i < nconnects; i++){
+            auxConnectsP.insert(gel->Reference()->ConnectIndex(i));
+        }
+    }
+
+    //If the previos structure was properly filled, there is no need to change from here.
+    //First - set the sequence number for the "pressure" variables, i.e., the variables to be condensed 
+    int64_t seqNumP = 0;
+    int64_t iCon = 0;
+    cmesh->Block().Resequence();
+    for (TPZConnect &con : cmesh->ConnectVec())
+    {       
+        if (auxConnectsP.find(iCon) != auxConnectsP.end()) {
+            int64_t seqNum = con.SequenceNumber();
+            if (con.IsCondensed()) continue;
+            if (seqNum < 0) continue;
+
+            con.SetSequenceNumber(seqNumP);
+            
+            //Em cada caso precisa atualizar o tamanho do bloco
+            int neq = con.NDof()*con.NState();
+            seqNumP++;
+            nEqPres += neq;
+            seqNum=con.SequenceNumber();
+            cmesh->Block().Set(seqNum,neq);
+            // std::cout << "Connect = " << con << std::endl;
+        }
+        iCon++;
+    }
+
+    int64_t seqNumF = seqNumP;
+    iCon = 0;
+    //Second - Set the sequence number to the flux variables - which will not be condensed 
+    for (auto &con : cmesh->ConnectVec())
+    {
+        if (auxConnectsF.find(iCon) != auxConnectsF.end()) {
+            int64_t seqNum = con.SequenceNumber();
+            if (con.IsCondensed()) continue;
+            if (seqNum < 0) continue;
+
+            con.SetSequenceNumber(seqNumF);
+            
+            //Em cada caso precisa atualizar o tamanho do bloco
+            int neq = con.NDof()*con.NState();
+            seqNumF++;
+            nEqFlux += neq;
+            seqNum=con.SequenceNumber();
+            cmesh->Block().Set(seqNum,neq);
+        }
+        iCon++;
+    }   
+
+    
+}
+
 
 
 template class TPZKernelHdivUtils<STATE>;

@@ -17,18 +17,6 @@ TPZRegisterClassId(&TPZCompElHDivSemiHybridBound::ClassId), TPZCompElHDivBound2<
     
     this->fConnectIndexes.Resize(2);//Change it to 3D
 
-    //Get the index of the additional created connect
-    this->fConnectIndexes[1] = this->CreateMidSideConnect(TSHAPE::NSides-1);
-
-    // for (int i = 0; i<NConnects(); i++)
-    // {
-    //     TPZConnect con = this->Connect(i);
-    //     std::cout << "C = " << con << std::endl;
-    //     std::cout << "NShape = " << con.NShape() << std::endl;
-    // }
-    // std::cout << "\n\n\n";
-    
-
 }
 
 
@@ -56,7 +44,7 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connec
     }
 #endif
 
-    if (connect > 0) return 0;
+    // if (connect > 0) return 0;
 
 	switch (this->fhdivfam)
     {
@@ -73,7 +61,14 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connec
             int conCorrect = connect/2;
             int res = connect % 2;
             int nshape = TPZShapeHDivConstantBound<TSHAPE>::ComputeNConnectShapeF(connect,connectorder);
-            if (res == 1) nshape = 0;
+            // if (res == 1) nshape = 0;
+            if (res == 1){ 
+                // nshape = 0;
+                nshape -= 1;
+            } else {
+                nshape = 1;
+            }
+
             return nshape;
         }
         break;
@@ -85,11 +80,6 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::NConnectShapeF(int connect, int connec
     
     return -1;
  }
-
-
-
-
-
 
 template<class TSHAPE>
 int64_t TPZCompElHDivSemiHybridBound<TSHAPE>::ConnectIndex(int con) const{
@@ -120,42 +110,9 @@ int TPZCompElHDivSemiHybridBound<TSHAPE>::SideConnectLocId(int node, int side) c
 }
 
 template<class TSHAPE>
-int64_t TPZCompElHDivSemiHybridBound<TSHAPE>::CreateMidSideConnect(int side) {
-    TPZCompMesh *cmesh = this->Mesh();
-    TPZMaterial * mat = this->Material();
-#ifdef PZDEBUG
-    if (!mat) {
-        std::cout << __PRETTY_FUNCTION__ << " no material associated with matid " << this->Reference()->MaterialId() << std::endl;
-    }
-#endif
-    int nvar = 1;
-    if (mat) nvar = mat->NStateVariables();
-    int64_t newnodeindex = -1;
-    int64_t il;
-    int64_t nodloc = this->MidSideConnectLocId(side);
-
-    TPZStack<TPZCompElSide> elvec;
-    TPZCompElSide thisside(this, side);
-
-    // Connect looks for a connecting element of equal or lower level
-    TPZInterpolatedElement *cel = 0;
-    int side_neig = 0;
-    thisside.EqualLevelElementList(elvec, 1, 0);
-    int64_t nelem = elvec.NElements();
-    // find an element in the list which is interpolated
-    if (nelem) {
-        cel = dynamic_cast<TPZInterpolatedElement *> (elvec[0].Element());
-        side_neig = elvec[0].Side();
-    }
-    int64_t newnodecreated = 0;
-    if (cel) {
-        auto cind = cel->MidSideConnectLocId(side_neig);
-        newnodeindex = cel->ConnectIndex(cind+1);
-        return newnodeindex;    
-    } else {
-        DebugStop();
-    }
-    return newnodeindex;
+void TPZCompElHDivSemiHybridBound<TSHAPE>::SetConnectIndex(int i, int64_t connectindex)
+{
+	this->fConnectIndexes[i] = connectindex;
 }
 
 

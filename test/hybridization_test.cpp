@@ -10,6 +10,7 @@
 #include "TPZAnalyticSolution.h"
 #include <TPZGmshReader.h>
 #include "TPZCompMeshTools.h"
+#include "pzlog.h"
 
 #include "pzshapequad.h"
 #include "pzshapetriang.h"
@@ -59,6 +60,10 @@ inline std::string ApproxSpaceKernelHDiv_Name(TPZApproxSpaceKernelHdiv<STATE>::M
 		{
 			return "ESemiHybrid";
 		}
+		case TPZApproxSpaceKernelHdiv<STATE>::EDuplicatedConnects:
+		{
+			return "EDuplicatedConnects";
+		}
 		default:
         {
             return "TPZApproxSpaceKernelHdiv not found!";
@@ -97,13 +102,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int xdiv = GENERATE(2);
+    const int xdiv = GENERATE(1);
     const int pOrder = GENERATE(1);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);
+    TPZApproxSpaceKernelHdiv<STATE>::MSpaceType approxSpace = GENERATE(TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
+                                                                    //    TPZApproxSpaceKernelHdiv<STATE>::EDuplicatedConnects);//,
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::EFullHybrid);//,
                                                                     //    TPZApproxSpaceKernelHdiv<STATE>::ESemiHybrid);
     
@@ -140,9 +146,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    // u[0] = x*x*x*y - y*y*y*x;
-    // gradU(0,0) = -(3.*x*x*y - y*y*y);
-    // gradU(1,0) = -(x*x*x - 3.*y*y*x);
+    u[0] = x*x*x*y - y*y*y*x;
+    gradU(0,0) = -(3.*x*x*y - y*y*y);
+    gradU(1,0) = -(x*x*x - 3.*y*y*x);
 
     // u[0]= x + y + z;
     // gradU(0,0) = -1;
@@ -161,6 +167,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 template<class tshape>
 void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZApproxSpaceKernelHdiv<STATE>::MSpaceType &approxSpace)
 {
+#ifdef PZ_LOG
+    TPZLogger::InitializePZLOG();
+#endif
 
     std::cout << "\nTest Case: \nTopology = " << MElementType_Name(tshape::Type()) << 
                  ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
@@ -170,7 +179,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,1};
+    if (DIM == 2) nDivs = {xdiv,xdiv};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -249,12 +258,16 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Create analysis environment
     TPZLinearAnalysis an(cmesh,false);
-
+    
+    an.SetExact(exactSol,pOrder);
     //Solve problem
     bool filter = false;
     if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-    createSpace.Solve(an, cmesh, true, filter);
-    an.SetExact(exactSol,pOrder);
+    // createSpace.Solve(an, cmesh, true, filter);
+
+    // if (approxSpace == )
+    util.SolveProblemMatRed(an, cmesh);
+    
 
     //Print results
     util.PrintResultsMultiphysics(meshvector,an,cmesh);

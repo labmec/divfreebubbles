@@ -29,8 +29,7 @@ class TPZApproxSpaceKernelHdiv
 {
 public:
     /// types of spaces this class can create
-    enum MSpaceType {ENone, EFullHybrid, ESemiHybrid};
-    // enum MShapeType {EHDivKernel, EHDivConstant, EHCurlNoGrads};
+    enum MSpaceType {ENone, EFullHybrid, ESemiHybrid, EDuplicatedConnects};
 
 private:
     /// the type of space this object will generate
@@ -40,7 +39,7 @@ private:
     HDivFamily fShapeType = HDivFamily::EHDivKernel;
 
     /// default internal order for the H1 elements
-    int fDefaultPOrder = 3;
+    int fDefaultPOrder = 1;
     
     /// default Lagrange multiplier order
     int fDefaultLagrangeOrder = 1;
@@ -80,9 +79,9 @@ public:
     }
 
     /**
-     * @brief Sets the material id's to the hybridizer and creates the 
-     * additional geometric elements needed to compute the solution
-     * 
+     * @brief Initialize the data structure to provide an interface to create several approximation spaces using HDiv family of functionss
+     * //In the case of duplicated connects a different approach is used. Instead of using new geometric (wrap) elements, the edge (in 2D) or face (in 3D) connects
+        //are duplicated
      */
     void Initialize();
 
@@ -206,6 +205,7 @@ public:
     void CreateFluxHybridezedHDivKernel(TPZCompMesh *cmesh);
     void CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh);
 
+    void DuplicateInternalConnects(TPZCompMesh *cmesh);
 };
 
 #endif //TPZApproxSpaceKernelHdiv

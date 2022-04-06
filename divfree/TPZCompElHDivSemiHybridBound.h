@@ -42,10 +42,7 @@ public:
 
     virtual int SideConnectLocId(int node, int side) const override;
 
-    /** @brief It creates new conect that it associates the degrees of freedom of the element and returns its index */
-	virtual int64_t CreateMidSideConnect(int side) override;
-
-
+    void SetConnectIndex(int i, int64_t connectindex) override;
 protected:
     
 	
