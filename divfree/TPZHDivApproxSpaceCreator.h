@@ -100,7 +100,12 @@ public:
      */
     void Condense(TPZMultiphysicsCompMesh * cmesh)
     {
-        hybridizer.GroupAndCondenseElements(cmesh,fConfig.fBCHybridMatId);
+        hybridizer.GroupAndCondenseElements(cmesh,fConfig.fBCMatId);
+    }
+
+    void CondenseDuplicatedConnects(TPZMultiphysicsCompMesh * cmesh)
+    {
+        hybridizer.GroupAndCondenseElementsDuplicatedConnects(cmesh,fConfig.fBCMatId);
     }
 
     /**

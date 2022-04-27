@@ -125,6 +125,7 @@ struct TPZKernelHdivHybridizer {
      */
     
     void GroupAndCondenseElements(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC);
+    void GroupAndCondenseElementsDuplicatedConnects(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC);
 
     /**
      * @brief Associate element connects to be condensed
@@ -134,6 +135,8 @@ struct TPZKernelHdivHybridizer {
      * @param matIdBC 
      */
     void AssociateElements(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC);
+    void AssociateElementsToMatId(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC);
+    void AssociateElementsDuplicatedConnects(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matIdBC);
 
 };
 

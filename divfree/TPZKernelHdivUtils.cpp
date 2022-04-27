@@ -22,6 +22,7 @@
 #include "pzmatred.h"
 #include "TPZSpStructMatrix.h"
 #include "pzbdstrmatrix.h"
+#include <TPZCopySolve.h>
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh
 template <class TVar>
@@ -111,7 +112,7 @@ void TPZKernelHdivUtils<TVar>::PrintGeoMesh(TPZGeoMesh *gmesh){
 
 // Util to print the computational mesh
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string &file_name){
+void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string file_name){
 
     // Print pressure mesh
     std::string txt = file_name + ".txt";
@@ -243,7 +244,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
     vecnames[0]= "Flux";
     vecnames[1]= "ExactFlux";
 
-    constexpr int resolution{0};
+    constexpr int resolution{2};
     std::string plotfile = "solutionMDFB.vtk";
     an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
     an.PostProcess(resolution,cmesh->Dimension());
@@ -281,7 +282,7 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ostream 
 
 // An Util to compute the error on Kernel Hdiv simulations
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh)
+void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC)
 {
 
     //HERE STARTS THE ITERATIVE SOLVER SET
@@ -292,7 +293,9 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
     int64_t nEqFull = cmesh->NEquations();
     int64_t nEqPres, nEqFlux;
 
-    ReorderEquations(cmesh,nEqPres,nEqFlux);
+    ReorderEquations(cmesh,nEqPres,nEqFlux,matIdBC);
+
+    PrintCompMesh(cmesh,"CMESH_reordered");
     std::cout << "NUMBER OF EQUATIONS:\n " << 
                  "\n Full problem = " << nEqFull << 
                  "\n Flux = " << nEqFlux << 
@@ -361,14 +364,17 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
     matRed->SetF(rhsFull);
     TPZFMatrix<STATE> K11 = matRed->K11();
     K11.Print("K11=",out,EMathematicaInput);
-    KBD.Print("KBD",out,EMathematicaInput);
-    
+    KBD.Print("KBD=",out,EMathematicaInput);
+    matRed->F1().Print("F1=",out,EMathematicaInput);
+    matRed->K00()->Print("K00=",out,EMathematicaInput);
 
     //Creates the preconditioner 
+    // TPZCopySolve<STATE> *precond = new TPZCopySolve<STATE>( &matRed->K11() );
     // TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &matRed->K11() );
     TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
-    precond->SetDirect(ELDLt);
+    precond->SetDirect(ELU);
     // precond->SetJacobi(1,1.e-6,0);
+    // precond->SetCopySolve();
     // precond->Solve(matRed->F1(),rhsAux);
     // std::cout << "matRed->F1() " << matRed->F1() << std::endl;
     // std::cout << "rhsAux " << rhsAux << std::endl;
@@ -382,7 +388,11 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
         TPZFMatrix<STATE> residual(nMaxIter,1,0.);
         REAL tol = 1.e-10;
         TPZFMatrix<STATE> solution(nEqFlux,1,0.);
+        int64_t one =1;
+        // K11Red->SolveCG(one,*precond,rhsFlux,solution,&residual,tol);
+
         K11Red->SolveCG(nMaxIter,*precond,rhsFlux,solution,&residual,tol);
+        // K11Red->SolveBICGStab(nMaxIter,*precond,rhsFlux,solution,&residual,tol);
         REAL norm = 0.;
         
         TPZFMatrix<STATE> press(nEqPres,1,0.);
@@ -419,10 +429,12 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
         // if (tol < 1.e-10) break;
         // errors[iter-1] = error[1];
     // }
+
+    // std::cout << "Number of iterations = " << residual << std::endl;
 }
 
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux)
+void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux, std::set<int> &matIdBC)
 {
     cmesh->LoadReferences();
     std::set<int64_t> auxConnectsP, auxConnectsF;
@@ -434,14 +446,18 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
     nEqPres = 0;
     nEqFlux = 0;
 
+    PrintCompMesh(cmesh,"CMESH_0");
+
+
     // loop over the connects and create two std::sets one to the "pressure" ones, representing the 
     // degrees of freedom to be condensed. The second set contains the "flux" connects, which will not be condensed
     // This can change depending on the problem.
     for (auto gel:gmesh->ElementVec()){
-        // if (gel->MaterialId() != EPressureHyb) continue;
-        if (gel->Dimension() != gmesh->Dimension()) continue;
+        
+        if (gel->Dimension() != gmesh->Dimension()) continue;//Only looks for the volumetric elements
         auto nconnects = gel->Reference()->NConnects();
         int nFacets = gel->NSides(gmesh->Dimension()-1);
+
         for (size_t i = 0; i < nFacets; i++)
         {
             //High order edge functions will not be condensed
@@ -449,22 +465,43 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
             //Lower order edge functions will be condensed
             auxConnectsP.insert(gel->Reference()->ConnectIndex(2*i  ));
         }
-        //The internal connect will not be condensed
-        // auxConnectsP.insert(gel->Reference()->ConnectIndex(2*nFacets));
+        //The internal connect will always be condensed
+        auxConnectsP.insert(gel->Reference()->ConnectIndex(2*nFacets));
         //Pressure degrees of freedom will not be condensed
         for (size_t i = 2*nFacets+1; i < nconnects; i++){
             auxConnectsP.insert(gel->Reference()->ConnectIndex(i));
         }
     }
+    // Now loop over the boundary elements to condense it and correct the map structure
+    for (auto gel:gmesh->ElementVec()){
+        
+        if (gel->Dimension() == gmesh->Dimension()) continue;//Only looks for the BC elements
+        auto nconnects = gel->Reference()->NConnects();
+        int matId = gel->MaterialId();
 
-    //If the previos structure was properly filled, there is no need to change from here.
+        //Loops over all the BC element connects
+        for (size_t icon = 0; icon < nconnects; icon++)
+        {
+            //Sets all connects to be condensed and remove the entry from auxConnectsF.
+            auxConnectsP.insert(gel->Reference()->ConnectIndex(icon));
+            auxConnectsF.erase(gel->Reference()->ConnectIndex(icon));           
+        }
+        
+    }
+
+
+    // std::cout << "AuxConnects P = " << auxConnectsP << std::endl;
+    // std::cout << "AuxConnects F = " << auxConnectsF << std::endl;
+
+    //If the previous structure was properly filled, there is no need to change from here.
     //First - set the sequence number for the "pressure" variables, i.e., the variables to be condensed 
     int64_t seqNumP = 0;
-    int64_t iCon = 0;
     cmesh->Block().Resequence();
-    for (TPZConnect &con : cmesh->ConnectVec())
-    {       
-        if (auxConnectsP.find(iCon) != auxConnectsP.end()) {
+
+    for (int icon = 0; icon < cmesh->NConnects(); icon++){
+
+        TPZConnect &con = cmesh->ConnectVec()[icon];
+        if (auxConnectsP.find(icon) != auxConnectsP.end()) {
             int64_t seqNum = con.SequenceNumber();
             if (con.IsCondensed()) continue;
             if (seqNum < 0) continue;
@@ -477,17 +514,16 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
             nEqPres += neq;
             seqNum=con.SequenceNumber();
             cmesh->Block().Set(seqNum,neq);
-            // std::cout << "Connect = " << con << std::endl;
         }
-        iCon++;
     }
 
     int64_t seqNumF = seqNumP;
-    iCon = 0;
+
     //Second - Set the sequence number to the flux variables - which will not be condensed 
-    for (auto &con : cmesh->ConnectVec())
-    {
-        if (auxConnectsF.find(iCon) != auxConnectsF.end()) {
+    for (int icon = 0; icon < cmesh->NConnects(); icon++){
+
+        TPZConnect &con = cmesh->ConnectVec()[icon];
+        if (auxConnectsF.find(icon) != auxConnectsF.end()) {
             int64_t seqNum = con.SequenceNumber();
             if (con.IsCondensed()) continue;
             if (seqNum < 0) continue;
@@ -501,8 +537,8 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
             seqNum=con.SequenceNumber();
             cmesh->Block().Set(seqNum,neq);
         }
-        iCon++;
     }   
+    cmesh->ExpandSolution();
 
     
 }

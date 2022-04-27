@@ -45,6 +45,7 @@ auto forcefunction = [](const TPZVec<REAL> &loc,
 
     // //Nabla u = 1
     u[0] = 0.;
+    // u[0] = 2*M_PI*M_PI*sin(M_PI*x)*sin(M_PI*y);
 };
 
 
@@ -147,7 +148,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateFluxCMesh()
     } else { // Hybridization active
         if (fShapeType == HDivFamily::EHDivKernel){
             CreateFluxHybridezedHDivKernel(cmesh);
-        } else if (fShapeType == HDivFamily::EHDivConstant) {
+        } else if (fShapeType == HDivFamily::EHDivConstant || fShapeType == HDivFamily::EHDivStandard) {
             CreateFluxHybridezedHDivConstant(cmesh);
         } else {
             std::cout << "You should hybridize your approximation space in other way." << std::endl;
@@ -260,7 +261,7 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
     auto mat = new TPZMixedDarcyFlow(fConfig.fDomain,fDimension);
     // auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
     mat->SetConstantPermeability(1.);
-    mat->SetForcingFunction(forcefunction,1);
+    mat->SetForcingFunction(forcefunction,4);
 
     // mat->SetPermeabilityFunction(1.);
     cmesh->InsertMaterialObject(mat);
@@ -275,8 +276,7 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
     for (auto matId : BCDirichlet)
     {
         TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 0, val1, val2);
-        // BCond->SetForcingFunctionBC(exactSol);
-        BCond->SetForcingFunctionBC(exactSol,2);
+        BCond->SetForcingFunctionBC(exactSol,4);
         cmesh->InsertMaterialObject(BCond);
     }
 
@@ -284,7 +284,7 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
     for (auto matId : BCNeumann)
     {
         TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 1, val1, val2);
-        BCond->SetForcingFunctionBC(exactSol,2);
+        BCond->SetForcingFunctionBC(exactSol,4);
         cmesh->InsertMaterialObject(BCond);
     }
 
@@ -651,7 +651,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
     std::map<int64_t,int64_t> conn2duplConn; 
 
     //Loop over the computational elements
-    for (auto cel:cmesh->ElementVec())
+    for (TPZCompEl* cel:cmesh->ElementVec())
     {
         auto gel = cel->Reference();
         if (!gel) DebugStop();
@@ -682,7 +682,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
         }
         //Updates the number of shape functions and also the integration rule. 
         //We need different casts because the element can be volumetric or boundary
-        TPZCompElHDivDuplConnects<TPZShapeQuad> *celHybrid = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cel); 
+        TPZInterpolatedElement *celHybrid = dynamic_cast<TPZInterpolatedElement *> (cel); 
         if (celHybrid){     
             for (int icon = 0; icon < celHybrid->NConnects(); icon++)
             {
@@ -696,7 +696,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
                 celHybrid->Mesh()->Block().Set(seqnum, nvar * nShapeF);
             }
         }
-        TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celHybBound = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cel);
+        TPZInterpolatedElement *celHybBound = dynamic_cast<TPZInterpolatedElement *> (cel);
         if (celHybBound){
             for (int icon = 0; icon < celHybBound->NConnects(); icon++)
             {

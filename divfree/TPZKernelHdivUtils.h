@@ -53,7 +53,7 @@ public:
      * @param cmesh 
      * @param file_name 
      */
-    void PrintCompMesh(TPZCompMesh *cmesh, std::string &file_name);
+    void PrintCompMesh(TPZCompMesh *cmesh, std::string file_name);
 
     /**
      * @brief Solves an algebraic system by means of an iterative method
@@ -77,10 +77,10 @@ public:
      * @param an 
      * @param cmesh 
      */
-    void SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh); 
+    void SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC); 
 
     //Reorder matrix equations
-    void ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux);
+    void ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux, std::set<int> &matIdBC);
 
 
     /**

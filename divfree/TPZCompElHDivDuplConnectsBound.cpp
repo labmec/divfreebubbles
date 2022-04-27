@@ -17,6 +17,7 @@ TPZRegisterClassId(&TPZCompElHDivDuplConnectsBound::ClassId), TPZCompElHDivBound
     
     this->fConnectIndexes.Resize(2);//Change it to 3D
 
+    if (TSHAPE::Dimension == 2) DebugStop();
 }
 
 template<class TSHAPE>
@@ -47,11 +48,20 @@ int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnectShapeF(int connect, int conn
 	switch (this->fhdivfam)
     {
     case HDivFamily::EHDivStandard:
-        if(connect == 0)
         {
             if(connectorder == 0) return 1;
             TPZManVector<int,22> order(TSHAPE::NSides-TSHAPE::NCornerNodes,connectorder);
-            return TSHAPE::NShapeF(order);
+            int nshape = TSHAPE::NShapeF(order);
+            int conCorrect = connect/2;
+            int res = connect % 2;
+            if (res == 1){ 
+                // nshape = 0;
+                nshape -= 1;
+            } else {
+                nshape = 1;
+            }
+
+            return nshape;
         }    
         break;
     case HDivFamily::EHDivConstant:

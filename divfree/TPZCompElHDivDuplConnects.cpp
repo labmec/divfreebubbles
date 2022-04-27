@@ -64,7 +64,19 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
     switch (this->fhdivfam)
     {
     case HDivFamily::EHDivStandard:
-        return TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(connect,order);    
+        {
+            int conCorrect = connect/2;
+            int res = connect % 2;
+            int nshape = TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(conCorrect,order); 
+            if (res == 1){ 
+                nshape -= 1;
+            } else {
+                if (connect != 2*TSHAPE::NFacets){
+                    nshape = 1;
+                }
+            }
+            return nshape;   
+        }
         break;
     case HDivFamily::EHDivConstant:
         {
@@ -140,6 +152,9 @@ TPZCompEl * CreateHDivDuplConnectsLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, cons
     return new TPZCompElHDivDuplConnectsBound< TPZShapeLinear>(mesh,gel,hdivfam);
 }
 
+
+
+//Volumetric elements
 TPZCompEl * CreateHDivDuplConnectsQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
 	return new TPZCompElHDivDuplConnects< TPZShapeQuad>(mesh,gel,hdivfam);
 }
