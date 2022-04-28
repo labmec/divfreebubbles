@@ -536,7 +536,7 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
             if (fDimension == 2){
                 if (fSpaceType == EDuplicatedConnects){
                     if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
-                        CreateHDivDuplConnectsLinearEl(neighbour.Element(),*cmesh,fShapeType);
+                        CreateHDivDuplConnectsBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);
                     }
                 }else {
                     CreateHDivBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);   
@@ -544,10 +544,22 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
             } else if (fDimension == 3){
                 switch (type){
                 case ETetraedro:
-                    CreateHDivBoundTriangleEl(neighbour.Element(),*cmesh,fShapeType);
+                    if (fSpaceType == EDuplicatedConnects){
+                        if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
+                            CreateHDivDuplConnectsBoundTriangEl(neighbour.Element(),*cmesh,fShapeType);
+                        }
+                    } else {   
+                        CreateHDivBoundTriangleEl(neighbour.Element(),*cmesh,fShapeType);
+                    }
                     break;
                 case ECube:
-                    CreateHDivBoundQuadEl(neighbour.Element(),*cmesh,fShapeType);
+                    if (fSpaceType == EDuplicatedConnects){
+                        if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
+                            CreateHDivDuplConnectsBoundQuadEl(neighbour.Element(),*cmesh,fShapeType);
+                        }
+                    }else {
+                        CreateHDivBoundQuadEl(neighbour.Element(),*cmesh,fShapeType);
+                    }
                     break;
                 default:
                     DebugStop();
@@ -651,10 +663,13 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
     std::map<int64_t,int64_t> conn2duplConn; 
 
     //Loop over the computational elements
-    for (TPZCompEl* cel:cmesh->ElementVec())
+    for (int icel = 0; icel < cmesh->NElements(); icel++)
     {
+
+        TPZCompEl* cel = cmesh->ElementVec()[icel];
         auto gel = cel->Reference();
         if (!gel) DebugStop();
+        auto type = cel->Type();
         
         auto nFacets = gel->NSides(fDimension-1);
 
@@ -679,6 +694,10 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
                 //found, so just set the proper index of the duplicated connect
                 cel->SetConnectIndex(2*iFacet+1,conn2duplConn[conn]);
             }
+        }
+
+        for (int i = 0; i<cel->NConnects(); i++){
+            std::cout << "Connects indexes = "<< i << " " << cel->ConnectIndex(i) << "\n";
         }
         //Updates the number of shape functions and also the integration rule. 
         //We need different casts because the element can be volumetric or boundary
@@ -711,8 +730,50 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
             }
         }
     }
-    // util->PrintCMeshConnects(cmesh);
+    util->PrintCMeshConnects(cmesh);
     cmesh->ExpandSolution();
+}
+
+/**
+ * @brief Generates the constant computational mesh
+ * @param Gmesh: Geometric mesh
+ * @param third_LM: Bool Third Lagrange multiplier
+ * @return Constant computational mesh
+ */
+template<class TVar>
+TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gmesh, bool third_LM)
+{
+    TPZCompMesh *Cmesh= new TPZCompMesh (Gmesh);
+    
+    Cmesh->SetDimModel(Gmesh->Dimension());
+    Cmesh->SetDefaultOrder(0);
+    Cmesh->SetAllCreateFunctionsDiscontinuous();
+    
+    //Add material to the mesh
+    int dimen = Gmesh->Dimension();
+    int MaterialId = 1;
+    
+    TPZNullMaterial<> *mat =new TPZNullMaterial<>(MaterialId);
+    mat->SetDimension(dimen);
+    mat->SetNStateVariables(1);
+    
+    //Insert material to mesh
+    Cmesh->InsertMaterialObject(mat);
+    
+    //Autobuild
+    Cmesh->AutoBuild();
+    
+    int ncon = Cmesh->NConnects();
+    for(int i=0; i<ncon; i++)
+    {
+        TPZConnect &newnod = Cmesh->ConnectVec()[i];
+        if (third_LM) {
+            newnod.SetLagrangeMultiplier(3);
+        }else{
+            newnod.SetLagrangeMultiplier(2);
+        }
+    }
+    return Cmesh;
 }
 
 template class TPZHDivApproxSpaceCreator<STATE>;

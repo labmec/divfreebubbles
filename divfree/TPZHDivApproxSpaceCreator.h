@@ -100,7 +100,7 @@ public:
      */
     void Condense(TPZMultiphysicsCompMesh * cmesh)
     {
-        hybridizer.GroupAndCondenseElements(cmesh,fConfig.fBCMatId);
+        hybridizer.GroupAndCondenseElements(cmesh,fConfig.fBCHybridMatId);
     }
 
     void CondenseDuplicatedConnects(TPZMultiphysicsCompMesh * cmesh)
@@ -203,6 +203,10 @@ public:
     void CreateFluxHybridezedHDivConstant(TPZCompMesh *cmesh);
 
     void DuplicateInternalConnects(TPZCompMesh *cmesh);
+
+    TPZCompMesh * CreateConstantCmesh(TPZGeoMesh *Gmesh, bool third_LM);
+
+    
 };
 
 #endif //TPZHDivApproxSpaceCreator

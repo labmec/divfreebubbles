@@ -484,10 +484,10 @@ void TPZKernelHdivHybridizer::EdgeRemove(TPZCompMesh *cmesh)
 
 void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, std::set<int> &matId)
 {
-    for (auto i:matId)
-    {
-        std::cout << " " << i << "\n";
-    }
+    // for (auto i:matId)
+    // {
+    //     std::cout << " " << i << "\n";
+    // }
     
     
     int64_t nel = cmesh->NElements();
@@ -503,23 +503,27 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
         if (!cel || !cel->Reference() || cel->Reference()->Dimension() != dim) {
             continue;
         }
-        elementgroup[cel->Index()] = cel->Index();
+        
         TPZStack<int64_t> connectlist;
         cel->BuildConnectList(connectlist);
 
-        //Condense internal 
-        auto index = cel->Index();
-        auto nCon = cel->NConnects();
-        auto cindex = cel->ConnectIndex(nCon-1);
-        // std::cout << "CINDEX = " << cindex << std::endl;
-        groupindex[cindex] = cel->Index();
+        int nfacets = cel->Reference()->NSides(cel->Dimension()-1);
+        
+        // //Condense internal connects
+        // int index = connectlist[2*nfacets];
+        // groupindex[index] = cel->Index();
+        // //Condense pressure connects
+        // index = connectlist[2*nfacets+1];
+        // groupindex[index] = cel->Index();
+        // index = connectlist[2*nfacets+2];
+        // groupindex[index] = cel->Index();
 
-        std::cout << "Connect List = " << connectlist << std::endl;
+        // std::cout << "Connect List = " << connectlist << std::endl;
         int k = -1;
         auto nconnects = connectlist.size();
         bool prevConnect = false;
 
-        for (int i=0; i<nconnects-1; i++) {
+        for (int i=0; i<2*nfacets; i++) {
             int cindex = connectlist[i];
 
             if (i % 2 == 1) {
@@ -548,9 +552,10 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
                 groupindex[cindex] = cel->Index();
             }
         }
+        // std::cout << "Groups of connects " << groupindex << std::endl;
     }
 
-    std::cout << "Groups of connects " << groupindex << std::endl;
+    // std::cout << "Groups of connects " << groupindex << std::endl;
     // std::cout << "Groups of connects " << groupindex2 << std::endl;
     for (TPZCompEl *cel : cmesh->ElementVec()) {
         if (!cel || !cel->Reference()) {
@@ -584,6 +589,7 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
             }
         }
     }
+    // std::cout << "Element group = " << elementgroup << std::endl;
 }
 
 

@@ -15,14 +15,22 @@ template<class TSHAPE>
 TPZCompElHDivDuplConnectsBound<TSHAPE>::TPZCompElHDivDuplConnectsBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
 TPZRegisterClassId(&TPZCompElHDivDuplConnectsBound::ClassId), TPZCompElHDivBound2<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
-    this->fConnectIndexes.Resize(2);//Change it to 3D
+    // this->fConnectIndexes[0]--;
+    std::cout << "Connects before Bound = " << this->fConnectIndexes << std::endl;
 
-    if (TSHAPE::Dimension == 2) DebugStop();
+    // if (TSHAPE::Dimension == 1){
+        this->fConnectIndexes.Resize(2);
+    // } else if (TSHAPE::Dimension == 2) {
+    //     this->fConnectIndexes.Resize(2);
+    // } else {
+    //     DebugStop();
+    // }
+    std::cout << "Connects after Bound = " << this->fConnectIndexes << std::endl;
 }
 
 template<class TSHAPE>
 int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnects() const {
-	return 2;
+    return this->fConnectIndexes.size();
 }
 
 template<class TSHAPE>
@@ -43,19 +51,18 @@ int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnectShapeF(int connect, int conn
     }
 #endif
 
-    // if (connect > 0) return 0;
+    if(connectorder == 0) return 1;
 
 	switch (this->fhdivfam)
     {
     case HDivFamily::EHDivStandard:
         {
-            if(connectorder == 0) return 1;
+            
             TPZManVector<int,22> order(TSHAPE::NSides-TSHAPE::NCornerNodes,connectorder);
             int nshape = TSHAPE::NShapeF(order);
             int conCorrect = connect/2;
             int res = connect % 2;
             if (res == 1){ 
-                // nshape = 0;
                 nshape -= 1;
             } else {
                 nshape = 1;
@@ -69,9 +76,7 @@ int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnectShapeF(int connect, int conn
             int conCorrect = connect/2;
             int res = connect % 2;
             int nshape = TPZShapeHDivConstantBound<TSHAPE>::ComputeNConnectShapeF(connect,connectorder);
-            // if (res == 1) nshape = 0;
             if (res == 1){ 
-                // nshape = 0;
                 nshape -= 1;
             } else {
                 nshape = 1;
@@ -91,15 +96,15 @@ int TPZCompElHDivDuplConnectsBound<TSHAPE>::NConnectShapeF(int connect, int conn
 
 template<class TSHAPE>
 int64_t TPZCompElHDivDuplConnectsBound<TSHAPE>::ConnectIndex(int con) const{
-#ifndef PZNODEBUG
-	if(con<0 || con > 2) {
-		std::cout << "TPZCompElHDivDuplConnectsBound::ConnectIndex wrong parameter connect " << con <<
-		" NConnects " << TSHAPE::NFacets << std::endl;
-		DebugStop();
-		return -1;
-	}
+// #ifndef PZNODEBUG
+// 	if(con<0 || con > 2) {
+// 		std::cout << "TPZCompElHDivDuplConnectsBound::ConnectIndex wrong parameter connect " << con <<
+// 		" NConnects " << TSHAPE::NFacets << std::endl;
+// 		DebugStop();
+// 		return -1;
+// 	}
 
-#endif
+// #endif
 
 	return this->fConnectIndexes[con];
 }
@@ -132,6 +137,8 @@ void TPZCompElHDivDuplConnectsBound<TSHAPE>::SetConnectIndex(int i, int64_t conn
 using namespace pzshape;
 
 template class TPZCompElHDivDuplConnectsBound<TPZShapeLinear>;
+template class TPZCompElHDivDuplConnectsBound<TPZShapeQuad>;
+template class TPZCompElHDivDuplConnectsBound<TPZShapeTriang>;
 
 
 

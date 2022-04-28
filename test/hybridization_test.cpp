@@ -102,21 +102,21 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int xdiv = GENERATE(15);
-    const int pOrder = GENERATE(2);
+    const int xdiv = GENERATE(1);
+    const int pOrder = GENERATE(1);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
+    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);//,
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);//,
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::ESemiHybrid);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
-    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 //Analytical solution
@@ -161,9 +161,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
+    u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
+    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
+    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
 
     // REAL a1 = 1./4;
     // REAL alpha = M_PI/2;
@@ -202,8 +202,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Insert here the BC material id's to be hybridized
     std::set<int> matBCHybrid={};
-    std::set<int> matBCNeumann={EBoundary4};
-    std::set<int> matBCDirichlet={EBoundary1,EBoundary2,EBoundary3};
+    std::set<int> matBCNeumann={};
+    std::set<int> matBCDirichlet={EBoundary1,EBoundary2,EBoundary3,EBoundary4};
     std::set<int> matBCAll;
     std::set_union(matBCNeumann.begin(),matBCNeumann.end(),matBCDirichlet.begin(),matBCDirichlet.end(),std::inserter(matBCAll, matBCAll.begin()));
 

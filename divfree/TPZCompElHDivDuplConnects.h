@@ -43,12 +43,16 @@ public:
      * @brief return the local index for connect
 	 **/
 	virtual int SideConnectLocId(int node, int side) const override;
-	
+    
+    void SetConnectIndex(int i, int64_t connectindex) override;    
+
 };
 
 
 /** @brief Creates computational linear element for HDiv approximate space */
-TPZCompEl *CreateHDivDuplConnectsLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsBoundLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsBoundQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
+TPZCompEl *CreateHDivDuplConnectsBoundTriangEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 /** @brief Creates computational quadrilateral element for HDiv approximate space */
 TPZCompEl *CreateHDivDuplConnectsQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam);
 /** @brief Creates computational triangular element for HDiv approximate space */

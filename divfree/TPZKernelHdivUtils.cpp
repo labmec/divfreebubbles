@@ -472,22 +472,23 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
             auxConnectsP.insert(gel->Reference()->ConnectIndex(i));
         }
     }
-    // Now loop over the boundary elements to condense it and correct the map structure
-    for (auto gel:gmesh->ElementVec()){
+    // // Now loop over the boundary elements to condense it and correct the map structure
+    // for (auto gel:gmesh->ElementVec()){
         
-        if (gel->Dimension() == gmesh->Dimension()) continue;//Only looks for the BC elements
-        auto nconnects = gel->Reference()->NConnects();
-        int matId = gel->MaterialId();
+    //     if (gel->Dimension() == gmesh->Dimension()) continue;//Only looks for the BC elements
+    //     auto nconnects = gel->Reference()->NConnects();
+    //     int matId = gel->MaterialId();
 
-        //Loops over all the BC element connects
-        for (size_t icon = 0; icon < nconnects; icon++)
-        {
-            //Sets all connects to be condensed and remove the entry from auxConnectsF.
-            auxConnectsP.insert(gel->Reference()->ConnectIndex(icon));
-            auxConnectsF.erase(gel->Reference()->ConnectIndex(icon));           
-        }
+    //     //Loops over all the BC element connects
+    //     for (size_t icon = 0; icon < nconnects; icon++)
+    //     {
+    //         //Sets all connects to be condensed and remove the entry from auxConnectsF.
+    //         auxConnectsP.insert(gel->Reference()->ConnectIndex(icon));
+    //         auxConnectsF.erase(gel->Reference()->ConnectIndex(icon));           
+    //     }
         
-    }
+    // }
+
 
 
     // std::cout << "AuxConnects P = " << auxConnectsP << std::endl;

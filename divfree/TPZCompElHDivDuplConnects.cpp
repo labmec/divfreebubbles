@@ -14,6 +14,7 @@ template<class TSHAPE>
 TPZCompElHDivDuplConnects<TSHAPE>::TPZCompElHDivDuplConnects(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
 TPZRegisterClassId(&TPZCompElHDivDuplConnects::ClassId), TPZCompElHDiv<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
+    std::cout << "Connects before = " << this->fConnectIndexes << std::endl;
     this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
 
     //Reorder the connects
@@ -24,6 +25,7 @@ TPZRegisterClassId(&TPZCompElHDivDuplConnects::ClassId), TPZCompElHDiv<TSHAPE>(m
         this->fConnectIndexes[2*i+1] = prevCon[i+TSHAPE::NFacets+1];
     }
     this->fConnectIndexes[TSHAPE::NFacets*2] = prevCon[TSHAPE::NFacets];
+    std::cout << "Connects after = " << this->fConnectIndexes << std::endl;
 }
 
 
@@ -34,6 +36,7 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnects() const {
 
 template<class TSHAPE>
 int TPZCompElHDivDuplConnects<TSHAPE>::NSideConnects(int side) const{
+    // o erro provavelmente esta aqui
 	if(TSHAPE::SideDimension(side)<= this->Dimension()-2) return 0;
 	if(TSHAPE::SideDimension(side)== this->Dimension()-1) return 2;
 	if(TSHAPE::SideDimension(side)== this->Dimension()) {
@@ -120,12 +123,21 @@ int64_t TPZCompElHDivDuplConnects<TSHAPE>::ConnectIndex(int con) const{
 
 template<class TSHAPE>
 int TPZCompElHDivDuplConnects<TSHAPE>::SideConnectLocId(int node,int side) const {
-    if (TSHAPE::Dimension == 3){
-        std::cout << "this will not work for 3D\n"; 
+    if (TSHAPE::Dimension == 2){
+        return 2*(side-TSHAPE::NCornerNodes);
+    } else if (TSHAPE::Dimension == 3){
+        return 2*(side-(TSHAPE::NSides-TSHAPE::NumSides(TSHAPE::Dimension-1)-1));
+    } else {
         DebugStop();
     }
+    return -1;
+}
 
-    return 2*(side-TSHAPE::NCornerNodes);
+
+template<class TSHAPE>
+void TPZCompElHDivDuplConnects<TSHAPE>::SetConnectIndex(int i, int64_t connectindex)
+{
+	this->fConnectIndexes[i] = connectindex;
 }
 
 #include "pzshapelinear.h"
@@ -147,9 +159,15 @@ template class TPZCompElHDivDuplConnects<TPZShapeQuad>;
 template class TPZCompElHDivDuplConnects<TPZShapeTetra>;
 template class TPZCompElHDivDuplConnects<TPZShapeCube>;
 
-
-TPZCompEl * CreateHDivDuplConnectsLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+//BC elements
+TPZCompEl * CreateHDivDuplConnectsBoundLinearEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
     return new TPZCompElHDivDuplConnectsBound< TPZShapeLinear>(mesh,gel,hdivfam);
+}
+TPZCompEl * CreateHDivDuplConnectsBoundQuadEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+    return new TPZCompElHDivDuplConnectsBound< TPZShapeQuad>(mesh,gel,hdivfam);
+}
+TPZCompEl * CreateHDivDuplConnectsBoundTriangEl(TPZGeoEl *gel,TPZCompMesh &mesh, const HDivFamily hdivfam) {
+    return new TPZCompElHDivDuplConnectsBound< TPZShapeTriang>(mesh,gel,hdivfam);
 }
 
 
