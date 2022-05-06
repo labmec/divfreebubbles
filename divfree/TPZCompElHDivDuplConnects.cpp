@@ -14,7 +14,7 @@ template<class TSHAPE>
 TPZCompElHDivDuplConnects<TSHAPE>::TPZCompElHDivDuplConnects(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
 TPZRegisterClassId(&TPZCompElHDivDuplConnects::ClassId), TPZCompElHDiv<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
-    std::cout << "Connects before = " << this->fConnectIndexes << std::endl;
+    // std::cout << "Connects before = " << this->fConnectIndexes << std::endl;
     this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
 
     //Reorder the connects
@@ -25,7 +25,7 @@ TPZRegisterClassId(&TPZCompElHDivDuplConnects::ClassId), TPZCompElHDiv<TSHAPE>(m
         this->fConnectIndexes[2*i+1] = prevCon[i+TSHAPE::NFacets+1];
     }
     this->fConnectIndexes[TSHAPE::NFacets*2] = prevCon[TSHAPE::NFacets];
-    std::cout << "Connects after = " << this->fConnectIndexes << std::endl;
+    // std::cout << "Connects after = " << this->fConnectIndexes << std::endl;
 }
 
 

@@ -506,21 +506,21 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
         
         TPZStack<int64_t> connectlist;
         cel->BuildConnectList(connectlist);
+        int nconnects = connectlist.size();
 
         int nfacets = cel->Reference()->NSides(cel->Dimension()-1);
-        
+        // std::cout << "Connect list = " << connectlist << std::endl;
         // //Condense internal connects
         // int index = connectlist[2*nfacets];
         // groupindex[index] = cel->Index();
-        // //Condense pressure connects
-        // index = connectlist[2*nfacets+1];
+        //Condense pressure connects
+        // int index = connectlist[nconnects-1];
         // groupindex[index] = cel->Index();
         // index = connectlist[2*nfacets+2];
         // groupindex[index] = cel->Index();
 
         // std::cout << "Connect List = " << connectlist << std::endl;
         int k = -1;
-        auto nconnects = connectlist.size();
         bool prevConnect = false;
 
         for (int i=0; i<2*nfacets; i++) {

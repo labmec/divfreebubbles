@@ -15,17 +15,11 @@ template<class TSHAPE>
 TPZCompElHDivDuplConnectsBound<TSHAPE>::TPZCompElHDivDuplConnectsBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
 TPZRegisterClassId(&TPZCompElHDivDuplConnectsBound::ClassId), TPZCompElHDivBound2<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
-    // this->fConnectIndexes[0]--;
-    std::cout << "Connects before Bound = " << this->fConnectIndexes << std::endl;
+    // std::cout << "Connects before Bound = " << this->fConnectIndexes << std::endl;
 
-    // if (TSHAPE::Dimension == 1){
-        this->fConnectIndexes.Resize(2);
-    // } else if (TSHAPE::Dimension == 2) {
-    //     this->fConnectIndexes.Resize(2);
-    // } else {
-    //     DebugStop();
-    // }
-    std::cout << "Connects after Bound = " << this->fConnectIndexes << std::endl;
+    this->fConnectIndexes.Resize(2);
+
+    // std::cout << "Connects after Bound = " << this->fConnectIndexes << std::endl;
 }
 
 template<class TSHAPE>

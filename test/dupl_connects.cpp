@@ -16,6 +16,7 @@
 #include "pzshapetriang.h"
 #include "pzshapecube.h"
 #include "pzshapetetra.h"
+#include "TPZTimer.h"
 
 /** @brief Returns the name of the HDiv Family approximation space. */
 inline std::string MHDivFamily_Name(HDivFamily hdivfam)
@@ -103,7 +104,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 TEST_CASE("Hybridization test")
 {
     const int xdiv = GENERATE(2);
-    const int pOrder = GENERATE(1);
+    const int pOrder = GENERATE(2);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
@@ -111,8 +112,8 @@ TEST_CASE("Hybridization test")
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
-    TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
+    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
@@ -143,13 +144,13 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    u[0] = x*x*x*y - y*y*y*x;
-    gradU(0,0) = (3.*x*x*y - y*y*y);
-    gradU(1,0) = (x*x*x - 3.*y*y*x);
+    // u[0] = x*x*x*y - y*y*y*x;
+    // gradU(0,0) = (3.*x*x*y - y*y*y);
+    // gradU(1,0) = (x*x*x - 3.*y*y*x);
 
-    u[0]= x*x - y*y;
-    gradU(0,0) = 2.*x;
-    gradU(1,0) = -2.*y;
+    // u[0]= x*x - y*y;
+    // gradU(0,0) = 2.*x;
+    // gradU(1,0) = -2.*y;
     // gradU(2,0) = -1;
 
     // REAL aux = 1./sinh(sqrt(2)*M_PI);
@@ -158,9 +159,14 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
+    u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
+    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
+    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
+
+    // u[0] = (x-1)*x*(y-1)*y*(z-1)*z;
+    // gradU(0,0) = (x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
+    // gradU(1,0) = (x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
+    // gradU(1,0) = (x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
 
     // REAL a1 = 1./4;
     // REAL alpha = M_PI/2;
@@ -209,55 +215,63 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
-    util.PrintGeoMesh(gmesh);
+    // util.PrintGeoMesh(gmesh);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
-    int nMeshes = 4;
+    int nMeshes = 2;
     TPZVec<TPZCompMesh *> meshvector;
     meshvector.Resize(nMeshes);
 
     //Flux mesh
     meshvector[0] = createSpace.CreateFluxCMesh();
-    std::string fluxFile = "FluxCMesh";
-    util.PrintCompMesh(meshvector[0],fluxFile);
+    // std::string fluxFile = "FluxCMesh";
+    // util.PrintCompMesh(meshvector[0],fluxFile);
     // std::cout << "Flux mesh \n";
     // util.PrintCMeshConnects(meshvector[0]);
     
     //Pressure mesh
     meshvector[1]  = createSpace.CreatePressureCMesh();
-    std::string presFile = "PressureCMesh";
-    util.PrintCompMesh(meshvector[1],presFile);
+    // std::string presFile = "PressureCMesh";
+    // util.PrintCompMesh(meshvector[1],presFile);
     // std::cout << "Pressure mesh \n";
     // util.PrintCMeshConnects(meshvector[1]);
 
     //G average mesh
-    meshvector[2] = createSpace.CreateConstantCmesh(gmesh,false);
-    std::string gavgFile = "GaverCMesh";
-    util.PrintCompMesh(meshvector[2],gavgFile);
+    // meshvector[2] = createSpace.CreateConstantCmesh(gmesh,false);
+    // std::string gavgFile = "GaverCMesh";
+    // util.PrintCompMesh(meshvector[2],gavgFile);
 
     //P average mesh
-    meshvector[3] = createSpace.CreateConstantCmesh(gmesh,true);
-    std::string pavgFile = "PaverCMesh";
-    util.PrintCompMesh(meshvector[3],pavgFile);
+    // meshvector[3] = createSpace.CreateConstantCmesh(gmesh,true);
+    // std::string pavgFile = "PaverCMesh";
+    // util.PrintCompMesh(meshvector[3],pavgFile);
 
     //Multiphysics mesh
     auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
-    // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
-    TPZCompMeshTools::CondenseElements(cmesh, 3, false);
     std::string multFile = "MultiCMesh";
     util.PrintCompMesh(cmesh,multFile);
-    std::cout << "Multi mesh \n";
-    util.PrintCMeshConnects(cmesh);
+    // std::cout << "Multi mesh \n";
+    // util.PrintCMeshConnects(cmesh);
 
     // Number of equations without condense elements
     int nEquationsFull = cmesh->NEquations();
     std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
+    TPZTimer clock;
+    clock.start();
+
     // Group and condense the elements
     if (DIM == 2 && approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        createSpace.CondenseDuplicatedConnects(cmesh);
+        // createSpace.CondenseDuplicatedConnects(cmesh);
     }
+    // TPZCompMeshTools::CondenseElements(cmesh, 1, false);
+    // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
 
+    // std::string multFile = "MultiCMesh";
+    // util.PrintCompMesh(cmesh,multFile);
+    // std::cout << "Multi mesh \n";
+    // util.PrintCMeshConnects(cmesh);
+    
     //Number of condensed problem.
     int nEquationsCondensed = cmesh->NEquations();
 
@@ -275,26 +289,29 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         createSpace.Solve(an, cmesh, true, filter);
     }
 
+    clock.stop();
+    std::cout << "Time running = " << clock << std::endl;
+
     //Print results
     util.PrintResultsMultiphysics(meshvector,an,cmesh);
 
-    //Compute error
-    std::ofstream anPostProcessFile("postprocess.txt");
-    TPZManVector<REAL,5> error;
-    int64_t nelem = cmesh->NElements();
-    cmesh->LoadSolution(cmesh->Solution());
-    cmesh->ExpandSolution();
-    cmesh->ElementSolution().Redim(nelem, 5);
-    an.PostProcessError(error,false,anPostProcessFile);
+    // //Compute error
+    // std::ofstream anPostProcessFile("postprocess.txt");
+    // TPZManVector<REAL,5> error;
+    // int64_t nelem = cmesh->NElements();
+    // cmesh->LoadSolution(cmesh->Solution());
+    // cmesh->ExpandSolution();
+    // cmesh->ElementSolution().Redim(nelem, 5);
+    // an.PostProcessError(error,false,anPostProcessFile);
     
-    //Check error
-    REAL tolerance = 1.e-6;
-    std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
-    std::cout << "ERROR[1] = " << error[1] << std::endl;
-    std::cout << "ERROR[2] = " << error[2] << std::endl;
-    // std::cout << "ERROR[3] = " << error[3] << std::endl;
-    // std::cout << "ERROR[4] = " << error[4] << std::endl;
-    REQUIRE(error[1] < tolerance);
+    // //Check error
+    // REAL tolerance = 1.e-6;
+    // std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
+    // std::cout << "ERROR[1] = " << error[1] << std::endl;
+    // std::cout << "ERROR[2] = " << error[2] << std::endl;
+    // // std::cout << "ERROR[3] = " << error[3] << std::endl;
+    // // std::cout << "ERROR[4] = " << error[4] << std::endl;
+    // REQUIRE(error[1] < tolerance);
 
     //Trying to design other criteria besides the approximation error
     //Contar numero de equações condensadas = numero de arestas internas * porder

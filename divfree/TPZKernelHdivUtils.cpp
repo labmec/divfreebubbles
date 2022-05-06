@@ -22,7 +22,10 @@
 #include "pzmatred.h"
 #include "TPZSpStructMatrix.h"
 #include "pzbdstrmatrix.h"
-#include <TPZCopySolve.h>
+#include "tpzverysparsematrix.h"
+#include "TPZPardisoSolver.h"
+#include "pzsysmp.h"
+#include "pzysmp.h"
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh
 template <class TVar>
@@ -211,7 +214,6 @@ void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZC
     ///Setting a direct solver
     TPZStepSolver<STATE> step;
     ///Setting an iterative solver
-    // TPZMatrixSolver<STATE> * precond = an.BuildPreconditioner(TPZAnalysis::EBlockJacobi , true);
     // TPZCopySolve<STATE> * precond = new TPZCopySolve<STATE>( matskl.Create() );  step.ShareMatrix( *precond );
     TPZStepSolver<STATE> * precond = new TPZStepSolver<STATE>( matskl.Create() ); step.ShareMatrix( *precond ); precond->SetJacobi(1, 0.0, 0);
     TPZStepSolver<STATE> jac;
@@ -244,7 +246,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
     vecnames[0]= "Flux";
     vecnames[1]= "ExactFlux";
 
-    constexpr int resolution{2};
+    constexpr int resolution{0};
     std::string plotfile = "solutionMDFB.vtk";
     an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
     an.PostProcess(resolution,cmesh->Dimension());
@@ -308,24 +310,46 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
     TPZAutoPointer<TPZGuiInterface> guiInterface;
 
     //Creates the problem matrix    
-    TPZSkylineStructMatrix<STATE> Stiffness(cmesh);
+    // TPZSkylineStructMatrix<STATE> Stiffness(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
     Stiffness.SetNumThreads(nThreads);
 
     //Cria duas matrizes, para inverter a ordem das matrizes em bloco
-    TPZMatRed<STATE, TPZFMatrix<STATE>> *matRed;
-    matRed = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqFull,nEqPres);
+    // TPZMatRed<STATE, TPZVerySparseMatrix<STATE>> *matRed = new TPZMatRed<STATE, TPZVerySparseMatrix<STATE>>(nEqFull,nEqPres);
+    TPZMatRed<STATE, TPZFMatrix<STATE>> *matRed = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqFull,nEqPres);
+
+    std::ofstream out("out.txt");
+
 
     //Primeiro cria a matriz auxiliar
     TPZFMatrix<REAL> K00(nEqPres,nEqPres,0.);
-
+    // TPZVerySparseMatrix<REAL> K00(nEqPres,nEqPres);
+    // TPZSYsmpMatrix<REAL> K00(nEqPres,nEqPres);
+    // TPZSYsmpMatrix<REAL> *K00S;
+    
     TPZStepSolver<STATE> step;
     step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
     an.SetSolver(step);
-
-    //Altera range da matriz stiffness e cria a K00 correta no matRed correto.
+    
+    //Altera range da matriz stiffness.
     Stiffness.SetEquationRange(0,nEqPres);
-    K00.Zero();
-    Stiffness.Assemble(K00,rhsAux,guiInterface);  
+    // Stiffness.Create();
+    // Stiffness.EndCreateAssemble(K00S);
+    // TPZSYsmpMatrix<REAL> *Stiff = dynamic_cast<TPZSYsmpMatrix<REAL> *>(Stiff);
+    
+    // std::cout << "fIA = " << Stiff->IA() << std::endl;
+    // std::cout << "fJA = " << Stiff->JA() << std::endl;
+    // std::cout << "fA = " << Stiff->A() << std::endl;
+
+    // K00.IA() = Stiff->IA();
+    // K00.JA() = Stiff->JA();
+    // K00.A() = Stiff->A();
+    // Stiffness.
+    // Stiff.Assemble(K00,rhsAux,guiInterface);
+    // Stiffness.Assemble(K00,rhsAux,guiInterface);
+    // K00.Print("K00=",out,EMathematicaInput);
+
+    // TPZSYsmpMatrix<REAL> *K00S = dynamic_cast<TPZSYsmpMatrix<REAL> *>(K00);
 
     //Transfere as submatrizes da matriz auxiliar para a matriz correta.
     step.SetMatrix(&K00);
@@ -335,10 +359,10 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
     an.SetStructuralMatrix(Stiffness);
 
     //Monta a matriz auxiliar
-    matRed->K00()->Zero();
     rhsAux.Zero();
+    // Stiffness.EndCreateAssemble(*matRed);
     Stiffness.Assemble(*matRed,rhsAux,guiInterface);
-
+    
     rhsFull=rhsAux;
     
     // matRed->Print("MATRED "); //Deve ser a matriz de pressão, depois fluxo.
@@ -346,19 +370,17 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
 
     TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(cmesh);
     BDFmatrix.SetEquationRange(nEqPres,nEqFull);
-    // BDFmatrix.SetEquationRange(nEqFlux,nEqFull);
-    TPZBlockDiagonal<REAL> KBD, KBD_K11Red;
-    BDFmatrix.CreateAssemble(rhsAux,guiInterface);
-    BDFmatrix.EndCreateAssemble(&KBD);
+    TPZBlockDiagonal<REAL> KBD;
+    BDFmatrix.AssembleBlockDiagonal(KBD);
     
     TPZFMatrix<REAL> *K11Red;
     K11Red = new TPZFMatrix<REAL>;
     K11Red->Redim(nEqFlux,nEqFlux);
 
     matRed->SetF(rhsFull);
-    
+    matRed->K00()->Print("K00=",out,EMathematicaInput);
+
     matRed->K11Reduced(*K11Red,rhsFlux);
-    std::ofstream out("out.txt");
     K11Red->Print("K11Red=",out,EMathematicaInput);
     matRed->F1Red(rhsFlux);
     matRed->SetF(rhsFull);
@@ -388,13 +410,11 @@ void TPZKernelHdivUtils<TVar>::SolveProblemMatRed(TPZLinearAnalysis &an, TPZMult
         TPZFMatrix<STATE> residual(nMaxIter,1,0.);
         REAL tol = 1.e-10;
         TPZFMatrix<STATE> solution(nEqFlux,1,0.);
-        int64_t one =1;
-        // K11Red->SolveCG(one,*precond,rhsFlux,solution,&residual,tol);
 
         K11Red->SolveCG(nMaxIter,*precond,rhsFlux,solution,&residual,tol);
         // K11Red->SolveBICGStab(nMaxIter,*precond,rhsFlux,solution,&residual,tol);
         REAL norm = 0.;
-        
+        std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
         TPZFMatrix<STATE> press(nEqPres,1,0.);
         matRed->UGlobal(solution,press);
 
@@ -438,15 +458,17 @@ void TPZKernelHdivUtils<TVar>::ReorderEquations(TPZMultiphysicsCompMesh* cmesh, 
 {
     cmesh->LoadReferences();
     std::set<int64_t> auxConnectsP, auxConnectsF;
-    TPZSkylineStructMatrix<STATE> Pmatrix(cmesh);
-    TPZSkylineStructMatrix<STATE> Fmatrix(cmesh);
+    // TPZSkylineStructMatrix<STATE> Pmatrix(cmesh);
+    // TPZSkylineStructMatrix<STATE> Fmatrix(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Pmatrix(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Fmatrix(cmesh);
     auto neqsTotal = cmesh->NEquations();
 
     auto gmesh = cmesh->Reference();
     nEqPres = 0;
     nEqFlux = 0;
 
-    PrintCompMesh(cmesh,"CMESH_0");
+    // PrintCompMesh(cmesh,"CMESH_0");
 
 
     // loop over the connects and create two std::sets one to the "pressure" ones, representing the 
