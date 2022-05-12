@@ -78,6 +78,7 @@ public:
      * @param cmesh 
      */
     void SolveProblemMatRed(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC); 
+    void SolveProblemMatRedSparse(TPZLinearAnalysis &an, TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBC); 
 
     //Reorder matrix equations
     void ReorderEquations(TPZMultiphysicsCompMesh* cmesh, int64_t &nEqPres, int64_t &nEqFlux, std::set<int> &matIdBC);

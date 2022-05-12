@@ -511,14 +511,14 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
         int nfacets = cel->Reference()->NSides(cel->Dimension()-1);
         // std::cout << "Connect list = " << connectlist << std::endl;
         // //Condense internal connects
-        // int index = connectlist[2*nfacets];
-        // groupindex[index] = cel->Index();
+        int index = connectlist[2*nfacets];
+        groupindex[index] = cel->Index();
         //Condense pressure connects
         // int index = connectlist[nconnects-1];
         // groupindex[index] = cel->Index();
         // index = connectlist[2*nfacets+2];
         // groupindex[index] = cel->Index();
-
+        
         // std::cout << "Connect List = " << connectlist << std::endl;
         int k = -1;
         bool prevConnect = false;
@@ -589,6 +589,7 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
             }
         }
     }
+    cmesh->CleanUpUnconnectedNodes();
     // std::cout << "Element group = " << elementgroup << std::endl;
 }
 
@@ -598,9 +599,8 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElementsDuplicatedConnects(TPZMult
     int64_t nel = cmesh->NElements();
     TPZVec<int64_t> groupnumber(nel,-1);
 
-    auto aux=matIdBC;
     /// compute a groupnumber associated with each element
-    AssociateElementsDuplicatedConnects(cmesh,groupnumber,aux);
+    AssociateElementsDuplicatedConnects(cmesh,groupnumber,matIdBC);
 
     std::map<int64_t, TPZElementGroup *> groupmap;
     //    std::cout << "Groups of connects " << groupnumber << std::endl;
@@ -626,6 +626,12 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElementsDuplicatedConnects(TPZMult
     nel = cmesh->NElements();
     for (int64_t el = 0; el < nel; el++) {
         TPZCompEl *cel = cmesh->Element(el);
+        
+        if (!cel) continue;
+        int nConnects = cel->NConnects();
+        TPZConnect &c = cel->Connect(nConnects-1);
+        c.IncrementElConnected();
+
         TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);
         if (elgr) {
             TPZCondensedCompEl *cond = new TPZCondensedCompEl(elgr);

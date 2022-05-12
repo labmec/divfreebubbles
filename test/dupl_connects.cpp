@@ -103,8 +103,9 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int xdiv = GENERATE(2);
-    const int pOrder = GENERATE(2);
+    const int xdiv = GENERATE(20);
+    // const int xdiv = GENERATE(2,5,10,15,20,25,30);
+    const int pOrder = GENERATE(3);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
@@ -144,9 +145,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    // u[0] = x*x*x*y - y*y*y*x;
-    // gradU(0,0) = (3.*x*x*y - y*y*y);
-    // gradU(1,0) = (x*x*x - 3.*y*y*x);
+    u[0] = x*x*x*y - y*y*y*x;
+    gradU(0,0) = (3.*x*x*y - y*y*y);
+    gradU(1,0) = (x*x*x - 3.*y*y*x);
 
     // u[0]= x*x - y*y;
     // gradU(0,0) = 2.*x;
@@ -163,6 +164,11 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
     gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
 
+    // u[0]=pow(2,2 - pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
+    //    pow(5,-pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
+    //    (-2*M_PI + 15.*x);
+    // gradU(0,0) = 0.;
+    // gradU(1,0) = 0.;
     // u[0] = (x-1)*x*(y-1)*y*(z-1)*z;
     // gradU(0,0) = (x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
     // gradU(1,0) = (x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
@@ -249,7 +255,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     //Multiphysics mesh
     auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
     std::string multFile = "MultiCMesh";
-    util.PrintCompMesh(cmesh,multFile);
+    
     // std::cout << "Multi mesh \n";
     // util.PrintCMeshConnects(cmesh);
 
@@ -259,13 +265,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     TPZTimer clock;
     clock.start();
+    TPZCompMeshTools::CondenseElements(cmesh, 1, false);
 
     // Group and condense the elements
     if (DIM == 2 && approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
         // createSpace.CondenseDuplicatedConnects(cmesh);
     }
-    // TPZCompMeshTools::CondenseElements(cmesh, 1, false);
     // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
+    // util.PrintCompMesh(cmesh,multFile);
 
     // std::string multFile = "MultiCMesh";
     // util.PrintCompMesh(cmesh,multFile);
@@ -281,7 +288,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Solve problem
     if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        util.SolveProblemMatRed(an, cmesh, matBCAll);
+        // util.SolveProblemMatRed(an, cmesh, matBCAll);
+        util.SolveProblemMatRedSparse(an, cmesh, matBCAll);
     } else {
         //Equation filter (spanning trees), true if 3D and HDivKernel 
         bool filter = false;
