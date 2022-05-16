@@ -267,6 +267,7 @@ void TPZSparseMatRed<TVar>::F1Red(TPZFMatrix<TVar> &F1Red)
         LOGPZ_DEBUG(logger, sout.str())
     }
 #endif
+    SimetrizeMatRed();
 	//make [F1]=[F1]-[K10][F0Invert]
 	fK10.MultAdd((fF0),fF1,(F1Red),-1,1);
 #ifdef PZ_LOG
@@ -285,18 +286,28 @@ template<>
 void TPZSparseMatRed<double>::K11Reduced(TPZFMatrix<double> &K11, TPZFMatrix<double> &F1)
 {
   	TPZTimer clock;
+    TPZFMatrix<double> res(fK01.Rows(),fK01.Cols());
     if(!fK01IsComputed)
 	{
-        
+        clock.start();
         DecomposeK00();
+        clock.stop();
+        std::cout << "Time Decompose " << clock << std::endl;
 
+        clock.start();
 		SimetrizeMatRed();//Actually assemble K10;
+        clock.stop();
+        std::cout << "Time Simetrize " << clock << std::endl;
 
-        TPZFMatrix<double> res(fK01.Rows(),fK01.Cols());
-        res = fK01;
-        fSolver->Solve(fK01,res);
-        fK01 = res;
+        clock.start();
         
+        res = fK01;
+        
+        fSolver->Solve(res,res);
+        // fK01 = res;
+        clock.stop();
+        std::cout << "Time Substitution " << clock << std::endl;
+
         TPZStepSolver<double> *step = dynamic_cast<TPZStepSolver<double> *>(fSolver.operator->());
         if (step->Singular().size())
         {
@@ -305,18 +316,11 @@ void TPZSparseMatRed<double>::K11Reduced(TPZFMatrix<double> &K11, TPZFMatrix<dou
 		fK01IsComputed = true;
 	}
 
+    clock.start();
     K11 = fK11;
-
-    // std::cout << "K11 " << K11 << std::endl;
-    // std::cout << "fK11 " << fK11 << std::endl;
-    // std::cout << "fK10 " << fK10 << std::endl;
-    // std::cout << "fK01 " << fK01 << std::endl;
-	fK10.MultAdd(fK01,K11,(K11),-1.,1.);
-
-    // std::cout << "fK10 " << fK10 << std::endl;
-    // auto A = dynamic_cast<const TPZFMatrix<double>*>(*fK11);
-    // K11 += fK11;
-    // std::cout << "K11 " << K11 << std::endl;
+	fK10.MultAdd(res,K11,(K11),-1.,1.);
+    clock.stop();
+    std::cout << "Time multAdd " << clock << std::endl;
     
     F1Red(F1);
 
@@ -335,47 +339,6 @@ void TPZSparseMatRed<TVar>::U1(TPZFMatrix<TVar> & F)
 	
 }
 
-template<>
-void TPZSparseMatRed<REAL>::UGlobal(const TPZFMatrix<REAL> & U1, TPZFMatrix<REAL> & result)
-{
-	//[u0]=[A00^-1][F0]-[A00^-1][A01]
-    //compute [F0]=[A00^-1][F0]
-    if (!fF0IsComputed)
-    {
-        DecomposeK00();
-        fSolver->Solve(fF0,fF0);
-        fF0IsComputed = true;
-    }
-	if(!fK01IsComputed)
-	{
-		TPZFMatrix<REAL> k01(fK01);
-        DecomposeK00();
-		fSolver->Solve(k01,k01);
-		fK01 = k01;
-		fK01IsComputed = 1;
-	}
-	
-	//make [u0]=[F0]-[U1]
-	TPZFMatrix<REAL> u0( fF0.Rows() , fF0.Cols() );
-	fK01.MultAdd(U1,(fF0),u0,-1,0);
-	
-	result.Redim( fDim0+fDim1,fF0.Cols() );
-	int64_t c,r,r1;
-	
-	for(c=0; c<fF0.Cols(); c++)
-	{
-		r1=0;
-		for(r=0; r<fDim0; r++)
-		{
-			result.PutVal( r,c,u0.GetVal(r,c) ) ;
-		}
-		//aqui r=fDim0
-		for( ;r<fDim0+fDim1; r++)
-		{
-			result.PutVal( r,c,U1.GetVal(r1++,c) );
-		}
-	}
-}
 
 template<class TVar>
 void TPZSparseMatRed<TVar>::UGlobal(const TPZFMatrix<TVar> & U1, TPZFMatrix<TVar> & result)
@@ -395,10 +358,18 @@ void TPZSparseMatRed<TVar>::UGlobal(const TPZFMatrix<TVar> & U1, TPZFMatrix<TVar
 		//make [u0]=[F0]-[U1]
 		fK01.MultAdd(U1,(fF0),u0,-1,1);
 	} else {
+        if(!fF0IsComputed)
+        {
+            DecomposeK00();
+            fSolver->Solve(fF0,fF0);
+            fF0IsComputed = true;
+        }
         TPZFMatrix<TVar> K01U1(fK01.Rows(),U1.Cols(),0.);
-        fK01.MultAdd(U1,fF0,K01U1,-1.,1.);
+        fK01.Multiply(U1,K01U1,0);
+        // fK01.MultAdd(U1,fF0,K01U1,-1.,1.);
         DecomposeK00();
         fSolver->Solve(K01U1, u0);
+        u0 = fF0 - u0;
 	}
 	
 	//compute result
@@ -582,7 +553,7 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
 		
 		TPZFMatrix<TVar> l_Res(fK01.Rows(), x.Cols(), 0);
 		fK01.Multiply(x,l_Res,0);
-		//fSolver->Solve(l_Res,l_Res);
+		fSolver->Solve(l_Res,l_Res);
 #ifdef PZ_LOG
 		if(logger.isDebugEnabled())
 		{

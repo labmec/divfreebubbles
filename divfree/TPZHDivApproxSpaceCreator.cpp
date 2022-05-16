@@ -46,7 +46,8 @@ auto forcefunction = [](const TPZVec<REAL> &loc,
 
     // //Nabla u = 1
     u[0] = 0.;
-    u[0] = 2*M_PI*M_PI*sin(M_PI*x)*sin(M_PI*y);
+    // u[0] = 2*M_PI*M_PI*sin(M_PI*x)*sin(M_PI*y);
+    u[0] = 2*(x-1)*x*(y-1)*y + 2*(x-1)*x*(z-1)*z + 2*(y-1)*y*(z-1)*z;
     
     // double fx =-4144.653167389283*pow(10,
     //                                      -pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*

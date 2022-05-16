@@ -36,6 +36,7 @@ set(UTIL_HEADERS
   TPZKernelHdivHybridizer.h
   TPZKernelHdivUtils.h
   TPZSparseMatRed.h
+  TPZMatRedSolver.h
   )
 
 set(UTIL_SRCS
@@ -43,6 +44,7 @@ set(UTIL_SRCS
   TPZHDivApproxSpaceCreator.cpp
   TPZKernelHdivUtils.cpp
   TPZSparseMatRed.cpp
+  TPZMatRedSolver.cpp
   )
 
 target_sources(divfree PRIVATE
