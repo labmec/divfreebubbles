@@ -538,7 +538,8 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
             k++;
             auto gel = cel->Reference();
             auto nnodes = gel->NCornerNodes();
-            TPZGeoElSide geoside(gel,k+nnodes);
+            auto nsides = gel->NSides();
+            TPZGeoElSide geoside(gel,nsides-nfacets-1+k);
             auto neig = geoside.Neighbour(); 
             if (!neig.Element())continue;
             int neigMatId = neig.Element()->MaterialId();
@@ -552,6 +553,10 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
                 groupindex[cindex] = cel->Index();
             }
         }
+        // for (int i=0; i<nfacets; i++) {
+        //     auto &c = cel->Connect(2*i);
+        //     c.SetCondensed(true);
+        // }
         // std::cout << "Groups of connects " << groupindex << std::endl;
     }
 

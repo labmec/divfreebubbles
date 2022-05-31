@@ -172,6 +172,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHi
 
     //Cria duas matrizes, para inverter a ordem das matrizes em bloco
     TPZMatRed<STATE, TPZFMatrix<STATE>> *matRed = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqLinr+nEqHigh,nEqLinr);
+    // TPZMatRed<STATE, TPZFMatrix<STATE>> *K00red = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqLinr,nEqLinr-25);
 
     //Primeiro cria a matriz auxiliar
     TPZFMatrix<REAL> K00(nEqLinr,nEqLinr,0.);
@@ -194,17 +195,19 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHi
     clock.start();
     //Monta a matriz auxiliar
     rhsFull.Zero();
+    std::cout << "Start assembling matRed ...\n";
     Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+    std::cout << "Finish assembling matRed ...\n";
     clock.stop();
     // std::cout << "Time Assemble " << clock << std::endl;
     
-    // std::ofstream out("out2.txt");
+    // std::ofstream out2("out2.txt");
 
     // TPZFMatrix<REAL> *K11Red = new TPZFMatrix<REAL>(nEqHigh,nEqHigh);
 
     matRed->SetF(rhsFull);
     matRed->SetReduced();
-    // matRed->Print("MATRED",out,EMathematicaInput);
+    // matRed->Print("MATRED",out2,EMathematicaInput);
 
     // matRed->K11Reduced(*K11Red,rhsHigh);
     
@@ -236,8 +239,11 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHi
 
         clock.start();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
-        
+        std::cout << "Start CG ...\n";
+
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
+        std::cout << "Finish CG ...\n";
+
         clock.stop();
         // std::cout << "Time CG " << clock << std::endl;
         
@@ -303,6 +309,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHig
     step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
     fAnalysis->SetSolver(step);
     
+    std::cout << "Allocating Sub Matrices ...\n";
     AllocateSubMatrices(nEqLinr,nEqHigh,Stiffness,K00,matRed);
     
     //Transfere as submatrizes da matriz auxiliar para a matriz correta.
@@ -316,44 +323,46 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHig
     rhsFull.Zero();
     TPZTimer clock;
     clock.start();
+    std::cout << "Start assembling matRed ...\n";
     Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+    std::cout << "Finish assembling matRed ...\n";
     clock.stop();
     // std::cout << "Time Assemble " << clock << std::endl;
 
     TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(fAnalysis->Mesh());
     BDFmatrix.SetEquationRange(nEqLinr,nEqLinr+nEqHigh);
     TPZBlockDiagonal<REAL> KBD;
+    
+    std::cout << "Start assembling BlockDiag ...\n";
     BDFmatrix.AssembleBlockDiagonal(KBD);
-    // std::ofstream out("out.txt");
+    std::cout << "Finish assembling BlockDiag ...\n";
+    // std::ofstream out3("out.txt");
     
     // TPZFMatrix<REAL> *K11Red = new TPZFMatrix<REAL>(nEqHigh,nEqHigh,0.);
 
     matRed->SetF(rhsFull);
     matRed->SetReduced();
-
-    // matRed->Print("MATRED",out,EMathematicaInput);
+    // matRed->Print("MATRED",out3,EMathematicaInput);
     // matRed->K11Reduced(*K11Red,rhsHigh);
     matRed->F1Red(rhsHigh);
-    
 
     //Creates the preconditioner 
     TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
     precond->SetDirect(ELU);
-    
     int64_t nMaxIter = 500;
     TPZVec<REAL> errors(nMaxIter);
     errors.Fill(0.);
-
     // for (int64_t iter = 1; iter < nMaxIter; iter++){
         
         // std::cout << "ITER = " << iter << std::endl;
         TPZFMatrix<STATE> residual(nMaxIter,1,0.);
         REAL tol = 1.e-10;
         TPZFMatrix<STATE> solution(nEqHigh,1,0.);
-
         clock.start();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
+        std::cout << "Start CG ...\n";
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
+        std::cout << "Finish CG ...\n";
         
         clock.stop();
         // std::cout << "Time CG " << clock << std::endl;

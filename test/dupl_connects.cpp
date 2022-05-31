@@ -107,11 +107,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    // const int xdiv = GENERATE(5);
-    // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
-    const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
-    const int pOrder = GENERATE(3);
+    const int pOrder = GENERATE(1);
+
+    // const int xdiv = GENERATE(140);
+    // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140);//,120,140,160,180,200);
+    // const int xdiv = GENERATE(160);
+    const int xdiv = GENERATE(2,3,4,5,6,7,8);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
+    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
@@ -259,7 +262,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Multiphysics mesh
     auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
-    std::string multFile = "MultiCMesh";
+    // std::string multFile = "MultiCMesh";
     
     // std::cout << "Multi mesh \n";
     // util.PrintCMeshConnects(cmesh);
@@ -272,17 +275,18 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     TPZTimer clock,clock2;
     clock.start();
-    // TPZCompMeshTools::CondenseElements(cmesh, 1, false);
 
     // Group and condense the elements
-    if (DIM == 2 && approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
+    if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
         createSpace.CondenseDuplicatedConnects(cmesh);
     }
+    // TPZCompMeshTools::CondenseElements(cmesh, 1, false);
+
     // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
     // util.PrintCompMesh(cmesh,multFile);
 
-    // std::string multFile = "MultiCMesh";
-    // util.PrintCompMesh(cmesh,multFile);
+    std::string multFile = "MultiCMesh";
+    util.PrintCompMesh(cmesh,multFile);
     // std::cout << "Multi mesh \n";
     // util.PrintCMeshConnects(cmesh);
     
@@ -296,8 +300,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Solve problem
     if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
+        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
         clock2.start();
         solver.Solve(rprint);
         clock2.stop();
@@ -313,7 +317,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "Time running = " << clock << std::endl;
 
     //Print results
-    util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    // util.PrintResultsMultiphysics(meshvector,an,cmesh);
 
     // //Compute error
     // std::ofstream anPostProcessFile("postprocess.txt");
@@ -347,6 +351,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     default:
         break;
     }
+
     
     // REQUIRE(nInternalEdges * pOrder == nEquationsCondensed);
 

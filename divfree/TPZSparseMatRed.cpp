@@ -246,6 +246,7 @@ void TPZSparseMatRed<TVar>::F1Red(TPZFMatrix<TVar> &F1Red)
     F1Red.Resize(fK11.Rows(),fF0.Cols());
     if (!fF0IsComputed)
     {
+        std::cout << "Decomposing K00...\n";
         DecomposeK00();
         fSolver->Solve(fF0,fF0);
         fF0IsComputed = true;
