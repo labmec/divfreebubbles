@@ -36,6 +36,8 @@ void TPZKernelHdivUtils<TVar>::PrintCMeshConnects(TPZCompMesh *cmesh){
     for (int i = 0; i < cmesh->NElements(); i++)
     {
         TPZCompEl *cel = cmesh->Element(i);
+        if (!cel) continue;
+        if (!cel->Reference()) continue;
         cel->LoadElementReference();
         int matid = cel->Reference()->MaterialId();
         auto nconnects = cel->NConnects();

@@ -92,6 +92,7 @@ struct TPZKernelHdivHybridizer {
      * @param matBCId = BC material id's
      */
     void SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int> &matBCId);
+    void SemiHybridizeDuplConnects(TPZCompMesh *cmesh, std::set<int> &matBCId);
 
     /**
      * @brief Updates the approximation order for the BC hybridization Lagrange multipliers.
@@ -115,7 +116,8 @@ struct TPZKernelHdivHybridizer {
      * @param meshvector 
      * @param matIdNeumann = hybridized BC material is's
      */
-    void CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh *gmesh, TPZVec<TPZCompMesh *> &meshvector, std::set<int> &matIdBCHyb);
+    void CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh *gmesh, std::set<int> &matIdBCHyb);
+    void CreateInterfaceDuplConnects(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBCHyb);
 
     /**
      * @brief Groups and performs static condensation to elements

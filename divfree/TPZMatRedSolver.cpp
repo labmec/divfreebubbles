@@ -29,6 +29,12 @@ void TPZMatRedSolver<TVar>::ReorderEquations(int64_t &nEqLinr, int64_t &nEqHigh)
     // This can change depending on the problem.
     for (auto gel:gmesh->ElementVec()){
         
+        if (!gel) continue;
+        //Looking for the hybridized pressure
+        if (gel->Dimension() == gmesh->Dimension()-1 && gel->MaterialId() == 6){
+            auxConnectsP.insert(gel->Reference()->ConnectIndex(0));
+        }
+
         if (gel->Dimension() != gmesh->Dimension()) continue;//Only looks for the volumetric elements
         auto nconnects = gel->Reference()->NConnects();
         int nFacets = gel->NSides(gmesh->Dimension()-1);
@@ -421,7 +427,10 @@ void TPZMatRedSolver<TVar>::AllocateSubMatrices(int64_t &nEqLinr, int64_t &nEqHi
     TPZVec<int64_t> IA_K00(nEqLinr+1,0), IA_K01(nEqLinr+1,0), IA_K10(nEqHigh+1,0), IA_K11(nEqHigh+1,0);
     
     std::vector<int64_t> auxK00, auxK01, auxK11;
-
+    auxK00.reserve(StiffK11->JA().size());
+    auxK01.reserve(StiffK11->JA().size());
+    auxK11.reserve(StiffK11->JA().size());
+    
     for (int i = 0; i < nEqLinr; i++){
         for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
             if (StiffK11->JA()[j] < nEqLinr){

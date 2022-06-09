@@ -108,15 +108,15 @@ TEST_CASE("Hybridization test")
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
+    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);//,
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);//,
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::ESemiHybrid);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
-    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 //Analytical solution
@@ -161,9 +161,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
-    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
-    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
+    // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
+    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
+    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
 
     // REAL a1 = 1./4;
     // REAL alpha = M_PI/2;
@@ -187,7 +187,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,xdiv};
+    if (DIM == 2) nDivs = {2,1};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -245,7 +245,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     
     //Multiphysics mesh
     auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
-    TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
+    // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
     std::string multFile = "MultiCMesh";
     util.PrintCompMesh(cmesh,multFile);
     // std::cout << "Multi mesh \n";
@@ -259,7 +259,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     if (DIM == 2 && approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
         // createSpace.CondenseDuplicatedConnects(cmesh);
     } else {
-        createSpace.Condense(cmesh);
+        // createSpace.Condense(cmesh);
     }
 
     //Number of condensed problem.
@@ -271,7 +271,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Solve problem
     if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        util.SolveProblemMatRed(an, cmesh, matBCAll);
+        // util.SolveProblemMatRed(an, cmesh, matBCAll);
     } else {
         //Equation filter (spanning trees), true if 3D and HDivKernel 
         bool filter = false;

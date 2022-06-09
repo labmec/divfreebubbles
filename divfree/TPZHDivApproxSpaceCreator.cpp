@@ -28,6 +28,7 @@
 #include "pzelchdivbound2.h"
 #include "TPZCompElHDivDuplConnects.h"
 #include "TPZCompElHDivDuplConnectsBound.h"
+#include "TPZCompElConstFluxHybrid.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -98,9 +99,9 @@ void TPZHDivApproxSpaceCreator<TVar>::Initialize()
     if (fSpaceType != ENone)
     {
         hybridizer.SetMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
-        if (fSpaceType != EDuplicatedConnects) {
+        // if (fSpaceType != EDuplicatedConnects) {
             hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,true,fShapeType);
-        }
+        // }
     } else {
         hybridizer.SetMaterialIds(fConfig.fWrap,fConfig.fLagrange,fConfig.fInterface,fConfig.fPoint,fConfig.fDomain);
         hybridizer.CreateWrapElements(fGeoMesh,fConfig.fBCHybridMatId,false,fShapeType);
@@ -338,7 +339,12 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
 
     auto matIdBCHyb = fConfig.fBCHybridMatId;
     matIdBCHyb.insert(fConfig.fLagrange);
-    hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matIdBCHyb);
+    if (fSpaceType == EDuplicatedConnects){
+        hybridizer.CreateInterfaceDuplConnects(cmesh,matIdBCHyb);
+        // hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matIdBCHyb);
+    } else {
+        hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,matIdBCHyb);
+    }
 
     return cmesh;
 }
@@ -476,7 +482,7 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh
     cmesh->ComputeNodElCon();
     cmesh->LoadReferences();
 
-    if (fSpaceType == ESemiHybrid){
+    if (fSpaceType == ESemiHybrid || fSpaceType == EDuplicatedConnects){
         hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     }
 }
@@ -558,9 +564,11 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
             //Creates the computational elements. Both wrap, BC and interface
             if (fDimension == 2){
                 if (fSpaceType == EDuplicatedConnects){
-                    if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
+                    // if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
                         CreateHDivDuplConnectsBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);
-                    }
+                    // } else {
+                        // new TPZCompElConstFluxHybrid(*cmesh,neighbour.Element());
+                    // }
                 }else {
                     CreateHDivBoundLinearEl(neighbour.Element(),*cmesh,fShapeType);   
                 }
@@ -568,18 +576,18 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
                 switch (type){
                 case ETetraedro:
                     if (fSpaceType == EDuplicatedConnects){
-                        if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
+                        // if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
                             CreateHDivDuplConnectsBoundTriangEl(neighbour.Element(),*cmesh,fShapeType);
-                        }
+                        // }
                     } else {   
                         CreateHDivBoundTriangleEl(neighbour.Element(),*cmesh,fShapeType);
                     }
                     break;
                 case ECube:
                     if (fSpaceType == EDuplicatedConnects){
-                        if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
+                        // if (fConfig.fBCMatId.find(neighbour.Element()->MaterialId()) != fConfig.fBCMatId.end()){
                             CreateHDivDuplConnectsBoundQuadEl(neighbour.Element(),*cmesh,fShapeType);
-                        }
+                        // }
                     }else {
                         CreateHDivBoundQuadEl(neighbour.Element(),*cmesh,fShapeType);
                     }
@@ -627,9 +635,13 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
             }
         }
     }
+
     // if (fSpaceType == ESemiHybrid){
     //     hybridizer.SemiHybridizeFlux(cmesh,fConfig.fBCHybridMatId);
     // }
+    if (fSpaceType == EDuplicatedConnects){
+        hybridizer.SemiHybridizeDuplConnects(cmesh,fConfig.fBCHybridMatId);
+    }
 
 }
 
@@ -652,7 +664,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDiv
         mat->SetBigNumber(fBigNumber);
     }
 
-    if(fSpaceType == ESemiHybrid){
+    if(fSpaceType == ESemiHybrid || fSpaceType == EDuplicatedConnects){
         cmesh->SetDefaultOrder(0);
         cmesh->SetDimModel(fDimension-1);
         cmesh->SetAllCreateFunctionsDiscontinuous();
@@ -696,6 +708,14 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
         
         auto nFacets = gel->NSides(fDimension-1);
 
+        // gel->ResetReference();
+        // for (int side = 0; side < gel->NSides(); side++)
+        // {
+        //     TPZGeoElSide gelside(gel,side);
+        //     TPZGeoElSide neighbour = gelside.Neighbour();
+        //     neighbour.Element()->ResetReference();
+        // }
+
         //Loop over the element facets - which are the connects the be duplicated (edges in 2D and faces in 3D)
         for (int iFacet = 0; iFacet < nFacets; iFacet++)
         {
@@ -719,6 +739,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
             }
         }
 
+        
         // for (int i = 0; i<cel->NConnects(); i++){
         //     std::cout << "Connects indexes = "<< i << " " << cel->ConnectIndex(i) << "\n";
         // }
@@ -754,7 +775,8 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
         }
     }
     // util->PrintCMeshConnects(cmesh);
-    cmesh->ExpandSolution();
+    // cmesh->ExpandSolution();
+    
 }
 
 /**

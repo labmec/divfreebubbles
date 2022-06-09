@@ -37,6 +37,7 @@ set(UTIL_HEADERS
   TPZKernelHdivUtils.h
   TPZSparseMatRed.h
   TPZMatRedSolver.h
+  TPZCompElConstFluxHybrid.h
   )
 
 set(UTIL_SRCS
@@ -45,6 +46,7 @@ set(UTIL_SRCS
   TPZKernelHdivUtils.cpp
   TPZSparseMatRed.cpp
   TPZMatRedSolver.cpp
+  TPZCompElConstFluxHybrid.cpp
   )
 
 target_sources(divfree PRIVATE

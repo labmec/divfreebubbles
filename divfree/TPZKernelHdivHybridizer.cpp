@@ -19,6 +19,9 @@
 #include "TPZMultiphysicsInterfaceEl.h"
 #include "pzelementgroup.h"
 #include "pzcondensedcompel.h"
+#include "TPZCompElHDivDuplConnects.h"
+#include "TPZCompElConstFluxHybrid.h"
+#include "TPZKernelHdivUtils.h"
 
 void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int> &matIdBC, bool domainHyb, HDivFamily &hdivfam){
 
@@ -117,9 +120,6 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
     }
 }
 
-
-
-
 void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int> &matBCId)
 {
     int dim = cmesh->Dimension();
@@ -172,7 +172,63 @@ void TPZKernelHdivHybridizer::SemiHybridizeFlux(TPZCompMesh *cmesh, std::set<int
 
 }
 
-void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh * gmesh, TPZVec<TPZCompMesh *> &meshvector, std::set<int> &matIdBCHyb){
+
+void TPZKernelHdivHybridizer::SemiHybridizeDuplConnects(TPZCompMesh *cmesh, std::set<int> &matBCId)
+{
+    int dim = cmesh->Dimension();
+    int nel = cmesh->NElements();
+
+    for (int64_t el = 0; el < nel; el++) {
+        TPZCompEl *cel = cmesh->Element(el);
+        TPZGeoEl *gel = cel->Reference();
+        int64_t index;
+
+        if (cel->Dimension() != dim) continue;
+        TPZInterpolatedElement *eldc = dynamic_cast<TPZInterpolatedElement *> (cel);
+
+        auto nsides = gel->NSides();
+        int nfacets = cel->Reference()->NSides(cel->Dimension()-1);
+        int nEdges = 0;
+        if (cmesh->Dimension() == 3){
+            nEdges = gel->NSides(1);
+        }
+
+        for (int iface = 0; iface < nfacets; iface++)
+        {       
+            int cIndex = 2*iface;
+            int ncorner = cel->Reference()->NCornerNodes();
+            // if (gel->SideDimension(side) != dim-1) continue;
+            TPZGeoElSide gelside(gel,iface+ncorner+nEdges);
+            // if (gelside.HasNeighbour(matBCId)) continue;
+            
+            
+            TPZGeoElSide neighbour = gelside.Neighbour();
+            
+            int sideOrient = eldc->GetSideOrient(iface+ncorner+nEdges);
+        
+            // std::cout << "Element = " << el << ",iface = " << iface << " Neigh matid - " << neighbour.Element()->MaterialId() << ", side orient - " << sideOrient << std::endl;
+            if (sideOrient == -1){
+                TPZConnect &c = cel->Connect(cIndex);
+                auto pOrder = cmesh->GetDefaultOrder();
+                int nshape = c.NShape();//It is updated in the next loop
+                int nstate = 1;//It can possibly change
+                int64_t newConnect = cmesh->AllocateNewConnect(nshape,nstate,pOrder);
+                cel->SetConnectIndex(2*iface,newConnect);
+               
+                if (neighbour.Element()->MaterialId() == fEWrap){
+                    neighbour.Element()->Reference()->SetConnectIndex(0,newConnect);
+                } else {
+                    DebugStop();
+                }
+            }
+        }
+    }
+
+    cmesh->ExpandSolution();
+
+}
+
+void TPZKernelHdivHybridizer::CreateMultiphysicsInterfaceElements(TPZMultiphysicsCompMesh *cmesh, TPZGeoMesh * gmesh, std::set<int> &matIdBCHyb){
 
     cmesh->LoadReferences();
     
@@ -544,9 +600,9 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
             if (!neig.Element())continue;
             int neigMatId = neig.Element()->MaterialId();
 
-            if (matId.find(neigMatId) == matId.end()) {
-                continue;
-            }
+            // if (matId.find(neigMatId) == matId.end()) {
+            //     continue;
+            // }
             prevConnect = true;
             
             if (groupindex[cindex] == -1) {
@@ -635,7 +691,7 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElementsDuplicatedConnects(TPZMult
         if (!cel) continue;
         int nConnects = cel->NConnects();
         TPZConnect &c = cel->Connect(nConnects-1);
-        c.IncrementElConnected();
+        // c.IncrementElConnected();
 
         TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);
         if (elgr) {
@@ -646,5 +702,52 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElementsDuplicatedConnects(TPZMult
 
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
+
+}
+
+
+void TPZKernelHdivHybridizer::CreateInterfaceDuplConnects(TPZMultiphysicsCompMesh *cmesh, std::set<int> &matIdBCHyb){
+
+    cmesh->LoadReferences();
+    std::map<int,bool> sideOrient;
+    
+    for (auto gel : cmesh->Reference()->ElementVec())
+    {
+        if (!gel || gel->MaterialId() != fEWrap) continue;
+        auto nsides = gel->NSides();
+        TPZGeoElSide gelside(gel,nsides-1);
+        // here I generalized - an interface is created whenever a wrap element exists
+        auto gelsidepr = gelside.HasNeighbour(matIdBCHyb);
+        if (!gelsidepr)
+        {
+            DebugStop();
+        }
+
+        TPZCompElSide celside = gelside.Reference();
+        TPZCompElSide celneigh = gelsidepr.Reference();
+        if (!celside || !celneigh) {
+            DebugStop();
+        }
+
+        TPZGeoEl *gelIntface = gel->Neighbour(2).Element();
+        if (gelIntface->MaterialId() != fEInterface) DebugStop();
+        
+        // Creates Multiphysics Interface element
+        auto cel = new TPZCompElConstFluxHybrid(*cmesh,gelIntface);
+        cel->SetConnectIndex(0,celneigh.Element()->ConnectIndex(0));
+        cel->SetConnectIndex(1,celside.Element()->ConnectIndex(0));
+        
+        // std::cout << "Interface element connect = " << celneigh.Element()->ConnectIndex(0) << " " << celside.Element()->ConnectIndex(0) << std::endl;
+
+        //Sets the sideOrient-the first side is set as negative and the second as positive (could be the opposite, doesn't matter)
+        if (sideOrient[celneigh.Element()->ConnectIndex(0)]){
+            cel->SetSideOrient(1);
+        } else {
+            sideOrient[celneigh.Element()->ConnectIndex(0)] = true;
+            cel->SetSideOrient(-1);
+        }
+
+    }
+
 
 }
