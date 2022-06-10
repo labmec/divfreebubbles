@@ -426,57 +426,66 @@ void TPZMatRedSolver<TVar>::AllocateSubMatrices(int64_t &nEqLinr, int64_t &nEqHi
     //Fazer uma rotina para separar IA, JA e A de K01, K10 e K11;
     TPZVec<int64_t> IA_K00(nEqLinr+1,0), IA_K01(nEqLinr+1,0), IA_K10(nEqHigh+1,0), IA_K11(nEqHigh+1,0);
     
-    std::vector<int64_t> auxK00, auxK01, auxK11;
-    auxK00.reserve(StiffK11->JA().size());
+    TPZVec<int64_t> auxK00, auxK11;
+    std::vector<int64_t> auxK01;
+    auxK00.resize(StiffK11->JA().size());
     auxK01.reserve(StiffK11->JA().size());
-    auxK11.reserve(StiffK11->JA().size());
+    auxK11.resize(StiffK11->JA().size());
+    int64_t countK00=0;
+    int64_t countK11=0;
     
     for (int i = 0; i < nEqLinr; i++){
         for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
             if (StiffK11->JA()[j] < nEqLinr){
                 // Faz parte da matriz K00
-                auxK00.push_back(StiffK11->JA()[j]);
+                auxK00[countK00] = StiffK11->JA()[j];
+                countK00++;
             } else {
                 // Faz parte da matriz K01
                 auxK01.push_back(StiffK11->JA()[j]-nEqLinr);
             }
         }
-        IA_K00[i+1] = auxK00.size();
+        IA_K00[i+1] = countK00;
         IA_K01[i+1] = auxK01.size();
     }
     for (int i = nEqLinr; i < nEqLinr+nEqHigh; i++){
         for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
             if (StiffK11->JA()[j] >= nEqLinr){
                 // Faz parte da matriz K11
-                auxK11.push_back(StiffK11->JA()[j]-nEqLinr);
+                auxK11[countK11] = StiffK11->JA()[j]-nEqLinr;
+                countK11++;
             }
         }
-        IA_K11[i-nEqLinr+1] = auxK11.size();
+        IA_K11[i-nEqLinr+1] = countK11;
     }
+    
+    auxK00.resize(countK00);
+    auxK11.resize(countK11);
+
+    // Resize the CRS structure with the correct size
+    TPZVec<int64_t> JA_K01(auxK01.size(),0), JA_K10(auxK01.size(),0);
+    TPZVec<double> A_K00(auxK00.size(),0.), A_K01(auxK01.size(),0.), A_K10(auxK01.size(),0.), A_K11(auxK11.size(),0.);
+
+    // Sets values to the nonzero values columns entries
+    for (int i = 0; i < JA_K01.size(); i++) JA_K01[i] = auxK01[i];
+    // K10 is skiped because the transposition is performed inside TPZSparseMatRed, so here we insert a zero vector.
     
     //Do the transpose - Matriz K10
     IA_K10[0]=0;
     for (int i = 0  ; i < nEqHigh; i++){
-        int nNonZeros = std::count(auxK01.begin(),auxK01.end(),i);
+        int sizeInitial = auxK01.size();
+        auxK01.erase(std::remove(auxK01.begin(), auxK01.end(), i), auxK01.end());
+        int sizeFinal = auxK01.size();
+        int nNonZeros = sizeInitial-sizeFinal;
         IA_K10[i+1] = IA_K10[i] + nNonZeros;
     }
 
-    // Resize the CRS structure with the correct size
-    TPZVec<int64_t> JA_K00(auxK00.size(),0), JA_K01(auxK01.size(),0), JA_K10(auxK01.size(),0), JA_K11(auxK11.size(),0);
-    TPZVec<double> A_K00(auxK00.size(),0.), A_K01(auxK01.size(),0.), A_K10(auxK01.size(),0.), A_K11(auxK11.size(),0.);
-
-    // Sets values to the nonzero values columns entries
-    for (int i = 0; i < JA_K00.size(); i++) JA_K00[i] = auxK00[i];
-    for (int i = 0; i < JA_K01.size(); i++) JA_K01[i] = auxK01[i];
-    // K10 is skiped because the transposition is performed inside TPZSparseMatRed, so here we insert a zero vector.
-    for (int i = 0; i < JA_K11.size(); i++) JA_K11[i] = auxK11[i];
-    
     //Aloca estrutura das matrizes esparsas
-    K00.SetData(IA_K00,JA_K00,A_K00);
+    K00.SetData(IA_K00,auxK00,A_K00);
     matRed->K01().SetData(IA_K01,JA_K01,A_K01);
     matRed->K01().SetData(IA_K01,JA_K01,A_K01);
     matRed->K10().SetData(IA_K10,JA_K10,A_K10);
-    matRed->K11().SetData(IA_K11,JA_K11,A_K11);
+    matRed->K11().SetData(IA_K11,auxK11,A_K11);
 }
 
 template class TPZMatRedSolver<STATE>;

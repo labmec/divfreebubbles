@@ -107,7 +107,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int pOrder = GENERATE(4);
+    const int pOrder = GENERATE(5);
     // const int pOrder = GENERATE(1);
 
     // const int xdiv = GENERATE(140);
