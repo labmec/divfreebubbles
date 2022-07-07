@@ -250,7 +250,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
     vecnames[0]= "Flux";
     vecnames[1]= "ExactFlux";
 
-    constexpr int resolution{0};
+    constexpr int resolution{2};
     std::string plotfile = "solutionMDFB.vtk";
     an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
     an.PostProcess(resolution,cmesh->Dimension());

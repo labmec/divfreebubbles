@@ -19,8 +19,10 @@
 #include "TPZTimer.h"
 #include "TPZMatRedSolver.h"
 #include "fstream"
+#include "TPZSimpleTimer.h"
+#include "TPZVTKGenerator.h"
 
-std::ofstream rprint("results.txt",std::ofstream::out);
+std::ofstream rprint("results_trirough2.txt",std::ofstream::out);
 
 /** @brief Returns the name of the HDiv Family approximation space. */
 inline std::string MHDivFamily_Name(HDivFamily hdivfam)
@@ -107,25 +109,25 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int pOrder = GENERATE(5);
-    // const int pOrder = GENERATE(1);
+    // const int pOrder = GENERATE(5);
+    const int pOrder = GENERATE(1);
 
-    // const int xdiv = GENERATE(140);
+    const int xdiv = GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
-    const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
+    // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
-    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
+    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
     // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
-    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
+    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
-    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 //Analytical solution
@@ -179,6 +181,7 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     //    (-2*M_PI + 15.*x);
     // gradU(0,0) = 0.;
     // gradU(1,0) = 0.;
+
     u[0] = (x-1)*x*(y-1)*y*(z-1)*z;
     gradU(0,0) = (x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
     gradU(1,0) = (x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
@@ -234,7 +237,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // util.PrintGeoMesh(gmesh);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
-    int nMeshes = 3;
+    int nMeshes = 5;
     TPZVec<TPZCompMesh *> meshvector;
     meshvector.Resize(nMeshes);
 
@@ -252,17 +255,17 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "Pressure mesh \n";
     // util.PrintCMeshConnects(meshvector[1]);
 
-    meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
+    meshvector[4] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
 
     // util.PrintCMeshConnects(meshvector[2]);
     
     //G average mesh
-    // meshvector[2] = createSpace.CreateConstantCmesh(gmesh,false);
+    meshvector[2] = createSpace.CreateConstantCmesh(gmesh,false);
     // std::string gavgFile = "GaverCMesh";
     // util.PrintCompMesh(meshvector[2],gavgFile);
 
     //P average mesh
-    // meshvector[3] = createSpace.CreateConstantCmesh(gmesh,true);
+    meshvector[3] = createSpace.CreateConstantCmesh(gmesh,true);
     // std::string pavgFile = "PaverCMesh";
     // util.PrintCompMesh(meshvector[3],pavgFile);
 
@@ -328,7 +331,28 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "Time running = " << clock << std::endl;
 
     //Print results
-    // util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    {
+        TPZSimpleTimer postProc("Post processing1");
+        util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    }
+
+    {
+        TPZSimpleTimer postProc("Post processing2");
+        const std::string plotfile = "myfile";//sem o .vtk no final
+        constexpr int vtkRes{2};
+    
+
+        TPZVec<std::string> fields = {
+        "Pressure",
+        "ExactPressure",
+        "Flux",
+        "ExactFlux"};
+        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+
+        vtk.Do();
+    }
+    // //vamos supor que vc atualiza a solucao, roda de novo, sei la
+    // vtk.Do();
 
     // //Compute error
     // std::ofstream anPostProcessFile("postprocess.txt");

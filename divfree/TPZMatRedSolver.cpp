@@ -128,7 +128,7 @@ void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
     
     //HERE STARTS THE ITERATIVE SOLVER SET
     //Sets number of threads to be used by the solver
-    constexpr int nThreads{10};
+    constexpr int nThreads{12};
     auto cmesh = fAnalysis->Mesh();
 
     //Compute the number of equations in the system
