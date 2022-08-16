@@ -19,10 +19,9 @@
 #include "TPZTimer.h"
 #include "TPZMatRedSolver.h"
 #include "fstream"
-#include "TPZSimpleTimer.h"
-#include "TPZVTKGenerator.h"
+#include "TPZEigenAnalysis.h"
 
-std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
+std::ofstream rprint("Condition_number.txt",std::ofstream::out);
 
 /** @brief Returns the name of the HDiv Family approximation space. */
 inline std::string MHDivFamily_Name(HDivFamily hdivfam)
@@ -109,26 +108,25 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
+    // const int pOrder = GENERATE(5);
     const int pOrder = GENERATE(1);
-    // const int pOrder = GENERATE(2,3,4,5);
 
-    const int xdiv = 5;//GENERATE(50);
-    // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
+    // const int xdiv = GENERATE(140);
+    const int xdiv = GENERATE(1);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
+    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
     // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
-    // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
-    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
+    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
-    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 //Analytical solution
@@ -140,10 +138,10 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    // const auto &d = 1.; // distanc between injection and production wells
-    // u[0]= x*x-y*y ;
-    // gradU(0,0) = -2*x;
-    // gradU(1,0) = 2.*y;
+    const auto &d = 1.; // distanc between injection and production wells
+    u[0]= x*x-y*y ;
+    gradU(0,0) = -2*x;
+    gradU(1,0) = 2.*y;
     // gradU(2,0) = 0.;
 
     // u[0] =  5. + 3. * x + 2. * y + 4. * x * y;
@@ -151,6 +149,13 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = 2. + 4. * x;
     // gradU(2,0) = 0.;
     
+
+    // REAL aux = 1./sinh(sqrt(2)*M_PI);
+    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(0,0) = -M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+
     // u[0] = x*x*x*y - y*y*y*x;
     // gradU(0,0) = (3.*x*x*y - y*y*y);
     // gradU(1,0) = (x*x*x - 3.*y*y*x);
@@ -170,11 +175,11 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
     // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
 
-    // u[0]=pow(2,2 - pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
-    //    pow(5,-pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
-    //    (-2*M_PI + 15.*x);
-    // gradU(0,0) = 0.;
-    // gradU(1,0) = 0.;
+    u[0]=pow(2,2 - pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
+       pow(5,-pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
+       (-2*M_PI + 15.*x);
+    gradU(0,0) = 0.;
+    gradU(1,0) = 0.;
 
     // u[0] = (x-1)*x*(y-1)*y*(z-1)*z;
     // gradU(0,0) = (x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
@@ -183,19 +188,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 
     // REAL a1 = 1./4;
     // REAL alpha = M_PI/2;
-    // u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha) + x*x - y*y;
+    // u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
     // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
     // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
-
-    u[0] = exp(M_PI*x)*sin(M_PI*y);
-    gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
-    gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
-
-    // u[0] = 0.5*(x)*x+0.5*(y)*y-(z)*z;
-    // gradU(0,0) = -x;//(x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
-    // gradU(1,0) = -y;//(x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
-    // gradU(2,0) = 2.*z;//(x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
-
 };
 
 template<class tshape>
@@ -241,7 +236,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // util.PrintGeoMesh(gmesh);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
-    int nMeshes = 5;
+    int nMeshes = 3;
     TPZVec<TPZCompMesh *> meshvector;
     meshvector.Resize(nMeshes);
 
@@ -259,17 +254,17 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "Pressure mesh \n";
     // util.PrintCMeshConnects(meshvector[1]);
 
-    meshvector[4] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
+    meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
 
     // util.PrintCMeshConnects(meshvector[2]);
     
     //G average mesh
-    meshvector[2] = createSpace.CreateConstantCmesh(gmesh,false);
+    // meshvector[2] = createSpace.CreateConstantCmesh(gmesh,false);
     // std::string gavgFile = "GaverCMesh";
     // util.PrintCompMesh(meshvector[2],gavgFile);
 
     //P average mesh
-    meshvector[3] = createSpace.CreateConstantCmesh(gmesh,true);
+    // meshvector[3] = createSpace.CreateConstantCmesh(gmesh,true);
     // std::string pavgFile = "PaverCMesh";
     // util.PrintCompMesh(meshvector[3],pavgFile);
 
@@ -284,7 +279,9 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int nEquationsFull = cmesh->NEquations();
     std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
-    rprint << nEquationsFull << " " ;
+
+    rprint << "Polynomial order = " << pOrder << "\n " ;
+    rprint << "Number of equations = " << nEquationsFull << "\n " ;
 
     TPZTimer clock,clock2;
     clock.start();
@@ -307,56 +304,54 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int nEquationsCondensed = cmesh->NEquations();
 
     //Create analysis environment
-    TPZLinearAnalysis an(cmesh,true);
-    an.SetExact(exactSol,solOrder);
+    // TPZLinearAnalysis an(cmesh,true);
+    TPZEigenAnalysis an(cmesh,true);
+    // an.SetExact(exactSol,solOrder);
+    an.SetComputeEigenvectors(false);
 
+    an.Assemble();
+    an.Solve();
 
-    //Solve problem
-    if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
-        clock2.start();
-        solver.Solve(rprint);
-        clock2.stop();
-        // std::cout << "Time SOLVER = " << clock2 << std::endl;
+    auto eigenval = an.GetEigenvalues();
 
-        // bool filter = false;
-        // if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-        // createSpace.Solve(an, cmesh, true, filter);
-
-    } else {
-        //Equation filter (spanning trees), true if 3D and HDivKernel 
-        bool filter = false;
-        if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-        createSpace.Solve(an, cmesh, true, filter);
+    rprint << "Eigenvalues = \n"; 
+    REAL minval = 1000.;
+    REAL maxval = 0.;
+    for (int i = 0; i < eigenval.size(); i++)
+    {
+        if (fabs(eigenval[i].real()) > maxval) maxval = eigenval[i].real();
+        if (fabs(eigenval[i].real()) < minval) minval = eigenval[i].real();
+        rprint << eigenval[i] << std::endl;
     }
+    rprint << "Condition number = " << maxval/minval << std::endl;
+    rprint << std::endl;
 
-    clock.stop();
-    // std::cout << "Time running = " << clock << std::endl;
+    // std::cout << "Sol = " << eigenval << std::endl;
+    // //Solve problem
+    // if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
+    //     // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
+    //     TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+    //     clock2.start();
+    //     solver.Solve(rprint);
+    //     clock2.stop();
+    //     // std::cout << "Time SOLVER = " << clock2 << std::endl;
 
-    // //Print results
-    // {
-    //     TPZSimpleTimer postProc("Post processing1");
-    //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
+    //     // bool filter = false;
+    //     // if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
+    //     // createSpace.Solve(an, cmesh, true, filter);
+
+    // } else {
+    //     //Equation filter (spanning trees), true if 3D and HDivKernel 
+    //     bool filter = false;
+    //     if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
+    //     createSpace.Solve(an, cmesh, true, filter);
     // }
 
-    {
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{1};
-    
+    // clock.stop();
+    // std::cout << "Time running = " << clock << std::endl;
 
-        TPZVec<std::string> fields = {
-        "Pressure",
-        "ExactPressure",
-        "Flux",
-        "ExactFlux"};
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
-
-        vtk.Do();
-    }
-    // //vamos supor que vc atualiza a solucao, roda de novo, sei la
-    // vtk.Do();
+    //Print results
+    // util.PrintResultsMultiphysics(meshvector,an,cmesh);
 
     // //Compute error
     // std::ofstream anPostProcessFile("postprocess.txt");
@@ -372,24 +367,24 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
     // std::cout << "ERROR[1] = " << error[1] << std::endl;
     // std::cout << "ERROR[2] = " << error[2] << std::endl;
-    // // // std::cout << "ERROR[3] = " << error[3] << std::endl;
-    // // // std::cout << "ERROR[4] = " << error[4] << std::endl;
-    // // REQUIRE(error[1] < tolerance);
+    // // std::cout << "ERROR[3] = " << error[3] << std::endl;
+    // // std::cout << "ERROR[4] = " << error[4] << std::endl;
+    // REQUIRE(error[1] < tolerance);
 
     //Trying to design other criteria besides the approximation error
     //Contar numero de equações condensadas = numero de arestas internas * porder
-    int nInternalEdges = 0;
-    switch (tshape::Type()){
-    case EQuadrilateral:
-        nInternalEdges = xdiv*(xdiv-1)*2;
-        break;
-    case ETriangle:
-        nInternalEdges = xdiv*(xdiv-1)*2 + xdiv*xdiv;
-        break;
+    // int nInternalEdges = 0;
+    // switch (tshape::Type()){
+    // case EQuadrilateral:
+    //     nInternalEdges = xdiv*(xdiv-1)*2;
+    //     break;
+    // case ETriangle:
+    //     nInternalEdges = xdiv*(xdiv-1)*2 + xdiv*xdiv;
+    //     break;
     
-    default:
-        break;
-    }
+    // default:
+    //     break;
+    // }
 
     
     // REQUIRE(nInternalEdges * pOrder == nEquationsCondensed);
@@ -427,7 +422,7 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
         DebugStop();
     }
 
-    TPZManVector<REAL,3> minX = {0,0,0};
+    TPZManVector<REAL,3> minX = {-1,-1,-1};
     TPZManVector<REAL,3> maxX = {1,1,1};
     int nMats = 2*dim+1;
 

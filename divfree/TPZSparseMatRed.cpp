@@ -13,6 +13,8 @@ using namespace std;
 #include "pzfmatrix.h"
 #include "pzstepsolver.h"
 #include "tpzverysparsematrix.h"
+#include "pzcmesh.h"
+#include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
 
 #include "TPZPersistenceManager.h"
 #include "TPZTimer.h"
@@ -55,6 +57,24 @@ fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), fMaxRigidBodyModes(0
 	fK01IsComputed = 0;
     fF0IsComputed = false;
 	fIsReduced = 0;
+}
+
+template<class TVar>
+TPZSparseMatRed<TVar>::TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels):
+TPZRegisterClassId(&TPZSparseMatRed::ClassId), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
+{
+    int64_t dim, dim00;
+    ReorderEquations(cmesh,LagLevels,dim,dim00);
+    AllocateSubMatrices(cmesh,dim,dim00);
+
+    // TPZMatrix<TVar>( dim,dim ), fK11(dim-dim00,dim-dim00), fK01(dim00,dim-dim00),
+    // fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), 
+	// if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
+	// fDim0=dim00;
+	// fDim1=dim-dim00;
+	// fK01IsComputed = 0;
+    // fF0IsComputed = false;
+	// fIsReduced = 0;
 }
 
 template<class TVar>
@@ -728,6 +748,167 @@ void TPZSparseMatRed<TVar>::Read(TPZStream &buf, void *context) {
         }
     }
 }
+
+template<class TVar>
+void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &LagLevels, int64_t &dim, int64_t &dim00) {
+
+    cmesh->LoadReferences();
+    std::set<int64_t> auxConnects00, auxConnects11;
+    auto neqsTotal = cmesh->NEquations();
+
+    auto gmesh = cmesh->Reference();
+    dim00 = 0;
+    int dim11 = 0;
+
+    // loop over the connects and create two std::sets one to the "pressure" ones, representing the 
+    // degrees of freedom to be condensed. The second set contains the "flux" connects, which will not be condensed
+    // This can change depending on the problem.
+    for (auto gel:gmesh->ElementVec()){
+        
+        if (!gel) continue;
+        
+        int nConnects = gel->Reference()->NConnects();
+        for (int i = 0; i < nConnects; i++)
+        {
+            auto con = gel->Reference()->Connect(i);
+            auto cIndex = gel->Reference()->ConnectIndex(i);
+            int conLag = con.LagrangeMultiplier();
+
+            if (LagLevels.find(conLag) != LagLevels.end()) {
+                auxConnects00.insert(cIndex);
+            } else {
+                auxConnects11.insert(cIndex);
+            }
+        }
+    }
+    
+    int64_t seqNumP = 0;
+    cmesh->Block().Resequence();
+
+    for (int icon = 0; icon < cmesh->NConnects(); icon++){
+
+        TPZConnect &con = cmesh->ConnectVec()[icon];
+        if (auxConnects00.find(icon) != auxConnects00.end()) {
+            int64_t seqNum = con.SequenceNumber();
+            if (con.IsCondensed()) continue;
+            if (seqNum < 0) continue;
+
+            con.SetSequenceNumber(seqNumP);
+            
+            //Em cada caso precisa atualizar o tamanho do bloco
+            int neq = con.NDof()*con.NState();
+            seqNumP++;
+            dim00 += neq;
+            seqNum=con.SequenceNumber();
+            cmesh->Block().Set(seqNum,neq);
+        }
+    }
+
+    int64_t seqNumF = seqNumP;
+
+    //Second - Set the sequence number to the flux variables - which will not be condensed 
+    for (int icon = 0; icon < cmesh->NConnects(); icon++){
+
+        TPZConnect &con = cmesh->ConnectVec()[icon];
+        if (auxConnects11.find(icon) != auxConnects11.end()) {
+            int64_t seqNum = con.SequenceNumber();
+            if (con.IsCondensed()) continue;
+            if (seqNum < 0) continue;
+
+            con.SetSequenceNumber(seqNumF);
+            
+            //Em cada caso precisa atualizar o tamanho do bloco
+            int neq = con.NDof()*con.NState();
+            seqNumF++;
+            dim11 += neq;
+            seqNum=con.SequenceNumber();
+            cmesh->Block().Set(seqNum,neq);
+        }
+    }   
+    cmesh->ExpandSolution();
+    
+    dim = dim00+dim11;
+}
+
+template<class TVar>
+void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim, int64_t &dim00) {
+
+    int64_t dim11 = dim-dim00;
+
+    //Aloca as submatrizes no formato esparso.
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
+    Stiffness.EquationFilter().Reset();
+    TPZSYsmpMatrix<REAL> *StiffK11 = dynamic_cast<TPZSYsmpMatrix<REAL> *>(Stiffness.Create());
+
+    //Fazer uma rotina para separar IA, JA e A de K01, K10 e K11;
+    TPZVec<int64_t> IA_K00(dim00+1,0), IA_K01(dim00+1,0), IA_K10(dim11+1,0), IA_K11(dim11+1,0);
+    
+    IA_K10.Fill(0);
+    IA_K10[0]=0;
+
+    TPZVec<int64_t> auxK00, auxK11;
+    std::vector<int64_t> auxK01;
+    auxK00.resize(StiffK11->JA().size());
+    auxK01.reserve(StiffK11->JA().size());
+    auxK11.resize(StiffK11->JA().size());
+    int64_t countK00=0;
+    int64_t countK11=0;
+
+    for (int i = 0; i < dim00; i++){
+        for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
+            if (StiffK11->JA()[j] < dim00){
+                // Faz parte da matriz K00
+                auxK00[countK00] = StiffK11->JA()[j];
+                countK00++;
+            } else {
+                // Faz parte da matriz K01
+                auxK01.push_back(StiffK11->JA()[j]-dim00);
+                IA_K10[StiffK11->JA()[j]-dim00+1]++;
+            }
+        }
+        IA_K00[i+1] = countK00;
+        IA_K01[i+1] = auxK01.size();
+    }
+
+    for (int i = 1; i < IA_K10.size(); i++){
+        IA_K10[i] += IA_K10[i-1];
+    }
+
+    for (int i = dim00; i < dim00+dim11; i++){
+        for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
+            if (StiffK11->JA()[j] >= dim00){
+                // Faz parte da matriz K11
+                auxK11[countK11] = StiffK11->JA()[j]-dim00;
+                countK11++;
+            }
+        }
+        IA_K11[i-dim00+1] = countK11;
+    }
+    
+    auxK00.resize(countK00);
+    auxK11.resize(countK11);
+
+    // Resize the CRS structure with the correct size
+    TPZVec<int64_t> JA_K01(auxK01.size(),0), JA_K10(auxK01.size(),0);
+    TPZVec<double> A_K00(auxK00.size(),0.), A_K01(auxK01.size(),0.), A_K10(auxK01.size(),0.), A_K11(auxK11.size(),0.);
+    
+    // Sets values to the nonzero values columns entries
+    for (int i = 0; i < JA_K01.size(); i++) JA_K01[i] = auxK01[i];
+    // K10 is skiped because the transposition is performed inside TPZSparseMatRed, so here we insert a zero vector.
+
+    //Aloca estrutura das matrizes esparsas
+    fK00 = TPZSYsmpMatrix<TVar>(dim00,dim00);
+    
+    // TPZSYsmpMatrix<TVar> *K00aux = dynamic_cast<TPZSYsmpMatrix<TVar> *>(&this->fK00);
+    // K00aux->SetData(IA_K00,auxK00,A_K00);
+    fK01.SetData(IA_K01,JA_K01,A_K01);
+    fK10.SetData(IA_K10,JA_K10,A_K10);
+    fK11.SetData(IA_K11,auxK11,A_K11);
+
+}
+
+
+
 
 #include "tpzverysparsematrix.h"
 

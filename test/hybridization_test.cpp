@@ -146,30 +146,25 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     // gradU(2,0) = -sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
-    u[0] = x*x*x*y - y*y*y*x;
-    gradU(0,0) = (3.*x*x*y - y*y*y);
-    gradU(1,0) = (x*x*x - 3.*y*y*x);
+    // u[0] = x*x*x*y - y*y*y*x;
+    // gradU(0,0) = (3.*x*x*y - y*y*y);
+    // gradU(1,0) = (x*x*x - 3.*y*y*x);
 
-    u[0]= x*x - y*y;
-    gradU(0,0) = 2.*x;
-    gradU(1,0) = -2.*y;
+    // u[0]= x*x - y*y;
+    // gradU(0,0) = 2.*x;
+    // gradU(1,0) = -2.*y;
     // gradU(2,0) = -1;
 
-    // REAL aux = 1./sinh(sqrt(2)*M_PI);
-    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
     // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
     // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
     // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
 
-    // REAL a1 = 1./4;
-    // REAL alpha = M_PI/2;
-    // u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
-    // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
-    // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
+    REAL a1 = 1./4;
+    REAL alpha = M_PI/2;
+    u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha);
+    gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
+    gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
 };
 
 template<class tshape>

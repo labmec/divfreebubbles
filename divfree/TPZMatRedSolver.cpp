@@ -12,10 +12,6 @@ void TPZMatRedSolver<TVar>::ReorderEquations(int64_t &nEqLinr, int64_t &nEqHigh)
     auto cmesh = fAnalysis->Mesh();
     cmesh->LoadReferences();
     std::set<int64_t> auxConnectsP, auxConnectsF;
-    // TPZSkylineStructMatrix<STATE> Pmatrix(cmesh);
-    // TPZSkylineStructMatrix<STATE> Fmatrix(cmesh);
-    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Pmatrix(cmesh);
-    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Fmatrix(cmesh);
     auto neqsTotal = cmesh->NEquations();
 
     auto gmesh = cmesh->Reference();
@@ -44,13 +40,13 @@ void TPZMatRedSolver<TVar>::ReorderEquations(int64_t &nEqLinr, int64_t &nEqHigh)
             //High order edge functions will not be condensed
             auxConnectsF.insert(gel->Reference()->ConnectIndex(2*i+1));
             //Lower order edge functions will be condensed
-            auxConnectsP.insert(gel->Reference()->ConnectIndex(2*i  ));
+            auxConnectsF.insert(gel->Reference()->ConnectIndex(2*i  ));
         }
         //The internal connect will always be condensed
-        auxConnectsP.insert(gel->Reference()->ConnectIndex(2*nFacets));
+        auxConnectsF.insert(gel->Reference()->ConnectIndex(2*nFacets));
         //Pressure degrees of freedom will not be condensed
         for (size_t i = 2*nFacets+1; i < nconnects; i++){
-            auxConnectsP.insert(gel->Reference()->ConnectIndex(i));
+            auxConnectsF.insert(gel->Reference()->ConnectIndex(i));
         }
     }
     // // Now loop over the boundary elements to condense it and correct the map structure
@@ -135,8 +131,14 @@ void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
     int64_t nEqFull = cmesh->NEquations();
     int64_t nEqLinr, nEqHigh;
 
-    ReorderEquations(nEqLinr,nEqHigh);
+    // ReorderEquations(nEqLinr,nEqHigh);
+    //Cria a matriz esparsa
+    TPZSparseMatRed<STATE> *matRed2 = new TPZSparseMatRed<STATE>(1,1);
 
+    std::set<int> lag={1};
+    matRed2->ReorderEquations(cmesh,lag,nEqFull,nEqLinr);
+
+    nEqHigh = nEqFull-nEqLinr;
     out << nEqHigh << " " << nEqLinr << " ";
 
     std::cout << "NUMBER OF EQUATIONS:\n " << 
@@ -426,14 +428,18 @@ void TPZMatRedSolver<TVar>::AllocateSubMatrices(int64_t &nEqLinr, int64_t &nEqHi
     //Fazer uma rotina para separar IA, JA e A de K01, K10 e K11;
     TPZVec<int64_t> IA_K00(nEqLinr+1,0), IA_K01(nEqLinr+1,0), IA_K10(nEqHigh+1,0), IA_K11(nEqHigh+1,0);
     
+    IA_K10.Fill(0);
+    IA_K10[0]=0;
+
     TPZVec<int64_t> auxK00, auxK11;
-    std::vector<int64_t> auxK01;
+    std::vector<int64_t> auxK01, auxK10;
     auxK00.resize(StiffK11->JA().size());
     auxK01.reserve(StiffK11->JA().size());
+    auxK10.reserve(StiffK11->JA().size());
     auxK11.resize(StiffK11->JA().size());
     int64_t countK00=0;
     int64_t countK11=0;
-    
+
     for (int i = 0; i < nEqLinr; i++){
         for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
             if (StiffK11->JA()[j] < nEqLinr){
@@ -443,11 +449,17 @@ void TPZMatRedSolver<TVar>::AllocateSubMatrices(int64_t &nEqLinr, int64_t &nEqHi
             } else {
                 // Faz parte da matriz K01
                 auxK01.push_back(StiffK11->JA()[j]-nEqLinr);
+                IA_K10[StiffK11->JA()[j]-nEqLinr+1]++;
             }
         }
         IA_K00[i+1] = countK00;
         IA_K01[i+1] = auxK01.size();
     }
+
+    for (int i = 1; i < IA_K10.size(); i++){
+        IA_K10[i] += IA_K10[i-1];
+    }
+
     for (int i = nEqLinr; i < nEqLinr+nEqHigh; i++){
         for (int j = StiffK11->IA()[i]; j < StiffK11->IA()[i+1]; j++){
             if (StiffK11->JA()[j] >= nEqLinr){
@@ -465,27 +477,18 @@ void TPZMatRedSolver<TVar>::AllocateSubMatrices(int64_t &nEqLinr, int64_t &nEqHi
     // Resize the CRS structure with the correct size
     TPZVec<int64_t> JA_K01(auxK01.size(),0), JA_K10(auxK01.size(),0);
     TPZVec<double> A_K00(auxK00.size(),0.), A_K01(auxK01.size(),0.), A_K10(auxK01.size(),0.), A_K11(auxK11.size(),0.);
-
+    
     // Sets values to the nonzero values columns entries
     for (int i = 0; i < JA_K01.size(); i++) JA_K01[i] = auxK01[i];
     // K10 is skiped because the transposition is performed inside TPZSparseMatRed, so here we insert a zero vector.
-    
-    //Do the transpose - Matriz K10
-    IA_K10[0]=0;
-    for (int i = 0  ; i < nEqHigh; i++){
-        int sizeInitial = auxK01.size();
-        auxK01.erase(std::remove(auxK01.begin(), auxK01.end(), i), auxK01.end());
-        int sizeFinal = auxK01.size();
-        int nNonZeros = sizeInitial-sizeFinal;
-        IA_K10[i+1] = IA_K10[i] + nNonZeros;
-    }
 
     //Aloca estrutura das matrizes esparsas
     K00.SetData(IA_K00,auxK00,A_K00);
     matRed->K01().SetData(IA_K01,JA_K01,A_K01);
-    matRed->K01().SetData(IA_K01,JA_K01,A_K01);
     matRed->K10().SetData(IA_K10,JA_K10,A_K10);
     matRed->K11().SetData(IA_K11,auxK11,A_K11);
+    
+    
 }
 
 template class TPZMatRedSolver<STATE>;

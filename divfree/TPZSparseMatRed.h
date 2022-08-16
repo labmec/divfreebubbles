@@ -51,7 +51,9 @@ public:
 	 * @param dim00 equals n1
 	 */
 	TPZSparseMatRed(const int64_t dim, const int64_t dim00);
-	
+
+	TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels);
+
 	template<class TSideCopy>
 	TPZSparseMatRed<TVar>(const TPZSparseMatRed<TVar> &cp): TPZMatrix<TVar>(cp), fK11(cp.fK11), fK01(cp.fK01), fK10(cp.fK10), fF0(cp.fF0), fF1(cp.fF1),fMaxRigidBodyModes(cp.fMaxRigidBodyModes),fNumberRigidBodyModes(cp.fNumberRigidBodyModes), fF0IsComputed(cp.fF0IsComputed)
 	{
@@ -66,27 +68,27 @@ public:
 	inline TPZSparseMatRed<TVar>*NewMatrix() const override {return new TPZSparseMatRed<TVar>{};}
 	CLONEDEF(TPZSparseMatRed)
 
-  /** @brief Creates a copy from another TPZSparseMatRed*/
-  void CopyFrom(const TPZMatrix<TVar> *  mat) override
-  {                                                           
-    auto *from = dynamic_cast<const TPZSparseMatRed<TVar> *>(mat);                
-    if (from) {                                               
-      *this = *from;                                          
-    }                                                         
-    else                                                      
-      {                                                       
-        PZError<<__PRETTY_FUNCTION__;                         
-        PZError<<"\nERROR: Called with incompatible type\n."; 
-        PZError<<"Aborting...\n";                             
-        DebugStop();                                          
-      }                                                       
-  }
+    /** @brief Creates a copy from another TPZSparseMatRed*/
+    void CopyFrom(const TPZMatrix<TVar> *  mat) override
+    {                                                           
+        auto *from = dynamic_cast<const TPZSparseMatRed<TVar> *>(mat);                
+        if (from) {                                               
+        *this = *from;                                          
+        }                                                         
+        else                                                      
+        {                                                       
+            PZError<<__PRETTY_FUNCTION__;                         
+            PZError<<"\nERROR: Called with incompatible type\n."; 
+            PZError<<"Aborting...\n";                             
+            DebugStop();                                          
+        }                                                       
+    }
 	/** @brief Simple destructor */
 	~TPZSparseMatRed();
 	
 	/** @brief returns 1 or 0 depending on whether the fK00 matrix is zero or not */
 	virtual int IsSymmetric() const override;
-	
+
 	/** @brief changes the declared dimension of the matrix to fDim1 */
 	void SetReduced()
 	{
@@ -235,10 +237,14 @@ public:
 	/** @brief If fK00 is simetric, only part of the matrix is accessible to external objects. */
 	/** Simetrizes copies the data of the matrix to make its data simetric */
 	void SimetrizeMatRed();
-	
-	/** @brief Saveable methods */
-	public:
-  int ClassId() const override;
+    
+    void ReorderEquations(TPZCompMesh *cmesh, std::set<int> &LagLevels, int64_t &dim, int64_t &dim00);
+
+    void AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim, int64_t &dim00);
+
+/** @brief Saveable methods */
+public:
+    int ClassId() const override;
 
 	
 	void Write(TPZStream &buf, int withclassid) const override;
@@ -290,6 +296,8 @@ private:
     
     /** @brief Number of rigid body modes identified during the decomposition of fK00 */
     int fNumberRigidBodyModes;
+
+
 };
 
 template<class TVar>

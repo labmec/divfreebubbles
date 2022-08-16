@@ -202,7 +202,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemIterative(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{12};
     //defines storage scheme to be used for the FEM matrices
     //in this case, a symmetric skyline matrix is used
     // TPZSkylineStructMatrix<STATE> matskl(cmesh);
