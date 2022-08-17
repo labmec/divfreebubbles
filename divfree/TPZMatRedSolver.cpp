@@ -9,9 +9,27 @@
 template<class TVar>
 void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
     
+    switch (fSolverType)
+    {
+    case EDefault:
+        SolveProblemDefault(out);
+        break;
+    case ESparse:
+        SolveProblemSparse(out);
+        break;
+    
+    default:
+        DebugStop();
+        break;
+    }
+
+}
+
+
+template<class TVar>
+void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
+
     //HERE STARTS THE ITERATIVE SOLVER SET
-    //Sets number of threads to be used by the solver
-    constexpr int nThreads{12};
     auto cmesh = fAnalysis->Mesh();
 
     //Compute the number of equations in the system
@@ -32,35 +50,16 @@ void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
                  ", High Order Flux = " << nEqHigh << 
                  ", Linear Flux = " << nEqLinr << std::endl;
 
+    //Sets number of threads to be used by the solver
+    constexpr int nThreads{12};
+
     // Create the RHS vectors
-    TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
+    TPZFMatrix<STATE> rhsFull(nEqLinr+nEqHigh,1,0.);
     TPZFMatrix<STATE> rhsHigh(nEqHigh,1,0.);
 
     //Creates the problem matrix    
-    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
     Stiffness.SetNumThreads(nThreads);
-
-    TPZMatrix<TVar> *K11Red, *matRed;
-
-    switch (fSolverType)
-    {
-    case EDefault:
-        SolveProblemDefault(nEqLinr,nEqHigh,Stiffness,rhsFull,rhsHigh,out);
-        break;
-    case ESparse:
-        SolveProblemSparse(nEqLinr,nEqHigh,Stiffness,rhsFull,rhsHigh,out);
-        break;
-    
-    default:
-        DebugStop();
-        break;
-    }
-
-}
-
-
-template<class TVar>
-void TPZMatRedSolver<TVar>::SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out){
 
     TPZAutoPointer<TPZGuiInterface> guiInterface;
 
@@ -187,8 +186,40 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHi
 }
 
 template<class TVar>
-void TPZMatRedSolver<TVar>::SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out){
+void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     
+    //HERE STARTS THE ITERATIVE SOLVER SET
+    auto cmesh = fAnalysis->Mesh();
+
+    //Compute the number of equations in the system
+    int64_t nEqFull = cmesh->NEquations();
+    int64_t nEqLinr, nEqHigh;
+
+    //Cria a matriz esparsa
+    TPZSparseMatRed<STATE> *matRed2 = new TPZSparseMatRed<STATE>(1,1);
+
+    std::set<int> lag={1};
+    matRed2->ReorderEquations(cmesh,lag,nEqFull,nEqLinr);
+
+    nEqHigh = nEqFull-nEqLinr;
+    out << nEqHigh << " " << nEqLinr << " ";
+
+    std::cout << "NUMBER OF EQUATIONS:\n " << 
+                 "Full problem = " << nEqFull << 
+                 ", High Order Flux = " << nEqHigh << 
+                 ", Linear Flux = " << nEqLinr << std::endl;
+
+    //Sets number of threads to be used by the solver
+    constexpr int nThreads{12};
+    
+    // Create the RHS vectors
+    TPZFMatrix<STATE> rhsFull(nEqLinr+nEqHigh,1,0.);
+    TPZFMatrix<STATE> rhsHigh(nEqHigh,1,0.);
+
+    //Creates the problem matrix    
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
+    Stiffness.SetNumThreads(nThreads);
+
     TPZAutoPointer<TPZGuiInterface> guiInterface;
 
     //Cria a matriz esparsa

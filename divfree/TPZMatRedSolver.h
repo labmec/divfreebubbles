@@ -24,11 +24,10 @@ public:
 
     void Solve(std::ostream &out = std::cout);
 
-    void SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out);
+    void SolveProblemDefault(std::ostream &out);
 
-    void SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out); 
+    void SolveProblemSparse(std::ostream &out); 
     
-    void SolveProblemSparseNew(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out); 
 
 
 
