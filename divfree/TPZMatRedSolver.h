@@ -30,10 +30,7 @@ public:
     
     void SolveProblemSparseNew(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out); 
 
-    //Reorder matrix equations
-    void ReorderEquations(int64_t &nEqPres, int64_t &nEqFlux);
 
-    void AllocateSubMatrices(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZSYsmpMatrix<TVar> &K00, TPZSparseMatRed<TVar> *matRed);
 
 protected:
     SolverType fSolverType;

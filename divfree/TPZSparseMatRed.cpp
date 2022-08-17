@@ -96,7 +96,7 @@ void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
 	// fK01.Transpose(&fK10);
     //Transpose:
     TPZVec<int64_t> IA_K01, JA_K01, IA_K10, JA_K10;
-    TPZVec<double> A_K01, A_K10;
+    TPZVec<TVar> A_K01, A_K10;
     fK01.GetData(IA_K01,JA_K01,A_K01);
     fK10.GetData(IA_K10,JA_K10,A_K10);
 
@@ -304,11 +304,11 @@ void TPZSparseMatRed<TVar>::F1Red(TPZFMatrix<TVar> &F1Red)
 
 #include "tpzverysparsematrix.h"
 
-template<>
-void TPZSparseMatRed<double>::K11Reduced(TPZFMatrix<double> &K11, TPZFMatrix<double> &F1)
+template<class TVar>
+void TPZSparseMatRed<TVar>::K11Reduced(TPZFMatrix<TVar> &K11, TPZFMatrix<TVar> &F1)
 {
   	TPZTimer clock;
-    TPZFMatrix<double> res(fK01.Rows(),fK01.Cols());
+    TPZFMatrix<TVar> res(fK01.Rows(),fK01.Cols());
     if(!fK01IsComputed)
 	{
         clock.start();
@@ -330,7 +330,7 @@ void TPZSparseMatRed<double>::K11Reduced(TPZFMatrix<double> &K11, TPZFMatrix<dou
         clock.stop();
         std::cout << "Time Substitution " << clock << std::endl;
 
-        TPZStepSolver<double> *step = dynamic_cast<TPZStepSolver<double> *>(fSolver.operator->());
+        TPZStepSolver<TVar> *step = dynamic_cast<TPZStepSolver<TVar> *>(fSolver.operator->());
         if (step->Singular().size())
         {
             std::cout << "Address " << (void *) step << " Number of singular modes " << step->Singular().size() << std::endl;
@@ -891,7 +891,7 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim
 
     // Resize the CRS structure with the correct size
     TPZVec<int64_t> JA_K01(auxK01.size(),0), JA_K10(auxK01.size(),0);
-    TPZVec<double> A_K00(auxK00.size(),0.), A_K01(auxK01.size(),0.), A_K10(auxK01.size(),0.), A_K11(auxK11.size(),0.);
+    TPZVec<TVar> A_K00(auxK00.size(),0.), A_K01(auxK01.size(),0.), A_K10(auxK01.size(),0.), A_K11(auxK11.size(),0.);
     
     // Sets values to the nonzero values columns entries
     for (int i = 0; i < JA_K01.size(); i++) JA_K01[i] = auxK01[i];
@@ -905,27 +905,6 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim
 
 }
 
-
-
-
-#include "tpzverysparsematrix.h"
-
-// template class TPZSparseMatRed<float, TPZVerySparseMatrix<float> >;
-// template class TPZSparseMatRed<float, TPZFMatrix<float> >;
-
 template class TPZSparseMatRed<double>;
+template class TPZSparseMatRed<float>;
 
-// template class TPZSparseMatRed<long double, TPZVerySparseMatrix<long double> >;
-// template class TPZSparseMatRed<long double, TPZFMatrix<long double> >;
-
-// template class TPZSparseMatRed<std::complex<double>, TPZVerySparseMatrix<std::complex<double> > >;
-
-// template class TPZSparseMatRed<std::complex<float>, TPZFMatrix<std::complex<float> > >;
-// template class TPZSparseMatRed<std::complex<double>, TPZFMatrix<std::complex<double> > >;
-// template class TPZSparseMatRed<std::complex<long double>, TPZFMatrix<std::complex<long double> > >;
-
-
-// #ifndef BORLAND
-// template class TPZRestoreClass<TPZSparseMatRed<REAL,TPZVerySparseMatrix<REAL> > >;
-// template class TPZRestoreClass<TPZSparseMatRed<REAL, TPZFMatrix<REAL> > >;
-// #endif
