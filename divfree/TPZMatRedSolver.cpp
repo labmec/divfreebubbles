@@ -307,9 +307,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHig
 
     //Cria a matriz esparsa
     TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(nEqLinr+nEqHigh,nEqLinr);
-
-
-
+    
     //Primeiro cria a matriz auxiliar
     TPZSYsmpMatrix<REAL> K00(nEqLinr,nEqLinr);
     
@@ -318,11 +316,12 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHig
     fAnalysis->SetSolver(step);
     
     std::cout << "Allocating Sub Matrices ...\n";
-    AllocateSubMatrices(nEqLinr,nEqHigh,Stiffness,K00,matRed);
-    
     //Transfere as submatrizes da matriz auxiliar para a matriz correta.
     step.SetMatrix(&K00);
     matRed->SetSolver(&step);
+
+    int64_t neqfull = nEqHigh+nEqLinr;
+    matRed->AllocateSubMatrices(fAnalysis->Mesh(),neqfull,nEqLinr);
   
     Stiffness.EquationFilter().Reset();
     fAnalysis->SetStructuralMatrix(Stiffness);

@@ -27,6 +27,8 @@ public:
     void SolveProblemDefault(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out);
 
     void SolveProblemSparse(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out); 
+    
+    void SolveProblemSparseNew(int64_t &nEqLinr, int64_t &nEqHigh, TPZStructMatrix &Stiffness, TPZFMatrix<TVar> &rhsFull, TPZFMatrix<TVar> &rhsHigh, std::ostream &out); 
 
     //Reorder matrix equations
     void ReorderEquations(int64_t &nEqPres, int64_t &nEqFlux);

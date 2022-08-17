@@ -114,7 +114,7 @@ public:
 	 * @brief Sets the matrix pointer of the upper left matrix to K00
 	 * @param K00 pointer to an upper left matrix
 	 */
-	void SetK00(TPZAutoPointer<TPZMatrix<TVar> > K00);
+	void SetK00(TPZAutoPointer<TPZSYsmpMatrix<TVar> > K00);
     
     /**
      * @brief Sets K01 as computed
@@ -132,7 +132,7 @@ public:
         fF0IsComputed = directive;
     }
 	
-	TPZAutoPointer<TPZMatrix<TVar> > K00()
+	TPZAutoPointer<TPZSYsmpMatrix<TVar> > K00()
 	{
 		return fK00;
 	}
@@ -266,7 +266,7 @@ private:
     void DecomposeK00();
 	
 	/** @brief Stiffnes matrix */
-	TPZAutoPointer<TPZMatrix<TVar> > fK00;
+	TPZAutoPointer<TPZSYsmpMatrix<TVar> > fK00;
 	
 	/** @brief Solution method for inverting \f$ fK00 \f$ */
 	TPZAutoPointer<TPZMatrixSolver<TVar> > fSolver;
