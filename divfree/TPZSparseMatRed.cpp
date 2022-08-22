@@ -204,8 +204,8 @@ const TVar *TPZSparseMatRed<TVar>::Elem() const
 template<class TVar>
 void TPZSparseMatRed<TVar>::SetSolver(TPZAutoPointer<TPZMatrixSolver<TVar> > solver)
 {
-    TPZAutoPointer<TPZSYsmpMatrix<TVar>> mat = TPZAutoPointerDynamicCast<TPZSYsmpMatrix<TVar>>(solver->Matrix());
-	fK00=mat;
+    // TPZAutoPointer<TPZSYsmpMatrix<TVar>> mat = TPZAutoPointerDynamicCast<TPZSYsmpMatrix<TVar>>(solver->Matrix());
+	fK00=solver->Matrix();
 	fSolver = solver;
 }
 
@@ -898,7 +898,8 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim
     // K10 is skiped because the transposition is performed inside TPZSparseMatRed, so here we insert a zero vector.
 
     //Aloca estrutura das matrizes esparsas
-    fK00->SetData(IA_K00,auxK00,A_K00);
+    TPZAutoPointer<TPZSYsmpMatrix<TVar>> mat = TPZAutoPointerDynamicCast<TPZSYsmpMatrix<TVar>>(fK00);
+    mat->SetData(IA_K00,auxK00,A_K00);
     fK01.SetData(IA_K01,JA_K01,A_K01);
     fK10.SetData(IA_K10,JA_K10,A_K10);
     fK11.SetData(IA_K11,auxK11,A_K11);

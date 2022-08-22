@@ -132,7 +132,7 @@ public:
         fF0IsComputed = directive;
     }
 	
-	TPZAutoPointer<TPZSYsmpMatrix<TVar> > K00()
+	TPZAutoPointer<TPZMatrix<TVar> > K00()
 	{
 		return fK00;
 	}
@@ -266,7 +266,7 @@ private:
     void DecomposeK00();
 	
 	/** @brief Stiffnes matrix */
-	TPZAutoPointer<TPZSYsmpMatrix<TVar> > fK00;
+	TPZAutoPointer<TPZMatrix<TVar> > fK00;
 	
 	/** @brief Solution method for inverting \f$ fK00 \f$ */
 	TPZAutoPointer<TPZMatrixSolver<TVar> > fSolver;

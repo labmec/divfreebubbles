@@ -21,6 +21,10 @@
 #include "fstream"
 #include "TPZSimpleTimer.h"
 #include "TPZVTKGenerator.h"
+#include "TPZRefPattern.h"
+#include "tpzgeoelrefpattern.h"
+#include "TPZRefPatternDataBase.h"
+#include "pzbuildmultiphysicsmesh.h"
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 
@@ -219,6 +223,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // Creates/import a geometric mesh
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
     // auto gmesh = ReadMeshFromGmsh<tshape>("../mesh/1tetra.msh");
+    
+    // gRefDBase.InitializeRefPatterns(3);
+    // auto refp=gRefDBase.FindRefPattern("3D_Tetra_hexas");
+    // for (int i = 0; i < gmesh->NElements(); i++)
+    // {
+    //     if(gmesh->ElementVec()[i]->Dimension()!=3)continue;
+    //     gmesh->ElementVec()[i]->SetRefPattern(refp);
+    // }
 
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -341,6 +353,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // }
 
     {
+        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
         TPZSimpleTimer postProc("Post processing2");
         const std::string plotfile = "myfile";//sem o .vtk no final
         constexpr int vtkRes{1};
