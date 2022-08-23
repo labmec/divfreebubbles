@@ -29,6 +29,10 @@
 #include "TPZCompElHDivDuplConnects.h"
 #include "TPZCompElHDivDuplConnectsBound.h"
 #include "TPZCompElConstFluxHybrid.h"
+#include "Elasticity/TPZElasticity2D.h"
+#include "TPZMixedElasticityND.h"
+#include "TPZAnalyticSolution.h"
+#include "TPZCompelDiscScaled.h"
 
 #include "pzshapecube.h"
 #include "pzshapelinear.h"
@@ -151,6 +155,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateFluxCMesh()
         cmesh->InsertMaterialObject(mat);
         mat->SetDimension(fDimension);
         mat->SetBigNumber(fBigNumber);
+        if (mixedElasticity) mat->SetNStateVariables(fDimension);
     } 
 
     for (std::set<int>::iterator it=fConfig.fBCMatId.begin(); it!=fConfig.fBCMatId.end(); ++it)
@@ -158,6 +163,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateFluxCMesh()
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it,fDimension-1);
         cmesh->InsertMaterialObject(mat);
         mat->SetBigNumber(fBigNumber);
+        if (mixedElasticity) mat->SetNStateVariables(fDimension);
     } 
 
     set_symmetric_difference(fConfig.fBCMatId.begin(), fConfig.fBCMatId.end(), fConfig.fBCHybridMatId.begin(), fConfig.fBCHybridMatId.end(), inserter(allMat, allMat.begin()));
@@ -180,6 +186,8 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateFluxCMesh()
         }
     }// end if hybridization
 
+    cmesh->InitializeBlock();
+    cmesh->ExpandSolution();
     return cmesh;
 }
 
@@ -199,6 +207,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
         mat->SetDimension(1);
         cmesh->InsertMaterialObject(mat);
         mat->SetBigNumber(fBigNumber);
+        if (mixedElasticity) mat->SetNStateVariables(fDimension);
     }
 
     if (fShapeType == HDivFamily::EHDivConstant || fShapeType == HDivFamily::EHDivStandard){
@@ -206,6 +215,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
         mat->SetDimension(fDimension);
         cmesh->InsertMaterialObject(mat);
         mat -> SetBigNumber(fBigNumber);
+        if (mixedElasticity) mat->SetNStateVariables(fDimension);
 
         if (fShapeType == HDivFamily::EHDivConstant) {
             cmesh->SetAllCreateFunctionsDiscontinuous();
@@ -269,7 +279,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
         }
     }
     
-
+    cmesh->ExpandSolution();
     return cmesh;
 }
 
@@ -280,10 +290,9 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
     auto cmesh = new TPZMultiphysicsCompMesh(fGeoMesh);
     cmesh->SetDefaultOrder(fDefaultPOrder);
     cmesh->SetDimModel(fDimension);
-   
+    
     // eh preciso criar materiais para todos os valores referenciados no enum
     auto mat = new TPZMixedDarcyFlow(fConfig.fDomain,fDimension);
-    // auto mat = new TPZMixedDarcyFlowHybrid(fConfig.fDomain,fDimension);
     mat->SetConstantPermeability(1.);
     mat->SetForcingFunction(forcefunction,4);
 
@@ -322,7 +331,115 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
     cmesh->InsertMaterialObject(nullmat3);
 
     TPZManVector<int> active(meshvector.size(),1);
-    // active[2]=0;
+    cmesh->SetAllCreateFunctionsMultiphysicElem();
+    cmesh->AdjustBoundaryElements();
+    cmesh->CleanUpUnconnectedNodes();
+    cmesh->BuildMultiphysicsSpace(active, meshvector);
+    if (fShapeType == HDivFamily::EHDivConstant) {
+        TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
+        TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
+    }
+    cmesh->LoadReferences();
+    cmesh->CleanUpUnconnectedNodes(); 
+
+    auto mat3 = new TPZLagrangeMultiplierCS<STATE>(fConfig.fInterface, fDimension-1);
+    cmesh->InsertMaterialObject(mat3);
+
+    auto matIdBCHyb = fConfig.fBCHybridMatId;
+    matIdBCHyb.insert(fConfig.fLagrange);
+    if (fSpaceType == EDuplicatedConnects){
+        hybridizer.CreateInterfaceDuplConnects(cmesh,matIdBCHyb);
+        // hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,meshvector,matIdBCHyb);
+    } else {
+        hybridizer.CreateMultiphysicsInterfaceElements(cmesh,fGeoMesh,matIdBCHyb);
+    }
+
+    return cmesh;
+}
+
+template<class TVar>
+TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMeshElasticity(TPZVec<TPZCompMesh *> &meshvector, TPZAnalyticSolution * gAnalytic, std::set<int> &BCNeumann, std::set<int> &BCDirichlet)
+{
+    // gmesh->ResetReference();
+    auto cmesh = new TPZMultiphysicsCompMesh(fGeoMesh);
+    cmesh->SetDefaultOrder(fDefaultPOrder);
+    cmesh->SetDimModel(fDimension);
+    
+    REAL E = 250.; //* @param E elasticity modulus
+    REAL nu = 0.25; //* @param nu poisson coefficient
+
+    
+    TElasticity2DAnalytic * analytic2D = 0;
+    TElasticity3DAnalytic * analytic3D = 0;
+    if(fDimension == 2)
+    {
+        analytic2D = dynamic_cast<TElasticity2DAnalytic *>(gAnalytic);
+        if(!analytic2D) DebugStop();
+        TPZManVector<REAL,3> x(3,0.);
+        // analytic2D->Elastic(x, E, nu);
+    }
+    else if(fDimension == 3)
+    {
+        analytic3D = dynamic_cast<TElasticity3DAnalytic *>(gAnalytic);
+        if(!analytic3D) DebugStop();
+        TPZManVector<REAL,3> x(3,0.);
+        // analytic3D->Elastic(x, E, nu);
+    }
+
+    REAL fx = 0.; //* @param fx forcing function \f$ -x = fx \f$
+    REAL fy = 0.; //* @param fx forcing function \f$ -x = fx \f$
+    int plainStress = 0; //* @param plainstress = 1 \f$ indicates use of plainstress
+    if(fDimension == 2)
+    {
+        if (analytic2D->fPlaneStress == 0) {
+            plainStress = 0;
+        } else {
+            plainStress = 1;
+        }
+    }
+    TPZMixedElasticityND * mat = new TPZMixedElasticityND(fConfig.fDomain, E, nu, fx, fy, plainStress, fDimension);
+    mat->SetForcingFunction(gAnalytic->ForceFunc(),3);
+
+    // // eh preciso criar materiais para todos os valores referenciados no enum
+    // auto mat = new TPZMixedElasticityND(fConfig.fDomain,fDimension);
+    // mat->SetConstantPermeability(1.);
+    // mat->SetForcingFunction(forcefunction,4);
+
+    // mat->SetPermeabilityFunction(1.);
+    cmesh->InsertMaterialObject(mat);
+    mat -> SetBigNumber(fBigNumber);
+    // mat->NStateVariables(3);
+
+    //Boundary Conditions
+    TPZFMatrix<STATE> val1(fDimension,fDimension,1.);
+    TPZManVector<STATE> val2(fDimension,0.);
+
+    //Dirichlet Boundary Conditions
+    for (auto matId : BCDirichlet)
+    {
+        TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 0, val1, val2);
+        BCond->SetForcingFunctionBC(gAnalytic->ExactSolution(),4);
+        cmesh->InsertMaterialObject(BCond);
+    }
+
+    //Neumann Boundary Conditions
+    for (auto matId : BCNeumann)
+    {
+        TPZBndCondT<STATE> * BCond = mat->CreateBC(mat, matId, 1, val1, val2);
+        BCond->SetForcingFunctionBC(gAnalytic->ExactSolution(),4);
+        cmesh->InsertMaterialObject(BCond);
+    }
+
+    auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
+    cmesh->InsertMaterialObject(matL2);
+
+    auto * nullmat2 = new TPZNullMaterialCS<>(fConfig.fWrap,fDimension-1,1);
+    cmesh->InsertMaterialObject(nullmat2);
+
+    auto * nullmat3 = new TPZNullMaterialCS<>(fConfig.fLagrange,fDimension-1,1);
+    cmesh->InsertMaterialObject(nullmat3);
+
+    TPZManVector<int> active(meshvector.size(),1);
     cmesh->SetAllCreateFunctionsMultiphysicElem();
     cmesh->AdjustBoundaryElements();
     cmesh->CleanUpUnconnectedNodes();
@@ -662,6 +779,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDiv
         mat->SetDimension(1);
         cmesh->InsertMaterialObject(mat);
         mat->SetBigNumber(fBigNumber);
+        if(mixedElasticity) mat->SetNStateVariables(fDimension);
     }
 
     if(fSpaceType == ESemiHybrid || fSpaceType == EDuplicatedConnects){
@@ -686,9 +804,10 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDiv
     
     for(auto &newnod : cmesh->ConnectVec())
     {
-        newnod.SetLagrangeMultiplier(1);
+        newnod.SetLagrangeMultiplier(10);
     }
-
+    cmesh->InitializeBlock();
+    cmesh->ExpandSolution();
     return cmesh;
 }
 
@@ -756,6 +875,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
                 int nvar = 1;
                 TPZMaterial * mat = celHybrid->Material();
                 if (mat) nvar = mat->NStateVariables();
+                c.SetNState(nvar);
                 celHybrid->Mesh()->Block().Set(seqnum, nvar * nShapeF);
             }
         }
@@ -770,12 +890,14 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
                 int nvar = 1;
                 TPZMaterial * mat = celHybBound->Material();
                 if (mat) nvar = mat->NStateVariables();
+                c.SetNState(nvar);
                 celHybBound->Mesh()->Block().Set(seqnum, nvar * nShapeF);
             }
         }
     }
     // util->PrintCMeshConnects(cmesh);
-    // cmesh->ExpandSolution();
+    cmesh->InitializeBlock();
+    cmesh->ExpandSolution();
     
 }
 
@@ -786,7 +908,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
  * @return Constant computational mesh
  */
 template<class TVar>
-TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gmesh, bool third_LM)
+TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gmesh, int lagLevel)
 {
     TPZCompMesh *Cmesh= new TPZCompMesh (Gmesh);
     
@@ -802,6 +924,16 @@ TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gm
     mat->SetDimension(dimen);
     mat->SetNStateVariables(1);
     
+    if (mixedElasticity){
+        if(fDimension == 2){
+            mat->SetNStateVariables(3);
+        } else if(fDimension == 3) {
+            mat->SetNStateVariables(6);
+        } else {
+            DebugStop();
+        }
+    }
+
     //Insert material to mesh
     Cmesh->InsertMaterialObject(mat);
     
@@ -812,14 +944,106 @@ TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gm
     for(int i=0; i<ncon; i++)
     {
         TPZConnect &newnod = Cmesh->ConnectVec()[i];
-        if (third_LM) {
-            newnod.SetLagrangeMultiplier(3);
-        }else{
-            newnod.SetLagrangeMultiplier(2);
-        }
+        newnod.SetLagrangeMultiplier(lagLevel);
     }
+    Cmesh->InitializeBlock();
+    Cmesh->ExpandSolution();
     return Cmesh;
 }
+
+/// change the order of the internal connect to the given order
+template<class TVar>
+void TPZHDivApproxSpaceCreator<TVar>::ChangeInternalOrder(TPZCompMesh *cmesh, int pOrder) {
+    int64_t nel = cmesh->NElements();
+    for (int64_t el = 0; el < nel; el++) {
+        TPZCompEl *cel = cmesh->Element(el);
+        if (!cel) continue;
+
+        TPZGeoEl *gel = cel->Reference();
+        if (gel->Dimension() != cmesh->Dimension()) {
+            continue;
+        }
+        int nc = cel->NConnects();
+        TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
+        if (!intel) DebugStop();
+
+        intel->ForceSideOrder(gel->NSides() - 1, pOrder);
+    }
+    cmesh->ExpandSolution();
+}
+
+template<class TVar>
+TPZCompMesh* TPZHDivApproxSpaceCreator<TVar>::CreateRotationCmesh(TPZGeoMesh *gmesh, int pOrder, REAL elementdim) {
+    
+    int dim = gmesh->Dimension();
+    //Criando malha computacional:
+    TPZCompMesh * cmesh = new TPZCompMesh(gmesh);
+    cmesh->SetDefaultOrder(pOrder); //Insere ordem polimonial de aproximação
+    cmesh->SetDimModel(dim); //Insere dimensão do modelo
+
+    cmesh->SetAllCreateFunctionsDiscontinuous();
+
+    //    cmesh->SetAllCreateFunctionsContinuous(); //Criando funções H1
+    cmesh->ApproxSpace().CreateDisconnectedElements(true);
+
+    //Criando material cujo nSTATE = 1:
+    TPZNullMaterial<> *material = new TPZNullMaterial<>(fConfig.fDomain); //criando material que implementa a formulacao fraca do problema modelo
+    material->SetDimension(dim);
+    if(dim == 3)
+    {
+        material->SetNStateVariables(3);
+    }
+
+    cmesh->InsertMaterialObject(material); //Insere material na malha
+    std::set<int> materialids;
+    materialids.insert(fConfig.fDomain);
+    //materialids.insert(3);
+    {
+        gmesh->ResetReference();
+        int64_t nel = gmesh->NElements();
+        for (int64_t el = 0; el < nel; el++) {
+            TPZGeoEl *gel = gmesh->Element(el);
+            if (!gel)continue;
+            if(gel->HasSubElement()) continue;
+            int matid = gel->MaterialId();
+            if (materialids.find(matid) == materialids.end()) {
+                continue;
+            }
+            new TPZCompElDiscScaled(*cmesh, gel);
+            gel->ResetReference();
+        }
+    }
+
+    //cmesh->LoadReferences();
+    //    cmesh->ApproxSpace().CreateDisconnectedElements(false);
+    //    cmesh->AutoBuild();
+
+
+    int ncon = cmesh->NConnects();
+    for (int i = 0; i < ncon; i++) {
+        TPZConnect &newnod = cmesh->ConnectVec()[i];
+        newnod.SetLagrangeMultiplier(1);
+    }
+
+    int64_t nelem = cmesh->NElements();
+    for (int64_t el = 0; el < nelem; el++) {
+        TPZCompEl *cel = cmesh->Element(el);
+        TPZCompElDiscScaled *disc = dynamic_cast<TPZCompElDiscScaled *> (cel);
+        if (!disc) {
+            continue;
+        }
+        disc->SetTotalOrderShape();
+        disc->SetFalseUseQsiEta();
+        disc->SetConstC(elementdim);
+        disc->SetScale(1./elementdim);
+    }
+    cmesh->InitializeBlock();
+    cmesh->CleanUpUnconnectedNodes();
+    cmesh->ExpandSolution();
+    return cmesh;
+
+}
+
 
 template class TPZHDivApproxSpaceCreator<STATE>;
 // template class TPZHDivApproxSpaceCreator<CSTATE>;

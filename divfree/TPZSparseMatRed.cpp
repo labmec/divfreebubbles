@@ -59,22 +59,27 @@ fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), fMaxRigidBodyModes(0
 	fIsReduced = 0;
 }
 
+
 template<class TVar>
 TPZSparseMatRed<TVar>::TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels):
 TPZRegisterClassId(&TPZSparseMatRed::ClassId), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
 {
     int64_t dim, dim00;
     ReorderEquations(cmesh,LagLevels,dim,dim00);
-    AllocateSubMatrices(cmesh,dim,dim00);
 
-    // TPZMatrix<TVar>( dim,dim ), fK11(dim-dim00,dim-dim00), fK01(dim00,dim-dim00),
-    // fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), 
-	// if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
-	// fDim0=dim00;
-	// fDim1=dim-dim00;
-	// fK01IsComputed = 0;
-    // fF0IsComputed = false;
-	// fIsReduced = 0;
+    fK11.Resize(dim-dim00,dim-dim00); 
+    fK01.Resize(dim00,dim-dim00);
+    fK10.Resize(dim-dim00,dim00);
+    fF0.Resize(dim00,1);
+    fF0.Zero();
+    fF1.Resize(dim-dim00,1);
+    fF1.Zero();
+	if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
+	fDim0=dim00;
+	fDim1=dim-dim00;
+	fK01IsComputed = 0;
+    fF0IsComputed = false;
+	fIsReduced = 0;
 }
 
 template<class TVar>
@@ -832,9 +837,10 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
 }
 
 template<class TVar>
-void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim, int64_t &dim00) {
+void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh) {
 
-    int64_t dim11 = dim-dim00;
+    int64_t dim11 = fDim1;
+    int64_t dim00 = fDim0;
 
     //Aloca as submatrizes no formato esparso.
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);

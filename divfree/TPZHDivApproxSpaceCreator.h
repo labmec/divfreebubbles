@@ -16,6 +16,7 @@
 #include "TPZKernelHdivHybridizer.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZEnumApproxFamily.h"
+#include "TPZAnalyticSolution.h"
 
 class TPZCompMesh;
 class TPZGeoMesh;
@@ -45,6 +46,8 @@ private:
     
     /// the dimension of the geometric elements that will be used to generate computational elements
     int fDimension = -1;
+
+    bool mixedElasticity = false;
     
     /// the geometric mesh which will generate the computational mesh
     TPZGeoMesh *fGeoMesh = 0;
@@ -135,6 +138,7 @@ public:
      * @return TPZMultiphysicsCompMesh* 
      */
     TPZMultiphysicsCompMesh * CreateMultiphysicsCMesh(TPZVec<TPZCompMesh *> &meshvector, ForcingFunctionBCType<TVar> exactSol, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
+    TPZMultiphysicsCompMesh * CreateMultiphysicsCMeshElasticity(TPZVec<TPZCompMesh *> &meshvector, TPZAnalyticSolution * gAnalytic, std::set<int> &BCNeumann, std::set<int> &BCDirichlet);
     
     HDivFamily GetHDivFamily() {return fShapeType;}
 
@@ -204,9 +208,12 @@ public:
 
     void DuplicateInternalConnects(TPZCompMesh *cmesh);
 
-    TPZCompMesh * CreateConstantCmesh(TPZGeoMesh *Gmesh, bool third_LM);
+    TPZCompMesh * CreateConstantCmesh(TPZGeoMesh *Gmesh, int lagLevel);
 
+    void SetMixedElasticity(){mixedElasticity = true;}
     
+    void ChangeInternalOrder(TPZCompMesh *cmesh, int pOrder);
+    TPZCompMesh *CreateRotationCmesh(TPZGeoMesh *gmesh, int pOrder, REAL elementdim);
 };
 
 #endif //TPZHDivApproxSpaceCreator

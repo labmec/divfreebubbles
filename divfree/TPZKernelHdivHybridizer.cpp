@@ -211,7 +211,7 @@ void TPZKernelHdivHybridizer::SemiHybridizeDuplConnects(TPZCompMesh *cmesh, std:
                 TPZConnect &c = cel->Connect(cIndex);
                 auto pOrder = cmesh->GetDefaultOrder();
                 int nshape = c.NShape();//It is updated in the next loop
-                int nstate = 1;//It can possibly change
+                int nstate = c.NState();//It can possibly change
                 int64_t newConnect = cmesh->AllocateNewConnect(nshape,nstate,pOrder);
                 cel->SetConnectIndex(2*iface,newConnect);
                
@@ -702,7 +702,9 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElementsDuplicatedConnects(TPZMult
 
     cmesh->InitializeBlock();
     cmesh->ComputeNodElCon();
+    cmesh->ExpandSolution();
 
+    
 }
 
 

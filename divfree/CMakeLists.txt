@@ -38,6 +38,9 @@ set(UTIL_HEADERS
   TPZSparseMatRed.h
   TPZMatRedSolver.h
   TPZCompElConstFluxHybrid.h
+  TPZMixedElasticityND.h
+  TPZMixedElasticityCMeshCreator.h
+  TPZCompelDiscScaled.h
   )
 
 set(UTIL_SRCS
@@ -47,6 +50,9 @@ set(UTIL_SRCS
   TPZSparseMatRed.cpp
   TPZMatRedSolver.cpp
   TPZCompElConstFluxHybrid.cpp
+  TPZMixedElasticityND.cpp
+  TPZMixedElasticityCMeshCreator.cpp
+  TPZCompelDiscScaled.cpp
   )
 
 target_sources(divfree PRIVATE

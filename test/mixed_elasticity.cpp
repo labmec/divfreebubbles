@@ -21,10 +21,8 @@
 #include "fstream"
 #include "TPZSimpleTimer.h"
 #include "TPZVTKGenerator.h"
-#include "TPZRefPattern.h"
-#include "tpzgeoelrefpattern.h"
-#include "TPZRefPatternDataBase.h"
 #include "pzbuildmultiphysicsmesh.h"
+#include "TPZAnalyticSolution.h"
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 
@@ -113,11 +111,10 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    #define TEST
     const int pOrder = GENERATE(1);
     // const int pOrder = GENERATE(2,3,4,5);
 
-    const int xdiv = 4;//GENERATE(50);
+    const int xdiv = 2;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
@@ -127,8 +124,8 @@ TEST_CASE("Hybridization test")
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
     // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
-    // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
+    // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
     TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
@@ -136,72 +133,6 @@ TEST_CASE("Hybridization test")
     // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
-//Analytical solution
-constexpr int solOrder{4};
-auto exactSol = [](const TPZVec<REAL> &loc,
-    TPZVec<STATE>&u,
-    TPZFMatrix<STATE>&gradU){
-    const auto &x=loc[0];
-    const auto &y=loc[1];
-    const auto &z=loc[2];
-
-    // const auto &d = 1.; // distanc between injection and production wells
-    // u[0]= x*x-y*y ;
-    // gradU(0,0) = -2*x;
-    // gradU(1,0) = 2.*y;
-    // gradU(2,0) = 0.;
-
-    // u[0] =  5. + 3. * x + 2. * y + 4. * x * y;
-    // gradU(0,0) = 3. + 4. * y;
-    // gradU(1,0) = 2. + 4. * x;
-    // gradU(2,0) = 0.;
-    
-    // u[0] = x*x*x*y - y*y*y*x;
-    // gradU(0,0) = (3.*x*x*y - y*y*y);
-    // gradU(1,0) = (x*x*x - 3.*y*y*x);
-
-    // u[0]= x*x - y*y;
-    // gradU(0,0) = 2.*x;
-    // gradU(1,0) = -2.*y;
-    // // gradU(2,0) = -1;
-
-    // REAL aux = 1./sinh(sqrt(2)*M_PI);
-    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
-
-    // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
-
-    // u[0]=pow(2,2 - pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
-    //    pow(5,-pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
-    //    (-2*M_PI + 15.*x);
-    // gradU(0,0) = 0.;
-    // gradU(1,0) = 0.;
-
-    // u[0] = (x-1)*x*(y-1)*y*(z-1)*z;
-    // gradU(0,0) = (x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
-    // gradU(1,0) = (x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
-    // gradU(1,0) = (x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
-
-    // REAL a1 = 1./4;
-    // REAL alpha = M_PI/2;
-    // u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha) + x*x - y*y;
-    // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
-    // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
-
-    u[0] = exp(M_PI*x)*sin(M_PI*y);
-    gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
-    gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
-
-    // u[0] = 0.5*(x)*x+0.5*(y)*y-(z)*z;
-    // gradU(0,0) = -x;//(x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
-    // gradU(1,0) = -y;//(x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
-    // gradU(2,0) = 2.*z;//(x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
-
-};
 
 template<class tshape>
 void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivApproxSpaceCreator<STATE>::MSpaceType &approxSpace)
@@ -224,14 +155,6 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // Creates/import a geometric mesh
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
     // auto gmesh = ReadMeshFromGmsh<tshape>("../mesh/1tetra.msh");
-    
-    // gRefDBase.InitializeRefPatterns(3);
-    // auto refp=gRefDBase.FindRefPattern("3D_Tetra_hexas");
-    // for (int i = 0; i < gmesh->NElements(); i++)
-    // {
-    //     if(gmesh->ElementVec()[i]->Dimension()!=3)continue;
-    //     gmesh->ElementVec()[i]->SetRefPattern(refp);
-    // }
 
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -250,87 +173,113 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     createSpace.fConfig.fDomain = EDomain;
     createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
     createSpace.SetPOrder(pOrder);
+    createSpace.SetMixedElasticity();
     createSpace.Initialize();
+    
+    //Setting material ids      
     // util.PrintGeoMesh(gmesh);
 
-    //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
-    int nMeshes = 5;
-    TPZVec<TPZCompMesh *> meshvector;
-    meshvector.Resize(nMeshes);
+    TPZAnalyticSolution *gAnalytic = 0;
+    if(DIM == 2)
+    {
+        TElasticity2DAnalytic *elas = new TElasticity2DAnalytic;
+        elas->gE = 1;
+        elas->gPoisson = 0.0;
+        elas->fProblemType = TElasticity2DAnalytic::EDispx;
+        elas->fPlaneStress = 0;
+        gAnalytic = elas;
+    }
+    else if(DIM == 3)
+    {
+        TElasticity3DAnalytic *elas = new TElasticity3DAnalytic;
+        elas->fE = 1.;//206.8150271873455;
+        elas->fPoisson = 0.0;//0.3040039545229857;
+        elas->fProblemType = TElasticity3DAnalytic::EStretchx;
+        gAnalytic = elas;
+    }
 
-    //Flux mesh
-    meshvector[0] = createSpace.CreateFluxCMesh();
-    // std::string fluxFile = "FluxCMesh";
-    // util.PrintCompMesh(meshvector[0],fluxFile);
-    // std::cout << "Flux mesh \n";
-    // util.PrintCMeshConnects(meshvector[0]);
-    
-    //Pressure mesh
-    meshvector[1]  = createSpace.CreatePressureCMesh();
-    // std::string presFile = "PressureCMesh";
-    // util.PrintCompMesh(meshvector[1],presFile);
-    // std::cout << "Pressure mesh \n";
-    // util.PrintCMeshConnects(meshvector[1]);
 
-    meshvector[4] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
+    unsigned int stressPOrder = pOrder + 1; //Polynomial order of the approximation
+    int stressInternalPOrder = stressPOrder + 1;
+    int displacementPOrder = tshape::Type() == ETriangle ? stressInternalPOrder - 1 : stressInternalPOrder;
+    int rotationPOrder = displacementPOrder;
+    if(hdivfamily == HDivFamily::EHDivConstant) rotationPOrder = 0;
+    //Creating computational mesh:
+    //Creates the computational mesh for the stress field (HDiv)
+    TPZCompMesh *cmesh_S_HDiv = createSpace.CreateFluxCMesh();
+    createSpace.ChangeInternalOrder(cmesh_S_HDiv, stressInternalPOrder);
+    //Creates the computational mesh for the displacement field (H1 disconnected)
+    TPZCompMesh *cmesh_U_HDiv = createSpace.CreatePressureCMesh();
+    //Creates the computational mesh for the rotation field (Discontinuous)
+    TPZCompMesh *cmesh_P_HDiv = createSpace.CreateRotationCmesh(gmesh, rotationPOrder, 1. / xdiv);
+    // creates the mesh for distributed forces in each element
+    TPZCompMesh *cmesh_distributedforce = createSpace.CreateConstantCmesh(gmesh, 2);
+    // creates the computational mesh representing the average displacement and rotation
+    TPZCompMesh *cmesh_averagedisp = createSpace.CreateConstantCmesh(gmesh, 4);
 
-    // util.PrintCMeshConnects(meshvector[2]);
-    
-    //G average mesh
-    meshvector[2] = createSpace.CreateConstantCmesh(gmesh,2);
-    // std::string gavgFile = "GaverCMesh";
-    // util.PrintCompMesh(meshvector[2],gavgFile);
+    // TPZManVector<TPZCompMesh*, 5> meshvector_HDiv(5);
+    TPZManVector<TPZCompMesh*, 6> meshvector_HDiv(6);
+    meshvector_HDiv[0] = cmesh_S_HDiv;
+    meshvector_HDiv[1] = cmesh_U_HDiv;
+    meshvector_HDiv[2] = cmesh_P_HDiv;
+    meshvector_HDiv[3] = cmesh_distributedforce;
+    meshvector_HDiv[4] = cmesh_averagedisp;
 
-    //P average mesh
-    meshvector[3] = createSpace.CreateConstantCmesh(gmesh,3);
-    // std::string pavgFile = "PaverCMesh";
-    // util.PrintCompMesh(meshvector[3],pavgFile);
+    meshvector_HDiv[5] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
 
-    //Multiphysics mesh
-    auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
-    // std::string multFile = "MultiCMesh";
-    
-    // std::cout << "Multi mesh \n";
-    // util.PrintCMeshConnects(cmesh);
+    //Creates the multi-physics computational mesh
+    auto *cmesh_m_HDiv = createSpace.CreateMultiphysicsCMeshElasticity(meshvector_HDiv,gAnalytic,matBCNeumann,matBCDirichlet);
+            
+#ifdef PZDEBUG
+    {
+        //Prints the stress computational mesh in txt format
+        std::ofstream filecS("MalhaC_S.txt");
+        //Prints the displacement computational mesh in txt format
+        std::ofstream filecU("MalhaC_U.txt");
+        //Prints the rotation computational mesh in txt format
+        std::ofstream filecP("MalhaC_P.txt");
+        //Prints the distributed force mesh
+        std::ofstream filedf("MalhaC_DistForce.txt");
+        //Prints the average displacement mesh
+        std::ofstream fileavdisp("MalhaC_AvDisp.txt");
 
-    // Number of equations without condense elements
-    int nEquationsFull = cmesh->NEquations();
-    std::cout << "Number of equations = " << nEquationsFull << std::endl;
+        std::ofstream filehdivhybr("MalhaC_Hybrid.txt");
+        cmesh_S_HDiv->Print(filecS);
+        cmesh_U_HDiv->Print(filecU);
+        cmesh_P_HDiv->Print(filecP);
+        cmesh_distributedforce->Print(filedf);
+        cmesh_averagedisp->Print(fileavdisp);
+        meshvector_HDiv[5]->Print(filehdivhybr);
+        
+    }
+#endif
 
-    rprint << nEquationsFull << " " ;
-
-    TPZTimer clock,clock2;
-    clock.start();
-
+    util.PrintCompMesh(cmesh_m_HDiv,"MultiCMeshBefore");
     // Group and condense the elements
     if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        createSpace.CondenseDuplicatedConnects(cmesh);
+        createSpace.CondenseDuplicatedConnects(cmesh_m_HDiv);
+    }else {
+        TPZCompMeshTools::CondenseElements(cmesh_m_HDiv, 1, false);
     }
-    // TPZCompMeshTools::CondenseElements(cmesh, 1, false);
-
-    // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
-    // util.PrintCompMesh(cmesh,multFile);
-
-    std::string multFile = "MultiCMesh";
-    util.PrintCompMesh(cmesh,multFile);
+    
     // std::cout << "Multi mesh \n";
     // util.PrintCMeshConnects(cmesh);
     
     //Number of condensed problem.
-    int nEquationsCondensed = cmesh->NEquations();
+    int nEquationsCondensed = cmesh_m_HDiv->NEquations();
 
     //Create analysis environment
-    TPZLinearAnalysis an(cmesh,true);
-    an.SetExact(exactSol,solOrder);
+    TPZLinearAnalysis an(cmesh_m_HDiv,true);
+    an.SetExact(gAnalytic->ExactSolution());
 
+    std::string multFile = "MultiCMesh";
+    util.PrintCompMesh(cmesh_m_HDiv,multFile);
 
     //Solve problem
     if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
-        clock2.start();
+        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
+        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
         solver.Solve(rprint);
-        clock2.stop();
         // std::cout << "Time SOLVER = " << clock2 << std::endl;
 
         // bool filter = false;
@@ -339,12 +288,12 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     } else {
         //Equation filter (spanning trees), true if 3D and HDivKernel 
-        bool filter = false;
+        bool filter = false;bool domainhybr=false;
         if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-        createSpace.Solve(an, cmesh, true, filter);
+        // createSpace.Solve(an, cmesh, true, filter);
+        util.SolveProblemDirect(an,cmesh_m_HDiv,filter,domainhybr);
     }
 
-    clock.stop();
     // std::cout << "Time running = " << clock << std::endl;
 
     // //Print results
@@ -354,18 +303,20 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // }
 
     {
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
         TPZSimpleTimer postProc("Post processing2");
         const std::string plotfile = "myfile";//sem o .vtk no final
         constexpr int vtkRes{1};
     
 
         TPZVec<std::string> fields = {
-        "Pressure",
-        "ExactPressure",
-        "Flux",
-        "ExactFlux"};
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+        // "ExactDisplacement",
+        // "ExactStress",
+        "Displacement",
+        "SigmaX",
+        "SigmaY",
+        "TauXY"
+        };
+        auto vtk = TPZVTKGenerator(cmesh_m_HDiv, fields, plotfile, vtkRes);
 
         vtk.Do();
     }

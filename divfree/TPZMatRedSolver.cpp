@@ -5,6 +5,7 @@
 #include "TPZTimer.h"
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
+#include "TPZEigenSolver.h"
 
 template<class TVar>
 void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
@@ -94,7 +95,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     clock.stop();
     // std::cout << "Time Assemble " << clock << std::endl;
     
-    // std::ofstream out2("out2.txt");
+    
 
     // TPZFMatrix<REAL> *K11Red = new TPZFMatrix<REAL>(nEqHigh,nEqHigh);
 
@@ -133,7 +134,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
         clock.start();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         std::cout << "Start CG ...\n";
-
+        
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         std::cout << "Finish CG ...\n";
 
@@ -191,17 +192,28 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     //HERE STARTS THE ITERATIVE SOLVER SET
     auto cmesh = fAnalysis->Mesh();
 
-    //Compute the number of equations in the system
-    int64_t nEqFull = cmesh->NEquations();
-    int64_t nEqLinr, nEqHigh;
+    //Primeiro cria a matriz auxiliar K00 - que será decomposta
+    TPZSYsmpMatrix<REAL> K00;
+    
+    TPZStepSolver<STATE> step;
+    step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    fAnalysis->SetSolver(step);
+    step.SetMatrix(&K00);
 
     //Cria a matriz esparsa
-    TPZSparseMatRed<STATE> *matRed2 = new TPZSparseMatRed<STATE>(1,1);
+    std::set<int> lag = {10};
+    TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(cmesh,lag);
+    std::cout << "Allocating Sub Matrices ...\n";
+    //Transfere as submatrizes da matriz auxiliar para a matriz correta.
+    matRed->SetSolver(&step);
+    K00.Resize(matRed->Dim0(),matRed->Dim0());
+    matRed->AllocateSubMatrices(cmesh);
 
-    std::set<int> lag={1};
-    matRed2->ReorderEquations(cmesh,lag,nEqFull,nEqLinr);
+    //Compute the number of equations in the system
+    int64_t nEqFull = cmesh->NEquations();
+    int64_t nEqLinr = matRed->Dim0();
+    int64_t nEqHigh = matRed->Dim1();
 
-    nEqHigh = nEqFull-nEqLinr;
     out << nEqHigh << " " << nEqLinr << " ";
 
     std::cout << "NUMBER OF EQUATIONS:\n " << 
@@ -213,7 +225,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     constexpr int nThreads{12};
     
     // Create the RHS vectors
-    TPZFMatrix<STATE> rhsFull(nEqLinr+nEqHigh,1,0.);
+    TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
     TPZFMatrix<STATE> rhsHigh(nEqHigh,1,0.);
 
     //Creates the problem matrix    
@@ -221,24 +233,6 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     Stiffness.SetNumThreads(nThreads);
 
     TPZAutoPointer<TPZGuiInterface> guiInterface;
-
-    //Cria a matriz esparsa
-    TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(nEqLinr+nEqHigh,nEqLinr);
-
-    //Primeiro cria a matriz auxiliar
-    TPZSYsmpMatrix<REAL> K00(nEqLinr,nEqLinr);
-    
-    TPZStepSolver<STATE> step;
-    step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
-    fAnalysis->SetSolver(step);
-    
-    std::cout << "Allocating Sub Matrices ...\n";
-    //Transfere as submatrizes da matriz auxiliar para a matriz correta.
-    step.SetMatrix(&K00);
-    matRed->SetSolver(&step);
-
-    int64_t neqfull = nEqHigh+nEqLinr;
-    matRed->AllocateSubMatrices(fAnalysis->Mesh(),neqfull,nEqLinr);
   
     Stiffness.EquationFilter().Reset();
     fAnalysis->SetStructuralMatrix(Stiffness);
@@ -262,13 +256,11 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     std::cout << "Finish assembling BlockDiag ...\n";
     // std::ofstream out3("out.txt");
     
-    // TPZFMatrix<REAL> *K11Red = new TPZFMatrix<REAL>(nEqHigh,nEqHigh,0.);
-
     matRed->SetF(rhsFull);
     matRed->SetReduced();
-    // matRed->Print("MATRED",out3,EMathematicaInput);
-    // matRed->K11Reduced(*K11Red,rhsHigh);
     matRed->F1Red(rhsHigh);
+
+    // rhsHigh.Print("RhsHigh=");
 
     //Creates the preconditioner 
     TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
@@ -284,6 +276,11 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         TPZFMatrix<STATE> solution(nEqHigh,1,0.);
         clock.start();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
+
+        // std::ofstream out2("out3.txt");
+        // matRed->Print("MATRED",out2,EMathematicaInput);
+        // KBD.Print("BDiag",out2,EMathematicaInput);
+
         std::cout << "Start CG ...\n";
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         std::cout << "Finish CG ...\n";
@@ -296,15 +293,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         out << nMaxIter << "\n";
         TPZFMatrix<STATE> result(nEqLinr+nEqHigh,1,0.);
 
-        matRed->UGlobal(solution,result);
-
-        // //Update solution in Analysis
-        // for (int i = 0; i < nEqHigh; i++){
-        //     rhsFull(nEqLinr+i,0) = solution(i,0);
-        // }
-        // for (int i = 0; i < nEqLinr; i++){
-        //     rhsFull(i,0) = press(i,0);
-        // }
+        matRed->UGlobal2(solution,result);
 
         fAnalysis->Solution()=result;
         fAnalysis->LoadSolution();

@@ -14,3 +14,5 @@ add_unit_test(edge_filter_test edge_filter_test.cpp)
 add_unit_test(hybridization_test hybridization_test.cpp)
 
 add_unit_test(dupl_connects dupl_connects.cpp)
+
+add_unit_test(mixed_elasticity mixed_elasticity.cpp)

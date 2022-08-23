@@ -240,7 +240,7 @@ public:
     
     void ReorderEquations(TPZCompMesh *cmesh, std::set<int> &LagLevels, int64_t &dim, int64_t &dim00);
 
-    void AllocateSubMatrices(TPZCompMesh *cmesh, int64_t &dim, int64_t &dim00);
+    void AllocateSubMatrices(TPZCompMesh *cmesh);
 
 /** @brief Saveable methods */
 public:
