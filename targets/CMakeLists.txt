@@ -21,3 +21,6 @@ target_link_libraries(fiveSpot PRIVATE divfree)
 
 add_executable(3d_hdiv main3d_HDIV.cpp)
 target_link_libraries(3d_hdiv PRIVATE divfree)
+
+add_executable(MHM_HDivConstant main_MHM_HDivConstant.cpp)
+target_link_libraries(MHM_HDivConstant PRIVATE divfree)

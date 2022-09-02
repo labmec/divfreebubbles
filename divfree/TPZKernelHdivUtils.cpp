@@ -28,6 +28,13 @@
 #include "pzsysmp.h"
 #include "pzysmp.h"
 #include "TPZTimer.h"
+#include "TPZGeoMeshTools.h"
+#include "TPZGmshReader.h"
+#include "pzshapequad.h"
+#include "pzshapetriang.h"
+#include "pzshapecube.h"
+#include "pzshapetetra.h"
+using namespace pzshape;
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh
 template <class TVar>
@@ -254,6 +261,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
     std::string plotfile = "solutionMDFB.vtk";
     an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
     an.PostProcess(resolution,cmesh->Dimension());
+
     // Print mesh properties
     // std::ofstream out("mesh.txt");
     // an.Print("nothing",out);
@@ -285,6 +293,90 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ostream 
     // std::cout << "error 5 = " << error[4] << "\n\n";
 }
 
+//Create 
+template <class TVar>
+template <class tshape>
+TPZGeoMesh* TPZKernelHdivUtils<TVar>::CreateGeoMesh(TPZVec<int> &nDivs, int volId, int bcId)
+{
+    MMeshType meshType;
+    int dim = tshape::Dimension;
+
+    switch (tshape::Type())
+    {
+    case ETriangle:
+        meshType = MMeshType::ETriangular;
+        break;
+    case EQuadrilateral:
+        meshType = MMeshType::EQuadrilateral;
+        break;
+    case ETetraedro:
+        meshType = MMeshType::ETetrahedral;
+        break;
+    case ECube:
+        meshType = MMeshType::EHexahedral;
+        break;
+        case EPrisma:
+        meshType = MMeshType::EPrismatic;
+        break;
+    default:
+        DebugStop();
+    }
+
+    TPZManVector<REAL,3> minX = {0,0,0};
+    TPZManVector<REAL,3> maxX = {1,1,1};
+    int nMats = 2*dim+1;
+
+    //all bcs share the same id
+    constexpr bool createBoundEls{true};
+    TPZVec<int> matIds(nMats,bcId);
+    matIds[0] = volId;
+    // matIds[1] = bcId;
+    // matIds[2] = EBoundary1;
+    // matIds[3] = EBoundary1;
+    // matIds[4] = EBoundary1;
+    
+    TPZGeoMesh* gmesh = TPZGeoMeshTools::CreateGeoMeshOnGrid(dim, minX, maxX,
+                        matIds, nDivs, meshType,createBoundEls);
+    // TPZGeoMesh* gmesh = TPZGeoMeshTools::CreateGeoMeshSingleEl(meshType,
+    //                     volId,createBoundEls, bcId);
+    
+    return gmesh;
+    
+}
+
+template <class TVar>
+template <class tshape>
+TPZGeoMesh* TPZKernelHdivUtils<TVar>::ReadMeshFromGmsh(std::string file_name)
+{
+    //read mesh from gmsh
+    TPZGeoMesh *gmesh;
+    gmesh = new TPZGeoMesh();
+    {
+        TPZGmshReader reader;
+        // essa interface permite voce mapear os nomes dos physical groups para
+        // o matid que voce mesmo escolher
+        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
+        stringtoint[3]["Domain"] = 1;
+        stringtoint[2]["Surfaces"] = 2;
+
+        reader.SetDimNamePhysical(stringtoint);
+        reader.GeometricGmshMesh(file_name,gmesh);
+    }
+
+    return gmesh;
+}
+
+
+
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeQuad>(TPZVec<int> &nDivs, int volId, int bcId);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeCube>(TPZVec<int> &nDivs, int volId, int bcId);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeTriang>(TPZVec<int> &nDivs, int volId, int bcId);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeTetra>(TPZVec<int> &nDivs, int volId, int bcId);
+
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::ReadMeshFromGmsh<TPZShapeQuad>(std::string file_name);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::ReadMeshFromGmsh<TPZShapeCube>(std::string file_name);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::ReadMeshFromGmsh<TPZShapeTriang>(std::string file_name);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::ReadMeshFromGmsh<TPZShapeTetra>(std::string file_name);
 
 template class TPZKernelHdivUtils<STATE>;
 // template class TPZKernelHdivUtils<CSTATE>;

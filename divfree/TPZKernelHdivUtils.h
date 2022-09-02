@@ -91,6 +91,23 @@ public:
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> &GetVertexData(){return vertexData;}
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> &GetEdgeData(){return edgeData;}
 
+    /**
+     @brief Reads the test mesh from gmsh
+    @param[in] file_name the .msh mesh file.
+    */
+    template<class tshape>
+    TPZGeoMesh* ReadMeshFromGmsh(std::string file_name);
+
+    /**
+     @brief Creates a geometric mesh with elements of a given type on a unit square or cube (depending on the mesh dimension).
+    @param[in] meshType element type to be created.
+    @param[in] nDivs Number of divisions (rows of elements) in x, y and z.
+    @param[in] volId Material identifier for the volumetric region.
+    @param[in] bcId Material identifier for the boundary.
+    */
+    template<class tshape>
+    TPZGeoMesh* CreateGeoMesh(TPZVec<int> &nDivs, int volId, int bcId);
+
 private:
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> vertexData;
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::EdgeFilter> edgeData;

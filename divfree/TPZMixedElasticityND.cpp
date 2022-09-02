@@ -300,7 +300,7 @@ void TPZMixedElasticityND::Contribute_3spaces(const TPZVec<TPZMaterialDataT<STAT
     // P
     TPZFMatrix<REAL> &phiP = datavec[2].phi;
 
-    
+    std::cout << "defDir = " << datavec[0].fDeformedDirections << std::endl;
     TElasticityAtPoint elast(fE_const,fnu_const);
     if(fElasticity)
     {
@@ -623,9 +623,10 @@ void TPZMixedElasticityND::Contribute_5spaces(const TPZVec<TPZMaterialDataT<STAT
     const int firstequation_U = firstequation_S + nshapeS*fDimension;
     const int firstequation_P = firstequation_U + nshapeU*fDimension;
     int firstequation_FRB = firstequation_P + nshapeP*nrotations;
-    
+    std::cout << "EK = " << ek << std::endl;
     ContributeRigidBodyMode(datavec, weight, ek, ef, firstequation_FRB, 3);
-    if(nspaces == 5) return;
+    std::cout << "EK2 = " << ek << std::endl;
+    if(nspaces == 5 ||nspaces == 6) return;
     if(fDimension == 2)
     {
         firstequation_FRB += 3;
@@ -673,9 +674,9 @@ void TPZMixedElasticityND::ContributeRigidBodyMode(const TPZVec<TPZMaterialDataT
     }
     // get distance of integration point to center of element
 
-    TPZManVector<REAL,3> xcenter = datavec[RB_space].XCenter;
+    TPZManVector<REAL,3> xcenter = datavec[3].XCenter;
     TPZManVector<REAL,3> x = datavec[0].x;
-    TPZManVector<REAL,3> xparam = datavec[RB_space].xParametric;
+    TPZManVector<REAL,3> xparam = datavec[3].xParametric;
     TPZManVector<REAL,3> delx(3,0.);
                             delx[0] = datavec[0].x[0] - xcenter[0];
                             delx[1] = datavec[0].x[1] - xcenter[1];

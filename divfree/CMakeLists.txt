@@ -5,12 +5,14 @@ set(MATERIAL_HEADERS
   TPZMatDivFreeBubbles.h
   TPZMatCurlDotCurl.h
   TPZMixedDarcyFlowHybrid.h
+  Common.h
   )
 
 set(MATERIAL_SRCS
   TPZMatDivFreeBubbles.cpp
   TPZMatCurlDotCurl.cpp
   TPZMixedDarcyFlowHybrid.cpp
+  Common.cpp
   )
 
 

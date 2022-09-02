@@ -802,7 +802,7 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
             con.SetSequenceNumber(seqNumP);
             
             //Em cada caso precisa atualizar o tamanho do bloco
-            int neq = con.NDof()*con.NState();
+            int neq = con.NShape()*con.NState();
             seqNumP++;
             dim00 += neq;
             seqNum=con.SequenceNumber();
@@ -824,13 +824,13 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
             con.SetSequenceNumber(seqNumF);
             
             //Em cada caso precisa atualizar o tamanho do bloco
-            int neq = con.NDof()*con.NState();
+            int neq = con.NShape()*con.NState();
             seqNumF++;
             dim11 += neq;
             seqNum=con.SequenceNumber();
             cmesh->Block().Set(seqNum,neq);
         }
-    }   
+    }
     cmesh->ExpandSolution();
     
     dim = dim00+dim11;

@@ -37,11 +37,20 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     int64_t nEqFull = cmesh->NEquations();
     int64_t nEqLinr, nEqHigh;
 
+    std::ofstream myfile("MultiCMesh1.txt");
+    fAnalysis->Mesh()->Print(myfile);
+
     //Cria a matriz esparsa
     TPZSparseMatRed<STATE> *matRed2 = new TPZSparseMatRed<STATE>(1,1);
 
-    std::set<int> lag={1};
+    std::ofstream myfile2("MultiCMesh2.txt");
+    fAnalysis->Mesh()->Print(myfile2);
+
+    std::set<int> lag={10};
     matRed2->ReorderEquations(cmesh,lag,nEqFull,nEqLinr);
+
+    std::ofstream myfile3("MultiCMesh3.txt");
+    fAnalysis->Mesh()->Print(myfile3);
 
     nEqHigh = nEqFull-nEqLinr;
     out << nEqHigh << " " << nEqLinr << " ";
@@ -57,6 +66,9 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     // Create the RHS vectors
     TPZFMatrix<STATE> rhsFull(nEqLinr+nEqHigh,1,0.);
     TPZFMatrix<STATE> rhsHigh(nEqHigh,1,0.);
+
+    std::ofstream myfile4("MultiCMesh4.txt");
+    fAnalysis->Mesh()->Print(myfile4);
 
     //Creates the problem matrix    
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());

@@ -321,13 +321,16 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
         cmesh->InsertMaterialObject(BCond);
     }
 
-    auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
+    int nstate = 1;
+    if (mixedElasticity) nstate = fDimension;
+
+    auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,nstate);
     cmesh->InsertMaterialObject(matL2);
 
-    auto * nullmat2 = new TPZNullMaterialCS<>(fConfig.fWrap,fDimension-1,1);
+    auto * nullmat2 = new TPZNullMaterialCS<>(fConfig.fWrap,fDimension-1,nstate);
     cmesh->InsertMaterialObject(nullmat2);
 
-    auto * nullmat3 = new TPZNullMaterialCS<>(fConfig.fLagrange,fDimension-1,1);
+    auto * nullmat3 = new TPZNullMaterialCS<>(fConfig.fLagrange,fDimension-1,nstate);
     cmesh->InsertMaterialObject(nullmat3);
 
     TPZManVector<int> active(meshvector.size(),1);
@@ -473,7 +476,7 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateOrientedBoundaryElements()
     for(auto gel : fGeoMesh->ElementVec())
     {
         if (!gel || gel->Dimension() < fGeoMesh->Dimension()) continue;
-        
+
         int nSides = gel->NSides();
         //For tetrahedra only, loop over the surface sides
         for (int side = 0; side < nSides; side++){
@@ -937,17 +940,48 @@ TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gm
     //Insert material to mesh
     Cmesh->InsertMaterialObject(mat);
     
-    //Autobuild
-    Cmesh->AutoBuild();
-    
-    int ncon = Cmesh->NConnects();
-    for(int i=0; i<ncon; i++)
-    {
-        TPZConnect &newnod = Cmesh->ConnectVec()[i];
-        newnod.SetLagrangeMultiplier(lagLevel);
+    if (mixedElasticity){
+        std::set<int> materialids;
+        materialids.insert(fConfig.fDomain);
+        //materialids.insert(3);
+        {
+            Gmesh->ResetReference();
+            int64_t nel = Gmesh->NElements();
+            for (int64_t el = 0; el < nel; el++) {
+                TPZGeoEl *gel = Gmesh->Element(el);
+                if (!gel)continue;
+                if(gel->HasSubElement()) continue;
+                int matid = gel->MaterialId();
+                if (materialids.find(matid) == materialids.end()) {
+                    continue;
+                }
+                TPZCompElDisc *disc = new TPZCompElDisc(*Cmesh, gel);
+                disc->SetFalseUseQsiEta();
+                gel->ResetReference();
+            }
+        }
+        int ncon = Cmesh->NConnects();
+        for (int i = 0; i < ncon; i++) {
+            TPZConnect &newnod = Cmesh->ConnectVec()[i];
+            newnod.SetLagrangeMultiplier(lagLevel);
+        }
+
+        Cmesh->CleanUpUnconnectedNodes();
+        Cmesh->ExpandSolution();
+
+    }else {
+        //Autobuild
+        Cmesh->AutoBuild();
+        
+        int ncon = Cmesh->NConnects();
+        for(int i=0; i<ncon; i++)
+        {
+            TPZConnect &newnod = Cmesh->ConnectVec()[i];
+            newnod.SetLagrangeMultiplier(lagLevel);
+        }
+        Cmesh->InitializeBlock();
+        Cmesh->ExpandSolution();
     }
-    Cmesh->InitializeBlock();
-    Cmesh->ExpandSolution();
     return Cmesh;
 }
 

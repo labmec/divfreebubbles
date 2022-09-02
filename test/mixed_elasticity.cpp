@@ -111,7 +111,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int pOrder = GENERATE(1);
+    const int pOrder = 1;
     // const int pOrder = GENERATE(2,3,4,5);
 
     const int xdiv = 2;//GENERATE(50);
@@ -124,8 +124,8 @@ TEST_CASE("Hybridization test")
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
     // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
+    // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::ENone);
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
-    // TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
     TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
@@ -149,7 +149,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,xdiv};
+    if (DIM == 2) nDivs = {xdiv,1};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -249,7 +249,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         cmesh_P_HDiv->Print(filecP);
         cmesh_distributedforce->Print(filedf);
         cmesh_averagedisp->Print(fileavdisp);
-        meshvector_HDiv[5]->Print(filehdivhybr);
+        // meshvector_HDiv[5]->Print(filehdivhybr);
         
     }
 #endif
