@@ -6,6 +6,7 @@
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
 #include "TPZEigenSolver.h"
+#include "TPZLapackEigenSolver.h"
 
 template<class TVar>
 void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
@@ -107,7 +108,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     clock.stop();
     // std::cout << "Time Assemble " << clock << std::endl;
     
-    
+    // matRed->Print("MatRed = ",std::cout,EMathematicaInput);
 
     // TPZFMatrix<REAL> *K11Red = new TPZFMatrix<REAL>(nEqHigh,nEqHigh);
 
@@ -133,6 +134,8 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     int64_t nMaxIter = 50;
     TPZVec<REAL> errors(nMaxIter);
     errors.Fill(0.);
+
+    ComputeConditionNumber(*matRed,precond->Matrix());
 
     // for (int64_t iter = 1; iter < nMaxIter; iter++){
         
@@ -268,6 +271,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     std::cout << "Finish assembling BlockDiag ...\n";
     // std::ofstream out3("out.txt");
     
+    // matRed->Print("MatRed = ",std::cout,EMathematicaInput);
+
     matRed->SetF(rhsFull);
     matRed->SetReduced();
     matRed->F1Red(rhsHigh);
@@ -280,6 +285,9 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     int64_t nMaxIter = 500;
     TPZVec<REAL> errors(nMaxIter);
     errors.Fill(0.);
+
+    // ComputeConditionNumber(*matRed,precond->Matrix());
+    
     // for (int64_t iter = 1; iter < nMaxIter; iter++){
         
         // std::cout << "ITER = " << iter << std::endl;
@@ -335,5 +343,109 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
 
 }
 
+template<class TVar>
+void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZSparseMatRed<STATE> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond){
+    
+    TPZFMatrix<REAL> KBDInv;
+    TPZAutoPointer<TPZFMatrix<REAL>> Res = new TPZFMatrix<REAL>;
+    auto dim = precond->Rows();
+    // Res->(dim,dim,true);
+    precond->Inverse(KBDInv,ELU);
+    // KBDInv.Identity();
+    // KBDInv.Print("KBDInv=",std::cout,EMathematicaInput);
+    // matRed.Print("MatRed=",std::cout,EMathematicaInput);
+    matRed.MultAdd(KBDInv,*Res,*Res,1.,0.);
+    // KBDInv.Multiply(*matRed,Res);
+
+    
+    
+    // Res->Print("Res=",std::cout,EMathematicaInput);
+
+    TPZLapackEigenSolver<REAL> eigSolver;
+    
+    TPZVec<std::complex<REAL>> eigenvalues;
+    eigSolver.SetMatrixA(Res);
+    // auto a = eigSolver.ComputeConditionNumber();
+    // auto a1 = eigSolver.SolveEigenProblem(eigenvalues);
+
+    std::ofstream rprint3,rprint4;
+    rprint3.open("REAL_EIGEN_ALL.txt",std::ios_base::app);
+    rprint4.open("REAL_EIGEN.txt",std::ios_base::app);
+
+    REAL maxEig = 0.;
+    REAL minEig = 1e3;
+    REAL minAbs = 1e3;
+    REAL maxAbs = 0.;
+    int nonzeroEigenvalues = 0;
+    REAL tol = 1e-10;
+    for (int i = 0; i < eigenvalues.size(); i++)
+    {
+        rprint3 << eigenvalues[i].real() << std::endl;
+        if (eigenvalues[i].real() > maxEig) maxEig = eigenvalues[i].real();
+        if (eigenvalues[i].real() < minEig) minEig = eigenvalues[i].real();
+        if (fabs(eigenvalues[i].real()) < minAbs) minAbs = fabs(eigenvalues[i].real());
+        if (fabs(eigenvalues[i].real()) > maxAbs) maxAbs = fabs(eigenvalues[i].real());
+        if (fabs(eigenvalues[i].real()) > tol) nonzeroEigenvalues++;
+    }
+    rprint3 << std::endl;
+
+    rprint4 << maxEig << " " << minEig << " " << maxAbs << " " << minAbs << " " << nonzeroEigenvalues << "/" << dim<< std::endl;
+        std::cout << maxEig << " " << minEig << " " << maxAbs << " " << minAbs << " " << nonzeroEigenvalues << "/" << dim<< std::endl;
+
+
+}
+
+template<class TVar>
+void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<STATE>> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond){
+    
+    TPZFMatrix<REAL> KBDInv;
+    TPZAutoPointer<TPZFMatrix<REAL>> Res = new TPZFMatrix<REAL>;
+    auto dim = precond->Rows();
+    // Res->(dim,dim,true);
+    precond->Inverse(KBDInv,ELU);
+    // KBDInv.Identity();
+    KBDInv.Print("KBDInv=",std::cout,EMathematicaInput);
+    matRed.Print("MatRed=",std::cout,EMathematicaInput);
+
+    matRed.Multiply(KBDInv,Res);
+    // KBDInv.Multiply(*matRed,Res);
+
+    
+    
+    Res->Print("Res=",std::cout,EMathematicaInput);
+
+    TPZLapackEigenSolver<REAL> eigSolver;
+    
+    TPZVec<std::complex<REAL>> eigenvalues;
+    eigSolver.SetMatrixA(Res);
+    
+    // auto a1 = eigSolver.SolveEigenProblem(eigenvalues);
+
+    std::ofstream rprint3,rprint4;
+    rprint3.open("REAL_EIGEN_ALL.txt",std::ios_base::app);
+    rprint4.open("REAL_EIGEN.txt",std::ios_base::app);
+
+    REAL maxEig = 0.;
+    REAL minEig = 1e3;
+    REAL minAbs = 1e3;
+    REAL maxAbs = 0.;
+    int nonzeroEigenvalues = 0;
+    REAL tol = 1e-10;
+    for (int i = 0; i < eigenvalues.size(); i++)
+    {
+        rprint3 << eigenvalues[i].real() << std::endl;
+        if (eigenvalues[i].real() > maxEig) maxEig = eigenvalues[i].real();
+        if (eigenvalues[i].real() < minEig) minEig = eigenvalues[i].real();
+        if (fabs(eigenvalues[i].real()) < minAbs) minAbs = fabs(eigenvalues[i].real());
+        if (fabs(eigenvalues[i].real()) > maxAbs) maxAbs = fabs(eigenvalues[i].real());
+        if (fabs(eigenvalues[i].real()) > tol) nonzeroEigenvalues++;
+    }
+    rprint3 << std::endl;
+
+    rprint4 << maxEig << " " << minEig << " " << maxAbs << " " << minAbs << " " << nonzeroEigenvalues << "/" << dim<< std::endl;
+        std::cout << maxEig << " " << minEig << " " << maxAbs << " " << minAbs << " " << nonzeroEigenvalues << "/" << dim<< std::endl;
+
+
+}
 
 template class TPZMatRedSolver<STATE>;

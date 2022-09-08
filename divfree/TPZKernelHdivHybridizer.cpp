@@ -609,6 +609,8 @@ void TPZKernelHdivHybridizer::AssociateElementsDuplicatedConnects(TPZCompMesh *c
                 groupindex[cindex] = cel->Index();
             }
         }
+        auto &c = cel->Connect(nconnects-1);
+        c.SetCondensed(false);
         // for (int i=0; i<nfacets; i++) {
         //     auto &c = cel->Connect(2*i);
         //     c.SetCondensed(true);
@@ -689,8 +691,8 @@ void TPZKernelHdivHybridizer::GroupAndCondenseElementsDuplicatedConnects(TPZMult
         TPZCompEl *cel = cmesh->Element(el);
         
         if (!cel) continue;
-        int nConnects = cel->NConnects();
-        TPZConnect &c = cel->Connect(nConnects-1);
+        // int nConnects = cel->NConnects();
+        // TPZConnect &c = cel->Connect(nConnects-1);
         // c.IncrementElConnected();
 
         TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);

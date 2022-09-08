@@ -106,7 +106,7 @@ public:
     @param[in] bcId Material identifier for the boundary.
     */
     template<class tshape>
-    TPZGeoMesh* CreateGeoMesh(TPZVec<int> &nDivs, int volId, int bcId);
+    TPZGeoMesh* CreateGeoMesh(TPZVec<int> &nDivs, int volId, int bcId, bool createBoundEls);
 
 private:
     std::map<int64_t, TPZHCurlEquationFilter<STATE>::VertexFilter> vertexData;

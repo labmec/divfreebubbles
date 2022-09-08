@@ -296,7 +296,7 @@ void TPZKernelHdivUtils<TVar>::ComputeError(TPZLinearAnalysis &an, std::ostream 
 //Create 
 template <class TVar>
 template <class tshape>
-TPZGeoMesh* TPZKernelHdivUtils<TVar>::CreateGeoMesh(TPZVec<int> &nDivs, int volId, int bcId)
+TPZGeoMesh* TPZKernelHdivUtils<TVar>::CreateGeoMesh(TPZVec<int> &nDivs, int volId, int bcId, bool createBoundEls)
 {
     MMeshType meshType;
     int dim = tshape::Dimension;
@@ -324,10 +324,10 @@ TPZGeoMesh* TPZKernelHdivUtils<TVar>::CreateGeoMesh(TPZVec<int> &nDivs, int volI
 
     TPZManVector<REAL,3> minX = {0,0,0};
     TPZManVector<REAL,3> maxX = {1,1,1};
-    int nMats = 2*dim+1;
+    int nMats = 1;
+    if (createBoundEls) nMats = 2*dim+1;
 
     //all bcs share the same id
-    constexpr bool createBoundEls{true};
     TPZVec<int> matIds(nMats,bcId);
     matIds[0] = volId;
     // matIds[1] = bcId;
@@ -368,10 +368,10 @@ TPZGeoMesh* TPZKernelHdivUtils<TVar>::ReadMeshFromGmsh(std::string file_name)
 
 
 
-template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeQuad>(TPZVec<int> &nDivs, int volId, int bcId);
-template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeCube>(TPZVec<int> &nDivs, int volId, int bcId);
-template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeTriang>(TPZVec<int> &nDivs, int volId, int bcId);
-template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeTetra>(TPZVec<int> &nDivs, int volId, int bcId);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeQuad>(TPZVec<int> &nDivs, int volId, int bcId, bool createBoundEls);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeCube>(TPZVec<int> &nDivs, int volId, int bcId, bool createBoundEls);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeTriang>(TPZVec<int> &nDivs, int volId, int bcId, bool createBoundEls);
+template TPZGeoMesh* TPZKernelHdivUtils<STATE>::CreateGeoMesh<TPZShapeTetra>(TPZVec<int> &nDivs, int volId, int bcId, bool createBoundEls);
 
 template TPZGeoMesh* TPZKernelHdivUtils<STATE>::ReadMeshFromGmsh<TPZShapeQuad>(std::string file_name);
 template TPZGeoMesh* TPZKernelHdivUtils<STATE>::ReadMeshFromGmsh<TPZShapeCube>(std::string file_name);

@@ -23,7 +23,7 @@ using namespace std;
 #include <sstream>
 #include "pzlog.h"
 #ifdef PZ_LOG
-static TPZLogger logger("pz.matrix.TPZSparseMatRed");
+static TPZLogger logger("pz.matrix.globalstiffness");
 #else
 static int logger;
 #endif
@@ -571,6 +571,7 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
 	
 	this->PrepareZ(y,z,beta,opt);
 	
+
 	if(!opt)
 	{
 		if(fK01IsComputed)
@@ -580,27 +581,41 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
 		
 		TPZFMatrix<TVar> l_Res(fK01.Rows(), x.Cols(), 0);
 		fK01.Multiply(x,l_Res,0);
+        if (!fK00->IsDecomposed()){
+            DebugStop();
+        }
+           
 		fSolver->Solve(l_Res,l_Res);
+        
 #ifdef PZ_LOG
+        // l_Res.Print("Internal solution",std::cout);
 		if(logger.isDebugEnabled())
 		{
 			std::stringstream sout;
-			l_Res.Print("Internal solution",sout);
+			// l_Res.Print("Internal solution",sout);
 			LOGPZ_DEBUG(logger,sout.str())
 		}
 #endif
 		TPZFMatrix<TVar> l_ResFinal(fK11.Rows(), x.Cols(), 0);
 		fK11.Multiply(x,l_ResFinal,0);
 #ifdef PZ_LOG
+        // l_ResFinal.Print("Intermediate product l_ResFinal",std::cout);
+
 		if(logger.isDebugEnabled())
 		{
 			std::stringstream sout;
 			l_ResFinal.Print("Intermediate product l_ResFinal",sout);
 			LOGPZ_DEBUG(logger,sout.str())
 		}
+        // fK10.Print("fK10 ",std::cout);
+        // l_ResFinal.Print("Intermediate product l_ResFinal",std::cout);
 #endif
-		fK10.MultAdd(l_Res,l_ResFinal,z,-alpha,alpha,opt);
+        l_Res.MultiplyByScalar(-alpha,l_Res);
+		fK10.Multiply(l_Res,z);
+		z += l_ResFinal;
 #ifdef PZ_LOG
+
+        // z.Print("Final result z ",std::cout);
 		if(logger.isDebugEnabled())
 		{
 			std::stringstream sout;

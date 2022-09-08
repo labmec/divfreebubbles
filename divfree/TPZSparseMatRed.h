@@ -232,7 +232,7 @@ public:
 	 * vector and N is matrix dimension
 	 */
 	void MultAdd(const TPZFMatrix<TVar> &x, const TPZFMatrix<TVar> &y, TPZFMatrix<TVar> &z,
-				 const TVar alpha, const TVar beta, const int opt) const override;
+				 const TVar alpha, const TVar beta, const int opt = 0) const override;
 	
 	/** @brief If fK00 is simetric, only part of the matrix is accessible to external objects. */
 	/** Simetrizes copies the data of the matrix to make its data simetric */

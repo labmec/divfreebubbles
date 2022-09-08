@@ -233,7 +233,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
         for(int i=0; i<ncon; i++)
         {
             TPZConnect &newnod = cmesh->ConnectVec()[i]; 
-            newnod.SetLagrangeMultiplier(1);
+            newnod.SetLagrangeMultiplier(3);
         }
 
         int nel = cmesh->NElements();

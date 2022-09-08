@@ -19,11 +19,15 @@ set(MATERIAL_SRCS
 set(MESH_HEADERS
     TPZCompElHDivDuplConnects.h
     TPZCompElHDivDuplConnectsBound.h
+    TPZMHMGeoMeshCreator.h
+    TPZMHMCompMeshCreator.h
   )
 
 set(MESH_SRCS
     TPZCompElHDivDuplConnects.cpp
     TPZCompElHDivDuplConnectsBound.cpp
+    TPZMHMGeoMeshCreator.cpp
+    TPZMHMCompMeshCreator.cpp
   )
 
 # let us create a config file with the directory containing the meshes

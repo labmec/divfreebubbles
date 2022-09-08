@@ -24,9 +24,13 @@
 #include "tpzgeoelrefpattern.h"
 #include "TPZRefPatternDataBase.h"
 #include "pzbuildmultiphysicsmesh.h"
+#include "TPZMHMGeoMeshCreator.h"
+#include "TPZMHMCompMeshCreator.h"
+#include "TPZSSpStructMatrix.h"
+#include "pzstepsolver.h"
+#include "TPZLinearAnalysis.h"
 
-
-enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb};
+enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb, ESkeleton};
 
 // The test function
 template<class tshape>
@@ -52,6 +56,11 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
 {
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
+    TPZMHMGeoMeshCreator mhm_gcreator;
+    mhm_gcreator.fSkeletonMatId = 100;
+    mhm_gcreator.fDomainMatId = EDomain;
+    std::set<int> bcMatId = {EBoundary};
+    mhm_gcreator.fBoundMatId = bcMatId;
 
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
@@ -60,91 +69,152 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
-    auto gmesh = util.CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
+    auto gmesh = util.CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary, true);
     // auto gmesh = ReadMeshFromGmsh<tshape>("../mesh/1tetra.msh");   
 
-    // Creates the approximation space generator
-    TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh, approxSpace, hdivfamily);
+    mhm_gcreator.CreateSkeleton(gmesh);
+    mhm_gcreator.CreateSubGrids(gmesh);
+    // mhm_gcreator.RefineSubGrids(gmesh);
+    // mhm_gcreator.RefineSkeleton(gmesh);
+    gmesh->BuildConnectivity();
 
-    //Insert here the BC material id's to be hybridized
-    std::set<int> matBCHybrid={};
-    std::set<int> matBCNeumann={};
-    std::set<int> matBCDirichlet={EBoundary};
-    std::set<int> matBCAll;
-    std::set_union(matBCNeumann.begin(),matBCNeumann.end(),matBCDirichlet.begin(),matBCDirichlet.end(),std::inserter(matBCAll, matBCAll.begin()));
+    std::string vtk_name = "geoMeshMHM.vtk";
+    std::ofstream vtkfile(vtk_name.c_str());
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, mhm_gcreator.fElementPartition);
 
-    //Setting material ids      
-    createSpace.fConfig.fDomain = EDomain;
-    createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
-    createSpace.SetPOrder(pOrder);
-    createSpace.Initialize();
-    // util.PrintGeoMesh(gmesh);
+    TPZMHMCompMeshCreator mhm_ccreator(mhm_gcreator);
+    mhm_ccreator.fAvPresLevel = 5;
+    mhm_ccreator.fDistFluxLevel = 4;
 
-    //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
-    int nMeshes = 2;
-    TPZVec<TPZCompMesh *> meshvector;
-    meshvector.Resize(nMeshes);
-
-    //Flux mesh
-    meshvector[0] = createSpace.CreateFluxCMesh();
-    // std::string fluxFile = "FluxCMesh";
-    // util.PrintCompMesh(meshvector[0],fluxFile);
-    // std::cout << "Flux mesh \n";
-    // util.PrintCMeshConnects(meshvector[0]);
-    
-    //Pressure mesh
-    meshvector[1]  = createSpace.CreatePressureCMesh();
-    // std::string presFile = "PressureCMesh";
-    // util.PrintCompMesh(meshvector[1],presFile);
-    // std::cout << "Pressure mesh \n";
-    // util.PrintCMeshConnects(meshvector[1]);
-
-    //Multiphysics mesh
-    auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
-    // std::string multFile = "MultiCMesh";
-    // std::cout << "Multi mesh \n";
-    // util.PrintCMeshConnects(cmesh);
-
-    // Number of equations without condense elements
-    int nEquationsFull = cmesh->NEquations();
-    std::cout << "Number of equations = " << nEquationsFull << std::endl;
-
-    TPZTimer clock,clock2;
-    clock.start();
-
-    std::string multFile = "MultiCMesh";
-    util.PrintCompMesh(cmesh,multFile);
-    
-    //Number of condensed problem.
-    int nEquationsCondensed = cmesh->NEquations();
-
-    //Create analysis environment
-    TPZLinearAnalysis an(cmesh,true);
-    an.SetExact(exactSol,solOrder);
-
-
-    //Solve problem
-    //Equation filter (spanning trees), true if 3D and HDivKernel 
-    bool filter = false;
-    if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-    createSpace.Solve(an, cmesh, true, filter);
-    
+    auto multiCmesh = mhm_ccreator.BuildMultiphysicsCMesh(pOrder+1,pOrder,gmesh);
+    if(1)
     {
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{0};
+        std::cout << "NEQUATIONS = " << multiCmesh ->NEquations() << std::endl;
+        std::ofstream out("mphysics.txt");
+        multiCmesh->Print(out);
+        std::ofstream out2("cmesh_multi.vtk");
+        TPZVTKGeoMesh::PrintCMeshVTK(multiCmesh, out2);
+    }
+    mhm_ccreator.PutinSubstructures(*multiCmesh);
+    mhm_ccreator.CondenseElements(*multiCmesh);
+
+    bool mustOptimizeBandwidth = true;
+    TPZCompMesh *SBFem = multiCmesh;
+    TPZLinearAnalysis * Analysis = new TPZLinearAnalysis(SBFem,mustOptimizeBandwidth);
+
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> strmat(multiCmesh);
+    strmat.SetNumThreads(0);
+    Analysis->SetStructuralMatrix(strmat);
+
+    int64_t neq = multiCmesh->NEquations();
+    
+    if(neq > 20000)
+    {
+        std::cout << "Entering Assemble Equations\n";
+        std::cout.flush();
+    }
+    
+    TPZStepSolver<STATE> step;
+    step.SetDirect(ELDLt);
+    Analysis->SetSolver(step);
+    
+    Analysis->Assemble();
+//    try {
+//        an->Assemble();
+//    } catch (...) {
+//        exit(-1);
+//    }
+    
+    if(neq > 20000)
+    {
+        std::cout << "Entering Solve\n";
+        std::cout.flush();
+    }
+    
+    Analysis->Solve();
+
+    // // Creates the approximation space generator
+    // TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh, approxSpace, hdivfamily);
+
+    // //Insert here the BC material id's to be hybridized
+    // std::set<int> matBCHybrid={};
+    // std::set<int> matBCNeumann={};
+    // std::set<int> matBCDirichlet={EBoundary};
+    // std::set<int> matBCAll;
+    // std::set_union(matBCNeumann.begin(),matBCNeumann.end(),matBCDirichlet.begin(),matBCDirichlet.end(),std::inserter(matBCAll, matBCAll.begin()));
+
+    // //Setting material ids      
+    // createSpace.fConfig.fDomain = EDomain;
+    // createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
+    // createSpace.SetPOrder(pOrder);
+    // createSpace.Initialize();
+    // // util.PrintGeoMesh(gmesh);
+
+    // //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
+    // int nMeshes = 2;
+    // TPZVec<TPZCompMesh *> meshvector;
+    // meshvector.Resize(nMeshes);
+
+    // //Flux mesh
+    // meshvector[0] = createSpace.CreateFluxCMesh();
+    // // std::string fluxFile = "FluxCMesh";
+    // // util.PrintCompMesh(meshvector[0],fluxFile);
+    // // std::cout << "Flux mesh \n";
+    // // util.PrintCMeshConnects(meshvector[0]);
+    
+    // //Pressure mesh
+    // meshvector[1]  = createSpace.CreatePressureCMesh();
+    // // std::string presFile = "PressureCMesh";
+    // // util.PrintCompMesh(meshvector[1],presFile);
+    // // std::cout << "Pressure mesh \n";
+    // // util.PrintCMeshConnects(meshvector[1]);
+
+    // //Multiphysics mesh
+    // auto * cmesh = createSpace.CreateMultiphysicsCMesh(meshvector,exactSol,matBCNeumann,matBCDirichlet);
+    // // std::string multFile = "MultiCMesh";
+    // // std::cout << "Multi mesh \n";
+    // // util.PrintCMeshConnects(cmesh);
+
+    // // Number of equations without condense elements
+    // int nEquationsFull = cmesh->NEquations();
+    // std::cout << "Number of equations = " << nEquationsFull << std::endl;
+
+    // TPZTimer clock,clock2;
+    // clock.start();
+
+    // std::string multFile = "MultiCMesh";
+    // util.PrintCompMesh(cmesh,multFile);
+    
+    // //Number of condensed problem.
+    // int nEquationsCondensed = cmesh->NEquations();
+
+    // //Create analysis environment
+    // TPZLinearAnalysis an(cmesh,true);
+    // an.SetExact(exactSol,solOrder);
+
+
+    // //Solve problem
+    // //Equation filter (spanning trees), true if 3D and HDivKernel 
+    // bool filter = false;
+    // if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
+    // createSpace.Solve(an, cmesh, true, filter);
+    
+    // {
+    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
+    //     TPZSimpleTimer postProc("Post processing2");
+    //     const std::string plotfile = "myfile";//sem o .vtk no final
+    //     constexpr int vtkRes{0};
     
 
-        TPZVec<std::string> fields = {
-        "Pressure",
-        "ExactPressure",
-        "Flux",
-        "ExactFlux"};
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+    //     TPZVec<std::string> fields = {
+    //     "Pressure",
+    //     "ExactPressure",
+    //     "Flux",
+    //     "ExactFlux"};
+    //     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-        vtk.Do();
-    }
+    //     vtk.Do();
+    // }
     
     // //Compute error
     // std::ofstream anPostProcessFile("postprocess.txt");
@@ -178,12 +248,13 @@ int main(int argc, char *argv[]){
 
     #define TEST
     const int pOrder = 1;
-    const int xdiv = 5;
+    const int xdiv = 2;
     // HDivFamily hdivfam = HDivFamily::EHDivStandard;
     HDivFamily hdivfam = HDivFamily::EHDivConstant;
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = TPZHDivApproxSpaceCreator<STATE>::ENone;
     
     RunMHM<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    // RunMHM<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace); 
 
     return 0;
 }

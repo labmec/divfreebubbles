@@ -28,7 +28,8 @@ public:
 
     void SolveProblemSparse(std::ostream &out); 
     
-
+    void ComputeConditionNumber(TPZSparseMatRed<STATE> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
+    void ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<STATE>> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
 
 
 protected:
