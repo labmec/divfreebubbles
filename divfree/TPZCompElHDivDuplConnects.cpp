@@ -14,31 +14,30 @@ template<class TSHAPE>
 TPZCompElHDivDuplConnects<TSHAPE>::TPZCompElHDivDuplConnects(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam) :
 TPZRegisterClassId(&TPZCompElHDivDuplConnects::ClassId), TPZCompElHDiv<TSHAPE>(mesh,gel,hdivfam), fSideOrient(TSHAPE::NFacets,1) {
     
-    // std::cout << "Connects before = " << this->fConnectIndexes << std::endl;
-    this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
-
-    //Reorder the connects
-    auto prevCon = this->fConnectIndexes;
-    for (int i = 0; i < TSHAPE::NFacets; i++)
-    {
-        this->fConnectIndexes[2*i  ] = prevCon[i];    
-        this->fConnectIndexes[2*i+1] = prevCon[i+TSHAPE::NFacets+1];
-    }
-    this->fConnectIndexes[TSHAPE::NFacets*2] = prevCon[TSHAPE::NFacets];
-    // std::cout << "Connects after = " << this->fConnectIndexes << std::endl;
+    
 }
 
 
 template<class TSHAPE>
 int TPZCompElHDivDuplConnects<TSHAPE>::NConnects() const {
-	return this->fConnectIndexes.size();
+	if(fDuplicationActive){
+        return this->fConnectIndexes.size();
+    } else {
+        return TPZCompElHDiv<TSHAPE>::NConnects();
+    }
 }
 
 template<class TSHAPE>
 int TPZCompElHDivDuplConnects<TSHAPE>::NSideConnects(int side) const{
-    // o erro provavelmente esta aqui
+    
 	if(TSHAPE::SideDimension(side)<= this->Dimension()-2) return 0;
-	if(TSHAPE::SideDimension(side)== this->Dimension()-1) return 2;
+	if(TSHAPE::SideDimension(side)== this->Dimension()-1) {
+        if (fDuplicationActive){
+            return 2;
+        } else {
+            return TPZCompElHDiv<TSHAPE>::NSideConnects(side);
+        };
+    }
 	if(TSHAPE::SideDimension(side)== this->Dimension()) {
         int ncon = 1;
         return ncon;
@@ -57,6 +56,7 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NSideConnects(int side) const{
 template<class TSHAPE>
 int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)const
 {
+    
 #ifdef DEBUG
     if (connect < 0 || connect > TSHAPE::NFacets*2) {
         DebugStop();
@@ -71,6 +71,7 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
             int conCorrect = connect/2;
             int res = connect % 2;
             int nshape = TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(conCorrect,order); 
+            if (!fDuplicationActive) return nshape;
             if (res == 1){ 
                 nshape -= 1;
             } else {
@@ -86,6 +87,7 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
             int conCorrect = connect/2;
             int res = connect % 2;
             int nshape = TPZShapeHDivConstant<TSHAPE>::ComputeNConnectShapeF(conCorrect,order);
+            if (!fDuplicationActive) return nshape;
             if (res == 1){ 
                 nshape -= 1;
             } else {
@@ -107,6 +109,7 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
 
 template<class TSHAPE>
 int64_t TPZCompElHDivDuplConnects<TSHAPE>::ConnectIndex(int con) const{
+    
 #ifndef PZNODEBUG
 	if(con<0 || con > TSHAPE::NFacets*2) {
 		std::cout << "TPZCompElHDivDuplConnects::ConnectIndex wrong parameter connect " << con <<
@@ -117,18 +120,26 @@ int64_t TPZCompElHDivDuplConnects<TSHAPE>::ConnectIndex(int con) const{
 
 #endif
 
-	return this->fConnectIndexes[con];
+    if(fDuplicationActive){
+        return this->fConnectIndexes[con];
+    } else {
+        return TPZCompElHDiv<TSHAPE>::ConnectIndex(con);
+    }	
 }
 
 
 template<class TSHAPE>
 int TPZCompElHDivDuplConnects<TSHAPE>::SideConnectLocId(int node,int side) const {
-    if (TSHAPE::Dimension == 2){
-        return 2*(side-TSHAPE::NCornerNodes);
-    } else if (TSHAPE::Dimension == 3){
-        return 2*(side-(TSHAPE::NSides-TSHAPE::NumSides(TSHAPE::Dimension-1)-1));
+    if (fDuplicationActive){
+        if (TSHAPE::Dimension == 2){
+            return 2*(side-TSHAPE::NCornerNodes);
+        } else if (TSHAPE::Dimension == 3){
+            return 2*(side-(TSHAPE::NSides-TSHAPE::NumSides(TSHAPE::Dimension-1)-1));
+        } else {
+            DebugStop();
+        }
     } else {
-        DebugStop();
+        return TPZCompElHDiv<TSHAPE>::SideConnectLocId(node,side);
     }
     return -1;
 }
@@ -137,7 +148,76 @@ int TPZCompElHDivDuplConnects<TSHAPE>::SideConnectLocId(int node,int side) const
 template<class TSHAPE>
 void TPZCompElHDivDuplConnects<TSHAPE>::SetConnectIndex(int i, int64_t connectindex)
 {
-	this->fConnectIndexes[i] = connectindex;
+    if (fDuplicationActive){
+        this->fConnectIndexes[i] = connectindex;
+    }else{
+        TPZCompElHDiv<TSHAPE>::SetConnectIndex(i,connectindex);
+    }
+}
+
+template<class TSHAPE>
+void TPZCompElHDivDuplConnects<TSHAPE>::ActiveDuplConnects(std::map<int64_t,int64_t> &fConnDuplicated){
+
+    fDuplicationActive = true;
+
+    this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
+    // std::cout << "Connects before = " << this->fConnectIndexes << std::endl;
+
+    // Reorder the connects
+    auto prevCon = this->fConnectIndexes;
+    this->fConnectIndexes.Fill(-1);
+    for (int i = 0; i < TSHAPE::NFacets; i++)
+    {
+        this->fConnectIndexes[2*i  ] = prevCon[i];    
+        this->fConnectIndexes[2*i+1] = -1;//prevCon[i+TSHAPE::NFacets+1];
+    }
+    this->fConnectIndexes[TSHAPE::NFacets*2] = prevCon[TSHAPE::NFacets];
+    // std::cout << "Connects after = " << this->fConnectIndexes << std::endl;
+
+
+
+    auto nFacets = this->Reference()->NSides(this->Dimension()-1);
+    //Loop over the element facets - which are the connects the be duplicated (edges in 2D and faces in 3D)
+    for (int iFacet = 0; iFacet < nFacets; iFacet++)
+    {
+        // Algorithm description: for each element facet, checks if the corresponding original connect is in the map fConnDuplicated.
+        // If Yes, just sets the returning value from fConnDuplicated to the duplicated connect in the current element;
+        // If No, allocate a new connect and inserts its index to fConnDuplicated using the original connect as key
+
+        auto conn = ConnectIndex(2*iFacet);           
+
+        if (fConnDuplicated.find(conn) == fConnDuplicated.end()){
+            //not found, so allocate a new connect
+            auto pOrder = this->Mesh()->GetDefaultOrder();
+            int nshape = 0;//It is updated in the next loop
+            int nstate = 1;//It can possibly change
+            int64_t newConnect = this->Mesh()->AllocateNewConnect(nshape,nstate,pOrder);
+            fConnDuplicated[conn] = newConnect;
+            SetConnectIndex(2*iFacet+1,newConnect);
+        } else {
+            //found, so just set the proper index of the duplicated connect
+            SetConnectIndex(2*iFacet+1,fConnDuplicated[conn]);
+        }
+    }
+
+    //Updates the number of shape functions and also the integration rule. 
+    //We need different casts because the element can be volumetric or boundary
+    TPZInterpolatedElement *celHybrid = dynamic_cast<TPZInterpolatedElement *> (this); 
+    if (celHybrid){
+        int nConnects = celHybrid->NConnects();
+        for (int icon = 0; icon < nConnects; icon++)
+        {
+            TPZConnect &c = celHybrid->Connect(icon);
+            int nShapeF = celHybrid->NConnectShapeF(icon,c.Order());
+            c.SetNShape(nShapeF);
+            int64_t seqnum = c.SequenceNumber();
+            int nvar = 1;
+            TPZMaterial * mat = celHybrid->Material();
+            if (mat) nvar = mat->NStateVariables();
+            c.SetNState(nvar);
+            celHybrid->Mesh()->Block().Set(seqnum, nvar * nShapeF);
+        }
+    }
 }
 
 #include "pzshapelinear.h"

@@ -29,8 +29,11 @@
 #include "TPZSSpStructMatrix.h"
 #include "pzstepsolver.h"
 #include "TPZLinearAnalysis.h"
+#include "Common.h"
+#include "TPZAnalyticSolution.h"
 
-enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb, ESkeleton};
+
+enum EMatid  {ENone, EDomain, EBottom, ETop, ELeft, ERight};
 
 // The test function
 template<class tshape>
@@ -58,9 +61,16 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     TPZKernelHdivUtils<STATE> util;
     TPZMHMGeoMeshCreator mhm_gcreator;
     mhm_gcreator.fSkeletonMatId = 100;
-    mhm_gcreator.fDomainMatId = EDomain;
-    std::set<int> bcMatId = {EBoundary};
-    mhm_gcreator.fBoundMatId = bcMatId;
+    mhm_gcreator.fDomainMatId = Emat2;
+    mhm_gcreator.fBC1 = Ebc1;
+    mhm_gcreator.fBC2 = Ebc2;
+    mhm_gcreator.fBC3 = Ebc3;
+    mhm_gcreator.fBC4 = Ebc4;
+    mhm_gcreator.SetBCMatId(Ebc1);
+    mhm_gcreator.SetBCMatId(Ebc2);
+    mhm_gcreator.SetBCMatId(Ebc3);
+    mhm_gcreator.SetBCMatId(Ebc4);
+    
 
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
@@ -69,24 +79,42 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
-    auto gmesh = util.CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary, true);
-    // auto gmesh = ReadMeshFromGmsh<tshape>("../mesh/1tetra.msh");   
+    std::string filename;
+    filename = "polygon1.txt";
+    TPZVec<int64_t> elpartition;
+    TPZVec<int64_t> scalingcenterindices;
+    TPZAutoPointer<TPZGeoMesh> gmesh = ReadUNSWQuadtreeMesh(filename, mhm_gcreator.fElementPartition, scalingcenterindices);
 
-    mhm_gcreator.CreateSkeleton(gmesh);
-    mhm_gcreator.CreateSubGrids(gmesh);
-    // mhm_gcreator.RefineSubGrids(gmesh);
-    // mhm_gcreator.RefineSkeleton(gmesh);
-    gmesh->BuildConnectivity();
+    mhm_gcreator.AddBoundaryElements(gmesh);
+    mhm_gcreator.fElementPartition.Resize(gmesh->NElements(), -1);
+    scalingcenterindices.Resize(gmesh->NElements(), -1);
+
+    LaplaceExact.fExact = TLaplaceExample1::E2SinSin;
+
+    std::cout << "Building computational mesh\n";
+    std::map<int,int> matmap;
+    matmap[ESkeleton] = Emat1;
+    int EPoly = 100;
+    matmap[EPoly] = Emat2;
+
+    mhm_gcreator.CreateTriangleElements(gmesh, matmap, mhm_gcreator.fElementPartition, scalingcenterindices);
+
+    // mhm_gcreator.CreateSkeleton(gmesh);
+    // mhm_gcreator.CreateSubGrids(gmesh);
+    mhm_gcreator.RefineSubGrids(gmesh);
+    mhm_gcreator.RefineSubGrids(gmesh);
+    mhm_gcreator.RefineSkeleton(gmesh);
 
     std::string vtk_name = "geoMeshMHM.vtk";
     std::ofstream vtkfile(vtk_name.c_str());
-    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, mhm_gcreator.fElementPartition);
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
 
-    TPZMHMCompMeshCreator mhm_ccreator(mhm_gcreator);
+    TPZMHMCompMeshCreator mhm_ccreator(mhm_gcreator,HDivFamily::EHDivConstant);
+    mhm_ccreator.DuplicateConnects();
     mhm_ccreator.fAvPresLevel = 5;
     mhm_ccreator.fDistFluxLevel = 4;
 
-    auto multiCmesh = mhm_ccreator.BuildMultiphysicsCMesh(pOrder+1,pOrder,gmesh);
+    auto multiCmesh = mhm_ccreator.BuildMultiphysicsCMesh(pOrder+1,pOrder,gmesh,LaplaceExact);
     if(1)
     {
         std::cout << "NEQUATIONS = " << multiCmesh ->NEquations() << std::endl;
@@ -199,22 +227,22 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     // if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
     // createSpace.Solve(an, cmesh, true, filter);
     
-    // {
-    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
-    //     TPZSimpleTimer postProc("Post processing2");
-    //     const std::string plotfile = "myfile";//sem o .vtk no final
-    //     constexpr int vtkRes{0};
+    {
+        // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
+        TPZSimpleTimer postProc("Post processing2");
+        const std::string plotfile = "myfile";//sem o .vtk no final
+        constexpr int vtkRes{0};
     
 
-    //     TPZVec<std::string> fields = {
-    //     "Pressure",
-    //     "ExactPressure",
-    //     "Flux",
-    //     "ExactFlux"};
-    //     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+        TPZVec<std::string> fields = {
+        "Pressure",
+        "ExactPressure",
+        "Flux",
+        "ExactFlux"};
+        auto vtk = TPZVTKGenerator(SBFem, fields, plotfile, vtkRes);
 
-    //     vtk.Do();
-    // }
+        vtk.Do();
+    }
     
     // //Compute error
     // std::ofstream anPostProcessFile("postprocess.txt");
@@ -253,8 +281,8 @@ int main(int argc, char *argv[]){
     HDivFamily hdivfam = HDivFamily::EHDivConstant;
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = TPZHDivApproxSpaceCreator<STATE>::ENone;
     
-    RunMHM<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
-    // RunMHM<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace); 
+    // RunMHM<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    RunMHM<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace); 
 
     return 0;
 }

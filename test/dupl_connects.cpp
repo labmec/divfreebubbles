@@ -114,10 +114,10 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 TEST_CASE("Hybridization test")
 {
     #define TEST
-    const int pOrder = GENERATE(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
-    // const int pOrder = GENERATE(1,2,3,4,5);
+    // const int pOrder = GENERATE(9,10,11,12,13,14,15);
+    const int pOrder = GENERATE(1,2,3,4,5);
 
-    const int xdiv = 6;//GENERATE(50);
+    const int xdiv = 5;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
@@ -131,9 +131,9 @@ TEST_CASE("Hybridization test")
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
-    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 //Analytical solution
@@ -485,6 +485,7 @@ ReadMeshFromGmsh(std::string file_name)
 
     return gmesh;
 }
+
 
 
 

@@ -60,9 +60,16 @@ private:
 
     REAL fBigNumber = 1.e10;
 
+    std::map<int64_t,int64_t> fConnDuplicated;//The key on this map is the original connect and it returns the corresponding duplicated one.
+
 public:
     /// default constructor
     TPZHDivApproxSpaceCreator(TPZGeoMesh *gmesh, MSpaceType spacetype = ENone, HDivFamily shapetype = HDivFamily::EHDivKernel);
+    TPZHDivApproxSpaceCreator(int domainMatId, MSpaceType spacetype = ENone, HDivFamily shapetype = HDivFamily::EHDivKernel){
+        fConfig.fDomain = domainMatId;
+        fSpaceType = spacetype;
+        fShapeType = shapetype;
+    };
     
     /// copy constructor
     TPZHDivApproxSpaceCreator(const TPZHDivApproxSpaceCreator &copy);
@@ -75,10 +82,18 @@ public:
         fDefaultPOrder = order;
     }
     
+    std::map<int64_t,int64_t> &DuplicatedConnects(){
+        return fConnDuplicated;
+    }
+
     //Sets Lagrange multipliers polynomial order
     void SetLagrangeOrder(int order){
         fDefaultLagrangeOrder = order;
     }
+
+    TPZKernelHdivHybridizer &Hybridizer(){return hybridizer;}
+
+    TPZGeoMesh *GetGeoMesh(){return fGeoMesh;}
 
     /**
      * @brief Initialize the data structure to provide an interface to create several approximation spaces using HDiv family of functionss
@@ -214,6 +229,8 @@ public:
     
     void ChangeInternalOrder(TPZCompMesh *cmesh, int pOrder);
     TPZCompMesh *CreateRotationCmesh(TPZGeoMesh *gmesh, int pOrder, REAL elementdim);
+
+    
 };
 
 #endif //TPZHDivApproxSpaceCreator

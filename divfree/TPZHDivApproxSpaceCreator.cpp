@@ -730,7 +730,15 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
     } 
 
     if (fSpaceType == EDuplicatedConnects){
-        DuplicateInternalConnects(cmesh);
+        // DuplicateInternalConnects(cmesh);
+        for (int64_t i = 0; i < cmesh->NElements(); i++)
+        {
+            TPZCompElHDivDuplConnects<TPZShapeQuad> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cmesh->Element(i)); 
+            TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cmesh->Element(i)); 
+            if (celd) celd->ActiveDuplConnects(fConnDuplicated);
+            if (celb) celb->ActiveDuplConnects(fConnDuplicated);
+        
+        }
     }
 
     cmesh->InitializeBlock(); 
@@ -817,7 +825,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDiv
 template<class TVar>
 void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cmesh)
 {
-    std::map<int64_t,int64_t> conn2duplConn; 
+    // std::map<int64_t,int64_t> conn2duplConn; 
 
     //Loop over the computational elements
     for (int icel = 0; icel < cmesh->NElements(); icel++)
@@ -837,39 +845,42 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
         //     TPZGeoElSide neighbour = gelside.Neighbour();
         //     neighbour.Element()->ResetReference();
         // }
-
+        for (int i = 0; i<cel->NConnects(); i++){
+            std::cout << "Connects indexes = "<< i << " " << cel->ConnectIndex(i) << "\n";
+        }
         //Loop over the element facets - which are the connects the be duplicated (edges in 2D and faces in 3D)
         for (int iFacet = 0; iFacet < nFacets; iFacet++)
         {
-            // Algorithm description: for each element facet, checks if the corresponding original connect is in the map conn2duplConn.
-            // If Yes, just sets the returning value from conn2duplConn to the duplicated connect in the current element;
-            // If No, allocate a new connect and inserts its index to conn2duplConn using the original connect as key
+            // Algorithm description: for each element facet, checks if the corresponding original connect is in the map fConnDuplicated.
+            // If Yes, just sets the returning value from fConnDuplicated to the duplicated connect in the current element;
+            // If No, allocate a new connect and inserts its index to fConnDuplicated using the original connect as key
 
             auto conn = cel->ConnectIndex(2*iFacet);           
 
-            if (conn2duplConn.find(conn) == conn2duplConn.end()){
+            if (fConnDuplicated.find(conn) == fConnDuplicated.end()){
                 //not found, so allocate a new connect
                 auto pOrder = cmesh->GetDefaultOrder();
                 int nshape = 0;//It is updated in the next loop
                 int nstate = 1;//It can possibly change
                 int64_t newConnect = cmesh->AllocateNewConnect(nshape,nstate,pOrder);
-                conn2duplConn[conn] = newConnect;
+                fConnDuplicated[conn] = newConnect;
                 cel->SetConnectIndex(2*iFacet+1,newConnect);
             } else {
                 //found, so just set the proper index of the duplicated connect
-                cel->SetConnectIndex(2*iFacet+1,conn2duplConn[conn]);
+                cel->SetConnectIndex(2*iFacet+1,fConnDuplicated[conn]);
             }
         }
 
         
-        // for (int i = 0; i<cel->NConnects(); i++){
-        //     std::cout << "Connects indexes = "<< i << " " << cel->ConnectIndex(i) << "\n";
-        // }
+        for (int i = 0; i<cel->NConnects(); i++){
+            std::cout << "Connects indexes = "<< i << " " << cel->ConnectIndex(i) << "\n";
+        }
         //Updates the number of shape functions and also the integration rule. 
         //We need different casts because the element can be volumetric or boundary
         TPZInterpolatedElement *celHybrid = dynamic_cast<TPZInterpolatedElement *> (cel); 
-        if (celHybrid){     
-            for (int icon = 0; icon < celHybrid->NConnects(); icon++)
+        if (celHybrid){
+            int nConnects = celHybrid->NConnects();
+            for (int icon = 0; icon < nConnects; icon++)
             {
                 TPZConnect &c = celHybrid->Connect(icon);
                 int nShapeF = celHybrid->NConnectShapeF(icon,c.Order());
@@ -1077,6 +1088,13 @@ TPZCompMesh* TPZHDivApproxSpaceCreator<TVar>::CreateRotationCmesh(TPZGeoMesh *gm
     return cmesh;
 
 }
+
+
+
+
+
+
+
 
 
 template class TPZHDivApproxSpaceCreator<STATE>;

@@ -6,7 +6,7 @@
 
 
 //Creates the skeleton geometric elements
-void TPZMHMGeoMeshCreator::CreateSkeleton(TPZGeoMesh *gmesh){
+void TPZMHMGeoMeshCreator::CreateSkeleton(TPZAutoPointer<TPZGeoMesh> &gmesh){
 
     for (int64_t iEl = 0; iEl < gmesh->NElements(); iEl++)
     {
@@ -34,7 +34,7 @@ void TPZMHMGeoMeshCreator::CreateSkeleton(TPZGeoMesh *gmesh){
     }  
 };
 
-void TPZMHMGeoMeshCreator::CreateSubGrids(TPZGeoMesh *gmesh){
+void TPZMHMGeoMeshCreator::CreateSubGrids(TPZAutoPointer<TPZGeoMesh> &gmesh){
 
     //This method should always be called after CreateSkeleton
     fElementPartition.resize(gmesh->NElements());
@@ -51,7 +51,7 @@ void TPZMHMGeoMeshCreator::CreateSubGrids(TPZGeoMesh *gmesh){
 
 }
 
-void TPZMHMGeoMeshCreator::RefineSubGrids(TPZGeoMesh *gmesh){
+void TPZMHMGeoMeshCreator::RefineSubGrids(TPZAutoPointer<TPZGeoMesh> &gmesh){
 
 
     int64_t nel = gmesh->NElements();
@@ -130,7 +130,7 @@ void TPZMHMGeoMeshCreator::RefineSubGrids(TPZGeoMesh *gmesh){
 
 }
 
-void TPZMHMGeoMeshCreator::RefineSkeleton(TPZGeoMesh *gmesh){
+void TPZMHMGeoMeshCreator::RefineSkeleton(TPZAutoPointer<TPZGeoMesh> &gmesh){
 
     int64_t nel = gmesh->NElements();
     TPZManVector<int64_t> extpartition(fElementPartition);
@@ -154,4 +154,113 @@ void TPZMHMGeoMeshCreator::RefineSkeleton(TPZGeoMesh *gmesh){
     }
     fElementPartition = extpartition;
 
+}
+
+
+void TPZMHMGeoMeshCreator::AddBoundaryElements(TPZAutoPointer<TPZGeoMesh> &gmesh)
+{
+    std::set<int64_t> setbottom,setright,settop,setleft;
+    int64_t nnodes = gmesh->NNodes();
+    int dim = gmesh->Dimension();
+    for (int64_t in=0; in<nnodes; in++) {
+        TPZManVector<REAL,3> xco(3);
+        gmesh->NodeVec()[in].GetCoordinates(xco);
+        if (fabs(xco[1]+1.) < 1.e-3)
+        {
+            setbottom.insert(in);
+        }
+        if (fabs(xco[0]-1.) < 1.e-3)
+        {
+            setright.insert(in);
+        }
+        if (fabs(xco[1]-1.) < 1.e-3)
+        {
+            settop.insert(in);
+        }
+        if (fabs(xco[0]+1.) < 1.e-3)
+        {
+            setleft.insert(in);
+        }
+    }
+    int64_t nelem = gmesh->NElements();
+    for (int64_t el=0; el<nelem; el++) {
+        TPZGeoEl *gel = gmesh->Element(el);
+        int nsides = gel->NSides();
+        for (int is=0; is<nsides; is++) {
+            if (gel->SideDimension(is) != dim-1) {
+                continue;
+            }
+            int nsidenodes = gel->NSideNodes(is);
+            int nfoundbottom = 0;
+            int nfoundright = 0;
+            int nfoundtop = 0;
+            int nfoundleft = 0;
+            for (int in=0; in<nsidenodes; in++) {
+                int64_t nodeindex = gel->SideNodeIndex(is, in);
+                if (setbottom.find(nodeindex) != setbottom.end()) {
+                    nfoundbottom++;
+                }
+                if (setright.find(nodeindex) != setright.end()) {
+                    nfoundright++;
+                }
+                if (settop.find(nodeindex) != settop.end()) {
+                    nfoundtop++;
+                }
+                if (setleft.find(nodeindex) != setleft.end()) {
+                    nfoundleft++;
+                }
+            }
+            if (nfoundbottom == nsidenodes) {
+                TPZGeoElBC gelbc(gel,is,fBC1);
+            }
+            if (nfoundright == nsidenodes) {
+                TPZGeoElBC gelbc(gel,is,fBC2);
+            }
+            if (nfoundtop == nsidenodes) {
+                TPZGeoElBC gelbc(gel,is,fBC3);
+            }
+            if (nfoundleft == nsidenodes) {
+                TPZGeoElBC gelbc(gel,is,fBC4);
+            }
+            else
+            {
+                TPZGeoElSide gelside(gel,is);
+                TPZGeoElSide neighbour = gelside.Neighbour();
+                if (neighbour == gelside) {
+                    int EPoly = 100;
+                    TPZGeoElBC(gelside,EPoly);
+                }
+            }
+        }
+    }
+}
+
+void TPZMHMGeoMeshCreator::CreateTriangleElements(TPZAutoPointer<TPZGeoMesh> gmesh, std::map<int,int> &matmap, TPZVec<int64_t> &elpartition, TPZVec<int64_t> &scalingcenter)
+{
+    int64_t nel = gmesh->NElements();
+    TPZManVector<int64_t> extpartition(elpartition);
+    extpartition.Expand(nel*3);
+    for (int64_t el = 0; el<nel; el++) {
+        TPZGeoEl *gel = gmesh->Element(el);
+        int gelmat = gel->MaterialId();
+        if(gel->Type() != EOned) DebugStop();
+        auto partition = elpartition[el];
+        if(partition >= 0)
+        {
+            if(matmap.find(gelmat) == matmap.end()) DebugStop();
+            int64_t center = scalingcenter[partition];
+            TPZManVector<int64_t,3> nodes(3);
+            nodes[0] = gel->NodeIndex(0);
+            nodes[1] = gel->NodeIndex(1);
+            nodes[2] = center;
+            int64_t index;
+            gmesh->CreateGeoElement(ETriangle, nodes, matmap[gelmat], index);
+            if(extpartition.size() < index+1) extpartition.resize(index+1);
+            extpartition[index] = partition;
+            // set the oned element partition as -1. It will serve as skeleton element
+            extpartition[el] = -1;
+        }
+    }
+    gmesh->BuildConnectivity();
+    elpartition = extpartition;
 }

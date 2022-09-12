@@ -22,6 +22,8 @@ class TPZCompElHDivDuplConnectsBound : public TPZCompElHDivBound2<TSHAPE> {
     /// vector which defines whether the normal is outward or not
     TPZManVector<int, TSHAPE::NFacets> fSideOrient;
 
+    bool fDuplicationActive = false;
+
 public:
 
     TPZCompElHDivDuplConnectsBound(TPZCompMesh &mesh, TPZGeoEl *gel, const HDivFamily hdivfam = DefaultFamily::fHDivDefaultValue);
@@ -44,7 +46,8 @@ public:
 
     void SetConnectIndex(int i, int64_t connectindex) override;    
 	
-	
+	void ActiveDuplConnects(std::map<int64_t,int64_t> &fConnDuplicated);
+    void InactiveDuplConnects(){fDuplicationActive = false;}
 };
 
 
