@@ -236,6 +236,9 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
 
+    // TPZManVector<TPZGeoEl *> subels;
+    // gmesh->Element(0)->Divide(subels);
+
     // Creates the approximation space generator
     TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh, approxSpace, hdivfamily);
 

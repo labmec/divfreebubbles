@@ -230,6 +230,8 @@ public:
     void ChangeInternalOrder(TPZCompMesh *cmesh, int pOrder);
     TPZCompMesh *CreateRotationCmesh(TPZGeoMesh *gmesh, int pOrder, REAL elementdim);
 
+    void PartitionDependMatrix(TPZCompMesh *cmesh);
+    void RegroupDependMatrix(TPZCompMesh *cmesh);
     
 };
 

@@ -4,6 +4,7 @@
 #include "TPZShapeHDiv.h"
 #include "TPZShapeHDivConstant.h"
 #include "pzlog.h"
+#include "pzconnect.h"
 
 #ifdef PZ_LOG
 static TPZLogger logger("pz.mesh.TPZCompElHDiv");
@@ -70,8 +71,12 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
         {
             int conCorrect = connect/2;
             int res = connect % 2;
-            int nshape = TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(conCorrect,order); 
-            if (!fDuplicationActive) return nshape;
+            int nshape;
+            if (!fDuplicationActive){
+                return TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(connect,order);
+            } else {
+                nshape = TPZShapeHDiv<TSHAPE>::ComputeNConnectShapeF(conCorrect,order);
+            }
             if (res == 1){ 
                 nshape -= 1;
             } else {
@@ -86,8 +91,13 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
         {
             int conCorrect = connect/2;
             int res = connect % 2;
-            int nshape = TPZShapeHDivConstant<TSHAPE>::ComputeNConnectShapeF(conCorrect,order);
-            if (!fDuplicationActive) return nshape;
+            int nshape;
+            if (!fDuplicationActive){
+                return TPZShapeHDivConstant<TSHAPE>::ComputeNConnectShapeF(connect,order);
+            } else {
+                nshape = TPZShapeHDivConstant<TSHAPE>::ComputeNConnectShapeF(conCorrect,order);
+            }
+             
             if (res == 1){ 
                 nshape -= 1;
             } else {
@@ -158,9 +168,15 @@ void TPZCompElHDivDuplConnects<TSHAPE>::SetConnectIndex(int i, int64_t connectin
 template<class TSHAPE>
 void TPZCompElHDivDuplConnects<TSHAPE>::ActiveDuplConnects(std::map<int64_t,int64_t> &fConnDuplicated){
 
+    TPZManVector<int> conOrders(TSHAPE::NFacets,0);
+    for (int i = 0; i < TSHAPE::NFacets; i++){
+        conOrders[i] = this->ConnectOrder(i);
+    }
+
     fDuplicationActive = true;
 
     this->fConnectIndexes.Resize(TSHAPE::NFacets*2+1);
+    
     // std::cout << "Connects before = " << this->fConnectIndexes << std::endl;
 
     // Reorder the connects
@@ -170,25 +186,26 @@ void TPZCompElHDivDuplConnects<TSHAPE>::ActiveDuplConnects(std::map<int64_t,int6
     {
         this->fConnectIndexes[2*i  ] = prevCon[i];    
         this->fConnectIndexes[2*i+1] = -1;//prevCon[i+TSHAPE::NFacets+1];
+
+        
     }
     this->fConnectIndexes[TSHAPE::NFacets*2] = prevCon[TSHAPE::NFacets];
     // std::cout << "Connects after = " << this->fConnectIndexes << std::endl;
-
-
 
     auto nFacets = this->Reference()->NSides(this->Dimension()-1);
     //Loop over the element facets - which are the connects the be duplicated (edges in 2D and faces in 3D)
     for (int iFacet = 0; iFacet < nFacets; iFacet++)
     {
+        
         // Algorithm description: for each element facet, checks if the corresponding original connect is in the map fConnDuplicated.
         // If Yes, just sets the returning value from fConnDuplicated to the duplicated connect in the current element;
         // If No, allocate a new connect and inserts its index to fConnDuplicated using the original connect as key
 
-        auto conn = ConnectIndex(2*iFacet);           
+        int64_t conn = ConnectIndex(2*iFacet);           
 
         if (fConnDuplicated.find(conn) == fConnDuplicated.end()){
             //not found, so allocate a new connect
-            auto pOrder = this->Mesh()->GetDefaultOrder();
+            auto pOrder = conOrders[iFacet];//this->Mesh()->GetDefaultOrder();
             int nshape = 0;//It is updated in the next loop
             int nstate = 1;//It can possibly change
             int64_t newConnect = this->Mesh()->AllocateNewConnect(nshape,nstate,pOrder);
@@ -198,6 +215,8 @@ void TPZCompElHDivDuplConnects<TSHAPE>::ActiveDuplConnects(std::map<int64_t,int6
             //found, so just set the proper index of the duplicated connect
             SetConnectIndex(2*iFacet+1,fConnDuplicated[conn]);
         }
+
+        
     }
 
     //Updates the number of shape functions and also the integration rule. 
@@ -218,6 +237,39 @@ void TPZCompElHDivDuplConnects<TSHAPE>::ActiveDuplConnects(std::map<int64_t,int6
             celHybrid->Mesh()->Block().Set(seqnum, nvar * nShapeF);
         }
     }
+}
+
+template<class TSHAPE>
+void TPZCompElHDivDuplConnects<TSHAPE>::InactiveDuplConnects(){
+
+    auto auxCon = this->fConnectIndexes;
+    
+    for (int i = 0; i < TSHAPE::NFacets; i++)
+    {
+        auxCon[i] = this->fConnectIndexes[2*i  ];
+        TPZConnect &c = this->Connect(2*i  );
+        TPZConnect &c2 = this->Connect(2*i+1);
+        int nshape = c2.NShape();
+        nshape++;
+        c.SetNShape(nshape);
+        int64_t seqnum = c.SequenceNumber();
+        int nvar = 1;
+        TPZMaterial * mat = this->Material();
+        if (mat) nvar = mat->NStateVariables();
+        c.SetNState(nvar);
+        this->Mesh()->Block().Set(seqnum, nvar * nshape);
+    }
+    auxCon[TSHAPE::NFacets] = this->fConnectIndexes[TSHAPE::NFacets*2];
+
+    // std::cout << "this->fConnectIndexes" << this->fConnectIndexes << std::endl;
+    this->fConnectIndexes = auxCon;
+    // std::cout << "this->fConnectIndexes" << this->fConnectIndexes << std::endl;
+    this->fConnectIndexes.Resize(TSHAPE::NFacets+1);
+    // std::cout << "this->fConnectIndexes" << this->fConnectIndexes << std::endl;
+    fDuplicationActive = false;
+
+    
+
 }
 
 #include "pzshapelinear.h"

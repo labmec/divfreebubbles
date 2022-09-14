@@ -47,7 +47,7 @@ public:
     void SetConnectIndex(int i, int64_t connectindex) override;    
 	
 	void ActiveDuplConnects(std::map<int64_t,int64_t> &fConnDuplicated);
-    void InactiveDuplConnects(){fDuplicationActive = false;}
+    void InactiveDuplConnects();
 };
 
 

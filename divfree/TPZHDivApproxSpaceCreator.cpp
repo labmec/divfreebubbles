@@ -510,6 +510,7 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh
         if(!gel) DebugStop();
         auto type = gel -> Type();
         auto matid = gel->MaterialId();
+        if(gel->HasSubElement()) continue;
 
         // We only create points here if we are hybridizing HDivFamily::EHDivConstant
         if (gel->Dimension() == 0  && fSpaceType == ENone){
@@ -619,7 +620,8 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
         auto type = gel -> Type();
         auto matid = gel->MaterialId();
         if (matid != fConfig.fDomain) continue;
-
+        if(gel->HasSubElement()) continue;
+        
         using namespace pzgeom;
         using namespace pzshape;
         
@@ -730,21 +732,18 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
     } 
 
     if (fSpaceType == EDuplicatedConnects){
-        // DuplicateInternalConnects(cmesh);
         for (int64_t i = 0; i < cmesh->NElements(); i++)
         {
             TPZCompElHDivDuplConnects<TPZShapeQuad> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cmesh->Element(i)); 
             TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cmesh->Element(i)); 
             if (celd) celd->ActiveDuplConnects(fConnDuplicated);
             if (celb) celb->ActiveDuplConnects(fConnDuplicated);
-        
         }
+        PartitionDependMatrix(cmesh);
     }
 
     cmesh->InitializeBlock(); 
     cmesh->ExpandSolution();
-    cmesh->ComputeNodElCon();
-    cmesh->LoadReferences();
 
     // When hybridization in active, the side orient needs to be set as one so there is no need to vector compatibility
     // between elements. What is needed is that the flux orientation be outward the element.
@@ -1089,11 +1088,154 @@ TPZCompMesh* TPZHDivApproxSpaceCreator<TVar>::CreateRotationCmesh(TPZGeoMesh *gm
 
 }
 
+template<class TVar>
+void TPZHDivApproxSpaceCreator<TVar>::PartitionDependMatrix(TPZCompMesh *cmesh) {
+
+    // Now that all edge connects have been duplicated, we need to expand the dependency matrix of a connect if it exists
+    // For this purpose we can use the map fConnDuplicated which relates the original connect and its corresponding duplicated one
+    // PS: This operation is performed outside the element duplication of connects because all connects have to be already duplicated 
+    // to the dependency matrix expansion to be possible
+    std::map<int64_t,bool> fDepMatTreated;
+    for (int64_t iCon = 0; iCon < cmesh->NConnects(); iCon++)
+    {
+        TPZConnect &c = cmesh->ConnectVec()[iCon];
+        if (fDepMatTreated[iCon]) continue;
+        if(c.HasDependency()){
+            // std::cout << "Need to partition the dependency matrix." << std::endl;
+            auto *ptr = c.FirstDepend();
+            
+            while(ptr) {
+                int64_t cIndex_old1 = iCon;
+                int64_t cIndex_old2 = ptr->fDepConnectIndex;
+                int64_t cIndex_new1 = fConnDuplicated[cIndex_old1];
+                int64_t cIndex_new2 = fConnDuplicated[cIndex_old2];
+
+                int rows = ptr->fDepMatrix.Rows();
+                int cols = ptr->fDepMatrix.Cols();
+
+                TPZFMatrix<REAL> DepMat00(1,1,0.), DepMat01(1,cols-1,0.), DepMat10(rows-1,1,0.), DepMat11(rows-1,cols-1,0.);
+                DepMat00(0,0) = ptr->fDepMatrix(0,0);
+                for (int i = 1; i < rows; i++){
+                    DepMat10(i-1,0) = ptr->fDepMatrix(i,0);
+                    for (int j = 1; j < cols; j++){
+                        if (i == 1) DepMat01(0,j-1) = ptr->fDepMatrix(0,j);
+                        DepMat11(i-1,j-1) = ptr->fDepMatrix(i,j);
+                    }                  
+                }
+                // std::cout << "K00 " << DepMat00 << std::endl;
+                // std::cout << "K01 " << DepMat01 << std::endl;
+                // std::cout << "K10 " << DepMat10 << std::endl;
+                // std::cout << "K11 " << DepMat11 << std::endl;
+                
+                c.RemoveDepend(cIndex_old1,cIndex_old2);
+                
+                fDepMatTreated[cIndex_old1] = true;
+                fDepMatTreated[cIndex_new1] = true;
+                
+                //Get the duplicated connect and set the dependency matrix for all
+                TPZConnect &c2 = cmesh->ConnectVec()[cIndex_new1];
+                c2.RemoveDepend();
+
+                //Dependency 00 - old1 + old2
+                TPZConnect::TPZDepend *depend00 = c.AddDependency(cIndex_old1, cIndex_old2, DepMat00, 0, 0, 1, 1);
+
+                //Dependency 01 - old1 + new2
+                TPZConnect::TPZDepend *depend01 = c.AddDependency(cIndex_old1, cIndex_new2, DepMat01, 0, 0, 1, cols-1);
+
+                //Dependency 10 - new1 + old2
+                TPZConnect::TPZDepend *depend10 = c2.AddDependency(cIndex_new1, cIndex_old2, DepMat10, 0, 0, rows-1, 1);
+
+                //Dependency 11 - new1 + new2
+                TPZConnect::TPZDepend *depend11 = c2.AddDependency(cIndex_new1, cIndex_new2, DepMat11, 0, 0, rows-1, cols-1);
+
+                ptr = ptr->fNext;
+            }
+        }
+    }
+
+}
+
+template<class TVar>
+void TPZHDivApproxSpaceCreator<TVar>::RegroupDependMatrix(TPZCompMesh *cmesh) {
+
+    // Now that we have disabled the duplicated connect, we also need to restore the corresponding dependency matrix
+    // We again use the map fConnDuplicated which relates the original connect and its corresponding duplicated one
+    std::map<int64_t,bool> fDepMatTreated;
+
+    for (int64_t iCon = 0; iCon < cmesh->NConnects(); iCon++){
+        TPZConnect &c = cmesh->ConnectVec()[iCon];
+
+        if (fDepMatTreated[iCon]) continue;
+
+        if(c.HasDependency()){
+            // std::cout << "Need to partition the dependency matrix." << std::endl;
+            auto *ptr = c.FirstDepend();
+            
+            while(ptr) {
+
+                int64_t cIndex_old1 = iCon;
+                int64_t cIndex_old2;
+                if (fConnDuplicated.find(ptr->fDepConnectIndex) != fConnDuplicated.end()){
+                    cIndex_old2 = fConnDuplicated[ptr->fDepConnectIndex];
+                } else {
+                    int64_t findVal = ptr->fDepConnectIndex;    
+                    auto it = find_if(fConnDuplicated.begin(), fConnDuplicated.end(), [findVal](const std::map<int64_t,int64_t>::value_type & p) {
+                        return p.second == findVal;
+                    });
+                    cIndex_old2 = it->first;
+                }
+
+                int64_t cIndex_new1 = fConnDuplicated[cIndex_old1];
+                int64_t cIndex_new2 = fConnDuplicated[cIndex_old2];
+
+                TPZConnect &c2 = cmesh->ConnectVec()[cIndex_new1];
+                auto *ptr2 = c2.FirstDepend();
+
+                auto dep00 = ptr->HasDepend(cIndex_old2);
+                auto dep01 = ptr->HasDepend(cIndex_new2);
+
+                auto dep10 = ptr2->HasDepend(cIndex_old2);
+                auto dep11 = ptr2->HasDepend(cIndex_new2);
+
+                if (!dep00 || !dep01 || !dep10 || !dep11) DebugStop();
+
+                int rows = dep00->fDepMatrix.Rows() + dep11->fDepMatrix.Rows();
+                int cols = dep00->fDepMatrix.Cols() + dep11->fDepMatrix.Cols();
+                
+                TPZFMatrix<REAL> DepMat(rows,cols,0.);
+
+                DepMat(0,0) = dep00->fDepMatrix(0,0);
+                for (int i = 1; i < rows; i++){
+                    DepMat(i,0) = dep10->fDepMatrix(i-1,0);
+                    for (int j = 1; j < cols; j++){
+                        if (i == 1) DepMat(0,j) = dep01->fDepMatrix(0,j-1);
+                        DepMat(i,j) = dep11->fDepMatrix(i-1,j-1);
+                    }                  
+                }
+                // std::cout << "K00 " << dep00->fDepMatrix << std::endl;
+                // std::cout << "K01 " << dep01->fDepMatrix << std::endl;
+                // std::cout << "K10 " << dep10->fDepMatrix << std::endl;
+                // std::cout << "K11 " << dep11->fDepMatrix << std::endl;
+                // std::cout << "K " << DepMat << std::endl;
+                
+                c.RemoveDepend();
+                c2.RemoveDepend();
+
+                //Only one dependency - old1 + old2
+                TPZConnect::TPZDepend *depend = c.AddDependency(cIndex_old1, cIndex_old2, DepMat, 0, 0, rows, cols);
+                               
+                fDepMatTreated[cIndex_old1] = true;
+                fDepMatTreated[cIndex_new1] = true;
+                
+                ptr = ptr->fNext;
+                ptr = ptr->fNext;
+            
+            }
+        }
+    }
 
 
-
-
-
+}
 
 
 

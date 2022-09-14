@@ -34,6 +34,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
         if(!gel) DebugStop();
         auto type = gel -> Type();
         auto matid = gel->MaterialId();
+        if(gel->HasSubElement()) continue;
 
         using namespace pzgeom;
         using namespace pzshape;
@@ -44,7 +45,7 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
 
         for (int side = 0; side < nsides; side++) {
 
-            if(gel->SideDimension(side) != dim-1) continue;// onlu edges for 2D and faces for 3D
+            if(gel->SideDimension(side) != dim-1) continue;// only edges for 2D and faces for 3D
             TPZGeoElSide geoside(gel,side);
             TPZGeoElSide neighbour = geoside.Neighbour();
 
@@ -738,8 +739,9 @@ void TPZKernelHdivHybridizer::CreateInterfaceDuplConnects(TPZMultiphysicsCompMes
         
         // Creates Multiphysics Interface element
         auto cel = new TPZCompElConstFluxHybrid(*cmesh,gelIntface);
-        cel->SetConnectIndex(0,celneigh.Element()->ConnectIndex(0));
         cel->SetConnectIndex(1,celside.Element()->ConnectIndex(0));
+        cel->SetConnectIndex(0,celneigh.Element()->ConnectIndex(0));
+        
         
         // std::cout << "Interface element connect = " << celneigh.Element()->ConnectIndex(0) << " " << celside.Element()->ConnectIndex(0) << std::endl;
 

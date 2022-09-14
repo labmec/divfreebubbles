@@ -10,6 +10,12 @@
 #include "TPZAnalyticSolution.h"
 #include "TPZHDivApproxSpaceCreator.h"
 
+class TPZCompMesh;
+class TPZGeoMesh;
+class TPZMultiphysicsCompMesh;
+class TPZCompEl;
+class TPZGeoElSide;
+
 class TPZMHMCompMeshCreator {
 
 public:
@@ -17,8 +23,15 @@ public:
     int fAvPresLevel;
     int fDistFluxLevel;
     bool fDuplConnects = false;
-    TPZHDivApproxSpaceCreator<double> *fHDivCreator;
+    // TPZHDivApproxSpaceCreator<double> *fHDivCreator;
+    std::map<int64_t,int64_t> fConnDuplicated;
     HDivFamily fHdivFamily;
+    TPZKernelHdivHybridizer fHybridizer; // Hybridizer for the dupl connects and iterative scheme
+
+    int fWrap = 15;
+    int fLagrange = 16;
+    int fInterface = 17;
+    int fPoint = 18;
 
 public:
     TPZMHMCompMeshCreator(TPZMHMGeoMeshCreator &mhm_gcreator, HDivFamily hdivfam = HDivFamily::EHDivStandard);
@@ -35,6 +48,8 @@ public:
 
     /// generate a mesh with constant elements
     TPZCompMesh *GenerateConstantMesh(TPZAutoPointer<TPZGeoMesh> &gmesh, int level);
+    
+    TPZCompMesh *GenerateLagranceCMeshDuplConnects(TPZAutoPointer<TPZGeoMesh> &gmesh, int level);
 
     void InsertMaterialObjects(TPZMultiphysicsCompMesh &cmesh,TPZAnalyticSolution &analytic);
 
@@ -45,7 +60,12 @@ public:
     void DuplicateConnects(){fDuplConnects = true;}
 
     void CreateFluxDuplicatedConnects(TPZCompMesh *cmesh);
-
+    void CreateSkeletonDuplicatedConnects(TPZCompMesh *cmesh);
+    
+    void UpdateElementPartition(TPZAutoPointer<TPZGeoMesh> &gmesh);
+    
+    void ActivateDuplicatedConnects(TPZCompMesh *cmesh);
+    void DisableDuplicatedConnects(TPZCompMesh *cmesh);
 };
 
 #endif
