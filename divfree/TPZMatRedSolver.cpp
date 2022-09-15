@@ -237,7 +237,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
                  ", Linear Flux = " << nEqLinr << std::endl;
 
     //Sets number of threads to be used by the solver
-    constexpr int nThreads{12};
+    constexpr int nThreads{0};
     
     // Create the RHS vectors
     TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
@@ -313,12 +313,12 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         out << nMaxIter << "\n";
         TPZFMatrix<STATE> result(nEqLinr+nEqHigh,1,0.);
 
-        matRed->UGlobal2(solution,result);
+        matRed->UGlobal(solution,result);
 
-        fAnalysis->Solution()=result;
+        fAnalysis->Solution() = result;
         fAnalysis->LoadSolution();
         // rhsFull.Print("Solution = ");
-                        
+        
         ///Calculating approximation error  
         TPZManVector<REAL,5> error;
 

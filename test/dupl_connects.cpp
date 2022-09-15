@@ -115,9 +115,9 @@ TEST_CASE("Hybridization test")
 {
     #define TEST
     // const int pOrder = GENERATE(9,10,11,12,13,14,15);
-    const int pOrder = GENERATE(1,2,3,4,5);
+    const int pOrder = GENERATE(1);
 
-    const int xdiv = 5;//GENERATE(50);
+    const int xdiv = 2;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
@@ -237,7 +237,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZKernelHdivUtils<STATE> util;
 
     // TPZManVector<TPZGeoEl *> subels;
-    // gmesh->Element(0)->Divide(subels);
+    // gmesh->Element(4)->Divide(subels);
 
     // Creates the approximation space generator
     TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh, approxSpace, hdivfamily);
@@ -254,7 +254,11 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     createSpace.SetMaterialIds(EWrap,EPressureHyb,EIntface,EPont,matBCHybrid,matBCAll);
     createSpace.SetPOrder(pOrder);
     createSpace.Initialize();
-    // util.PrintGeoMesh(gmesh);
+    //Prints gmesh mesh properties
+    std::string vtk_name = "geoMesh.vtk";
+    std::ofstream vtkfile(vtk_name.c_str());
+
+    TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
     int nMeshes = 3;
@@ -263,15 +267,15 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Flux mesh
     meshvector[0] = createSpace.CreateFluxCMesh();
-    // std::string fluxFile = "FluxCMesh";
-    // util.PrintCompMesh(meshvector[0],fluxFile);
+    std::string fluxFile = "FluxCMesh";
+    util.PrintCompMesh(meshvector[0],fluxFile);
     // std::cout << "Flux mesh \n";
     // util.PrintCMeshConnects(meshvector[0]);
     
     //Pressure mesh
     meshvector[1]  = createSpace.CreatePressureCMesh();
-    // std::string presFile = "PressureCMesh";
-    // util.PrintCompMesh(meshvector[1],presFile);
+    std::string presFile = "PressureCMesh";
+    util.PrintCompMesh(meshvector[1],presFile);
     // std::cout << "Pressure mesh \n";
     // util.PrintCMeshConnects(meshvector[1]);
 
@@ -353,14 +357,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // //Print results
     // {
     //     TPZSimpleTimer postProc("Post processing1");
-    //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
+        util.PrintResultsMultiphysics(meshvector,an,cmesh);
     // }
 
     {
         TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector, cmesh);
         TPZSimpleTimer postProc("Post processing2");
         const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{1};
+        constexpr int vtkRes{0};
     
 
         TPZVec<std::string> fields = {

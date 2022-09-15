@@ -114,7 +114,7 @@ TEST_CASE("Hybridization test")
     const int pOrder = 1;
     // const int pOrder = GENERATE(2,3,4,5);
 
-    const int xdiv = 2;//GENERATE(50);
+    const int xdiv = 4;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
@@ -149,7 +149,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,1};
+    if (DIM == 2) nDivs = {xdiv,xdiv};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -217,15 +217,14 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // creates the computational mesh representing the average displacement and rotation
     TPZCompMesh *cmesh_averagedisp = createSpace.CreateConstantCmesh(gmesh, 4);
 
-    // TPZManVector<TPZCompMesh*, 5> meshvector_HDiv(5);
-    TPZManVector<TPZCompMesh*, 6> meshvector_HDiv(6);
+    TPZManVector<TPZCompMesh*, 5> meshvector_HDiv(5);
     meshvector_HDiv[0] = cmesh_S_HDiv;
     meshvector_HDiv[1] = cmesh_U_HDiv;
     meshvector_HDiv[2] = cmesh_P_HDiv;
     meshvector_HDiv[3] = cmesh_distributedforce;
     meshvector_HDiv[4] = cmesh_averagedisp;
 
-    meshvector_HDiv[5] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
+    // meshvector_HDiv[5] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
 
     //Creates the multi-physics computational mesh
     auto *cmesh_m_HDiv = createSpace.CreateMultiphysicsCMeshElasticity(meshvector_HDiv,gAnalytic,matBCNeumann,matBCDirichlet);
@@ -277,8 +276,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Solve problem
     if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
-        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+        // TPZMatRedSolver<STATE> solver(&an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
+        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
         solver.Solve(rprint);
         // std::cout << "Time SOLVER = " << clock2 << std::endl;
 
@@ -303,9 +302,10 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // }
 
     {
+        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector_HDiv, cmesh_m_HDiv);
         TPZSimpleTimer postProc("Post processing2");
         const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{1};
+        constexpr int vtkRes{0};
     
 
         TPZVec<std::string> fields = {

@@ -610,9 +610,10 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
         // fK10.Print("fK10 ",std::cout);
         // l_ResFinal.Print("Intermediate product l_ResFinal",std::cout);
 #endif
-        l_Res.MultiplyByScalar(-alpha,l_Res);
-		fK10.Multiply(l_Res,z);
-		z += l_ResFinal;
+        fK10.MultAdd(l_Res,l_ResFinal,z,-alpha,alpha,opt);
+        // l_Res.MultiplyByScalar(-alpha,l_Res);
+		// fK10.Multiply(l_Res,z);
+		// z += l_ResFinal;
 #ifdef PZ_LOG
 
         // z.Print("Final result z ",std::cout);

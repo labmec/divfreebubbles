@@ -145,7 +145,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{10};
+    constexpr int nThreads{0};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
@@ -257,7 +257,7 @@ void TPZKernelHdivUtils<TVar>::PrintResultsMultiphysics(TPZVec<TPZCompMesh *> &m
     vecnames[0]= "Flux";
     vecnames[1]= "ExactFlux";
 
-    constexpr int resolution{2};
+    constexpr int resolution{0};
     std::string plotfile = "solutionMDFB.vtk";
     an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
     an.PostProcess(resolution,cmesh->Dimension());

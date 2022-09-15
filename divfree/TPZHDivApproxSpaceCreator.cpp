@@ -187,7 +187,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateFluxCMesh()
     }// end if hybridization
 
     cmesh->InitializeBlock();
-    cmesh->ExpandSolution();
+
     return cmesh;
 }
 
@@ -278,8 +278,42 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
             newnod.SetLagrangeMultiplier(1);
         }
     }
+
+
+
     
-    cmesh->ExpandSolution();
+    
+
+    // if(fSpaceType == EDuplicatedConnects){
+    //     int64_t nconnects_i = cmesh->NConnects();
+    //     // Sets matid to BC geometric elements
+    //     std::set<int> matIdVec2 = fConfig.fBCHybridMatId;
+    //     matIdVec2.insert(fConfig.fLagrange);
+    //     for (std::set<int>::iterator it=matIdVec2.begin(); it!=matIdVec2.end(); ++it)
+    //     {
+    //         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
+    //         mat->SetDimension(fDimension-1);
+    //         cmesh->InsertMaterialObject(mat);
+    //         mat->SetBigNumber(fBigNumber);
+    //         if(mixedElasticity) mat->SetNStateVariables(fDimension);
+    //     }
+
+
+    //     cmesh->SetDefaultOrder(0);
+    //     cmesh->SetDimModel(fDimension-1);
+    //     cmesh->SetAllCreateFunctionsDiscontinuous();
+    //     cmesh->AutoBuild(matIdVec2);
+        
+
+    //     for(int64_t i = nconnects_i; i<cmesh->NConnects(); i++)
+    //     {
+    //         TPZConnect &newnod = cmesh->ConnectVec()[i];
+    //         newnod.SetLagrangeMultiplier(10);
+    //     }
+
+    // }
+    
+    cmesh->InitializeBlock();
     return cmesh;
 }
 
@@ -599,7 +633,6 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivKernel(TPZCompMesh
     } 
 
     cmesh->InitializeBlock(); 
-    cmesh->ExpandSolution();
     cmesh->ComputeNodElCon();
     cmesh->LoadReferences();
 
@@ -740,10 +773,18 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
             if (celb) celb->ActiveDuplConnects(fConnDuplicated);
         }
         PartitionDependMatrix(cmesh);
+        // for (int64_t i = 0; i < cmesh->NElements(); i++)
+        // {
+        //     TPZCompElHDivDuplConnects<TPZShapeQuad> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cmesh->Element(i)); 
+        //     TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cmesh->Element(i)); 
+        //     if (celd) celd->InactiveDuplConnects();
+        //     if (celb) celb->InactiveDuplConnects();
+        // }
+        // RegroupDependMatrix(cmesh);
+        
     }
 
     cmesh->InitializeBlock(); 
-    cmesh->ExpandSolution();
 
     // When hybridization in active, the side orient needs to be set as one so there is no need to vector compatibility
     // between elements. What is needed is that the flux orientation be outward the element.
@@ -786,7 +827,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDiv
     for (std::set<int>::iterator it=matIdVec.begin(); it!=matIdVec.end(); ++it)
     {
         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
-        mat->SetDimension(1);
+        mat->SetDimension(fDimension-1);
         cmesh->InsertMaterialObject(mat);
         mat->SetBigNumber(fBigNumber);
         if(mixedElasticity) mat->SetNStateVariables(fDimension);
@@ -817,7 +858,7 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMeshHybridizedHDiv
         newnod.SetLagrangeMultiplier(10);
     }
     cmesh->InitializeBlock();
-    cmesh->ExpandSolution();
+
     return cmesh;
 }
 
@@ -909,9 +950,7 @@ void TPZHDivApproxSpaceCreator<TVar>::DuplicateInternalConnects(TPZCompMesh *cme
         }
     }
     // util->PrintCMeshConnects(cmesh);
-    cmesh->InitializeBlock();
-    cmesh->ExpandSolution();
-    
+    cmesh->InitializeBlock();    
 }
 
 /**
@@ -990,7 +1029,6 @@ TPZCompMesh *TPZHDivApproxSpaceCreator<TVar>::CreateConstantCmesh(TPZGeoMesh *Gm
             newnod.SetLagrangeMultiplier(lagLevel);
         }
         Cmesh->InitializeBlock();
-        Cmesh->ExpandSolution();
     }
     return Cmesh;
 }
@@ -1008,12 +1046,40 @@ void TPZHDivApproxSpaceCreator<TVar>::ChangeInternalOrder(TPZCompMesh *cmesh, in
             continue;
         }
         int nc = cel->NConnects();
+        int64_t conIndex = cel->ConnectIndex(nc-1);
         TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
         if (!intel) DebugStop();
 
-        intel->ForceSideOrder(gel->NSides() - 1, pOrder);
+        // intel->ForceSideOrder(gel->NSides() - 1, pOrder);
+        TPZConnect &c = cmesh->ConnectVec()[conIndex];
+        int64_t index;
+        c.SetOrder(pOrder,index);
+        int64_t seqnum = c.SequenceNumber();
+        int nvar = 1;
+        TPZMaterial * mat = cel->Material();
+        if (mat) nvar = mat->NStateVariables();
+        int nshape = intel->NConnectShapeF(nc-1,pOrder);
+        c.SetNShape(nshape);
+        c.SetNState(nvar);
+        cmesh->Block().Set(seqnum, nvar * nshape);
+
+
+        // int64_t seqnum = c.SequenceNumber();
+        // int nvar = 1;
+        // TPZMaterial * mat =this-> Material();
+        // if(mat) nvar = mat->NStateVariables();
+        // int nshape = NConnectShapeF(connectaux,order);
+        // c.SetNShape(nshape);
+        // c.SetNState(nvar);
+        // this-> Mesh()->Block().Set(seqnum,nshape*nvar);
+        // if(connectaux == NConnects()-1)
+        // {
+            cel->SetIntegrationRule(2*pOrder);
+        // }
+
+
     }
-    cmesh->ExpandSolution();
+    cmesh->InitializeBlock();
 }
 
 template<class TVar>
@@ -1082,8 +1148,6 @@ TPZCompMesh* TPZHDivApproxSpaceCreator<TVar>::CreateRotationCmesh(TPZGeoMesh *gm
         disc->SetScale(1./elementdim);
     }
     cmesh->InitializeBlock();
-    cmesh->CleanUpUnconnectedNodes();
-    cmesh->ExpandSolution();
     return cmesh;
 
 }

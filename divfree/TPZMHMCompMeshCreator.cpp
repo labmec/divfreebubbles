@@ -210,7 +210,6 @@ TPZCompMesh * TPZMHMCompMeshCreator::GeneratePressureMesh(TPZAutoPointer<TPZGeoM
     //         newnod.SetLagrangeMultiplier(10);
     //     }
     //     cmesh->InitializeBlock();
-    //     cmesh->ExpandSolution();
     // }
     
 //    std::set<int64_t> partitionprocessed;
@@ -492,7 +491,6 @@ TPZCompMesh * TPZMHMCompMeshCreator::GenerateLagranceCMeshDuplConnects(TPZAutoPo
         newnod.SetLagrangeMultiplier(level);
     }
     cmesh->InitializeBlock();
-    cmesh->ExpandSolution();
 
     return cmesh;
 }
@@ -585,8 +583,6 @@ void TPZMHMCompMeshCreator::ActivateDuplicatedConnects(TPZCompMesh *cmesh){
     }
 
     cmesh->InitializeBlock(); 
-    cmesh->ExpandSolution();
-
 }
 
 
@@ -678,7 +674,6 @@ void TPZMHMCompMeshCreator::DisableDuplicatedConnects(TPZCompMesh *cmesh){
     }
 
     cmesh->InitializeBlock(); 
-    cmesh->ExpandSolution();
 }
 
 void TPZMHMCompMeshCreator::CreateSkeletonDuplicatedConnects(TPZCompMesh *cmesh){

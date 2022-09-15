@@ -299,8 +299,7 @@ void TPZMixedElasticityND::Contribute_3spaces(const TPZVec<TPZMaterialDataT<STAT
     TPZFMatrix<REAL> &dphiU = datavec[1].dphix;
     // P
     TPZFMatrix<REAL> &phiP = datavec[2].phi;
-
-    std::cout << "defDir = " << datavec[0].fDeformedDirections << std::endl;
+    
     TElasticityAtPoint elast(fE_const,fnu_const);
     if(fElasticity)
     {
@@ -330,7 +329,8 @@ void TPZMixedElasticityND::Contribute_3spaces(const TPZVec<TPZMaterialDataT<STAT
     const int firstequation_S = 0;
     const int firstequation_U = firstequation_S + nshapeS*fDimension;
     const int firstequation_P = firstequation_U + nshapeU*fDimension;
-    
+
+
     // number of asymetric tensors for each shape function
     int nrotations = 1;
     if(fDimension == 3) nrotations = 3;
@@ -623,10 +623,11 @@ void TPZMixedElasticityND::Contribute_5spaces(const TPZVec<TPZMaterialDataT<STAT
     const int firstequation_U = firstequation_S + nshapeS*fDimension;
     const int firstequation_P = firstequation_U + nshapeU*fDimension;
     int firstequation_FRB = firstequation_P + nshapeP*nrotations;
-    std::cout << "EK = " << ek << std::endl;
+    
+    
     ContributeRigidBodyMode(datavec, weight, ek, ef, firstequation_FRB, 3);
-    std::cout << "EK2 = " << ek << std::endl;
-    if(nspaces == 5 ||nspaces == 6) return;
+    
+    if(nspaces == 5) return;
     if(fDimension == 2)
     {
         firstequation_FRB += 3;
@@ -641,15 +642,12 @@ void TPZMixedElasticityND::Contribute_5spaces(const TPZVec<TPZMaterialDataT<STAT
     // contribute a distributed flux and average displacement/rotation
 void TPZMixedElasticityND::ContributeRigidBodyMode(const TPZVec<TPZMaterialDataT<STATE>> &datavec, REAL weight, TPZFMatrix<STATE> &ek, TPZFMatrix<STATE> &ef, int first_eq, int RB_space)
 {
-    int nspaces = 5;//datavec.size();Jeferson
-    RB_space=3;
+    int nspaces = datavec.size();
     // Distributed forces
-    // TPZFMatrix<REAL>& phiFRB = datavec[RB_space].phi;
-    TPZFMatrix<REAL>& phiFRB = datavec[3].phi;//Jeferson
+    TPZFMatrix<REAL>& phiFRB = datavec[RB_space].phi;
     const int nshapeFRB = phiFRB.Rows();
     // Rigid body displacements
-    // TPZFMatrix<REAL>& phiURB = datavec[RB_space+1].phi;Jeferson
-    TPZFMatrix<REAL>& phiURB = datavec[4].phi;
+    TPZFMatrix<REAL>& phiURB = datavec[RB_space+1].phi;
     const int nshapeURB = phiURB.Rows();
     // U
     TPZFMatrix<REAL> &phiU = datavec[1].phi;
@@ -670,13 +668,13 @@ void TPZMixedElasticityND::ContributeRigidBodyMode(const TPZVec<TPZMaterialDataT
     if(RB_space == nspaces-2)
     {
         bool sizetest = ek.Cols() == firstequation_FRB + 2*ncomponents;
-        // if(!sizetest) DebugStop();JEFERSON
+        if(!sizetest) DebugStop();
     }
     // get distance of integration point to center of element
 
-    TPZManVector<REAL,3> xcenter = datavec[3].XCenter;
+    TPZManVector<REAL,3> xcenter = datavec[RB_space].XCenter;
     TPZManVector<REAL,3> x = datavec[0].x;
-    TPZManVector<REAL,3> xparam = datavec[3].xParametric;
+    TPZManVector<REAL,3> xparam = datavec[RB_space].xParametric;
     TPZManVector<REAL,3> delx(3,0.);
                             delx[0] = datavec[0].x[0] - xcenter[0];
                             delx[1] = datavec[0].x[1] - xcenter[1];
@@ -847,7 +845,6 @@ void TPZMixedElasticityND::Contribute(const TPZVec<TPZMaterialDataT<STATE>> &dat
             Contribute_3spaces(datavec, weight, ek, ef);
             break;
         case 5:
-        case 6:
         case 7:
             Contribute_5spaces(datavec, weight, ek, ef);
             break;

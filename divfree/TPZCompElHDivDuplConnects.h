@@ -7,7 +7,7 @@
 #define PZELCHDIV_DUPL_CONNECTS
 
 #include "pzelchdiv.h"
-
+#include "TPZMaterialData.h"
 /**
  * @brief This class implements a "generic" computational element to HDiv scope. \ref CompElement "Computational Element"
  * @addtogroup CompElement
@@ -51,6 +51,10 @@ public:
     void ActiveDuplConnects(std::map<int64_t,int64_t> &fConnDuplicated);
     
     void InactiveDuplConnects();
+
+    /** @brief Initialize a material data and its attributes based on element dimension, number
+	 * of state variables and material definitions */
+	virtual void InitMaterialData(TPZMaterialData &data) override;
 
 };
 

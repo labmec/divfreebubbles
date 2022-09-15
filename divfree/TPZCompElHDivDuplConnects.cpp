@@ -116,6 +116,83 @@ int TPZCompElHDivDuplConnects<TSHAPE>::NConnectShapeF(int connect, int order)con
     return -1;
  }
 
+template<class TSHAPE>
+void TPZCompElHDivDuplConnects<TSHAPE>::InitMaterialData(TPZMaterialData &data)
+{
+
+    TPZManVector<int64_t,TSHAPE::NCornerNodes> ids(TSHAPE::NCornerNodes);
+    TPZManVector<int,TSHAPE::NSides> orders(TSHAPE::NFacets+1,0);
+    TPZManVector<int,TSHAPE::NFacets> sideorient(TSHAPE::NFacets,0);
+    TPZGeoEl *gel = this->Reference();
+    for(int i=0; i<TSHAPE::NCornerNodes; i++) ids[i] = gel->NodePtr(i)->Id();
+    if (fDuplicationActive){
+        for(int i=0; i<TSHAPE::NFacets; i++) orders[i] = this->Connect(2*i).Order();
+        orders[TSHAPE::NFacets] = this->Connect(2*TSHAPE::NFacets).Order();
+    } else {
+        for(int i=0; i<TSHAPE::NFacets+1; i++) orders[i] = this->Connect(i).Order();
+    }
+    for(int i=0; i<TSHAPE::NFacets; i++) sideorient[i] = this->SideOrient(i);
+    TPZShapeData &shapedata = data;
+    int nvec_shape = 0;
+
+    switch (this->fhdivfam)
+    {
+    case HDivFamily::EHDivStandard:
+        TPZShapeHDiv<TSHAPE>::Initialize(ids, orders, sideorient, data);
+        nvec_shape = TPZShapeHDiv<TSHAPE>::NShapeF(shapedata);
+        break;
+    case HDivFamily::EHDivConstant:
+        TPZShapeHDivConstant<TSHAPE>::Initialize(ids, orders, sideorient, data);
+        nvec_shape = this->NShapeF();
+        break;
+    
+    default:
+        break;
+    }
+
+//    int nshapescalar = shapedata.fPhi.Rows();
+//    data.dphi.Resize(TSHAPE::Dimension, nshapescalar);
+//    data.dphix.Resize(TSHAPE::Dimension, nshapescalar);
+    // Trick to make actual hdiv materials work.
+    // phi are all = 1. VecShapeIndex is 1 to 1 with its size the number of vec shapes
+    
+    data.phi.Resize(nvec_shape,1);
+    data.fVecShapeIndex.Resize(nvec_shape);
+    for (int ish = 0; ish<nvec_shape; ish++) {
+        data.phi(ish,0) = 1.;
+        data.fVecShapeIndex[ish] = {ish,ish};
+    }
+    
+#ifdef PZ_LOG
+        if(logger.isDebugEnabled())
+		{
+				LOGPZ_DEBUG(logger,"Initializing MaterialData of TPZCompElHDiv")
+		}
+#endif
+
+    data.fShapeType = TPZMaterialData::EVecShape;
+
+#ifdef PZ_LOG
+    if(logger.isDebugEnabled())
+	{
+		std::stringstream sout;
+		data.fDeformedDirections.Print("Normal vector ", sout,EMathematicaInput);
+        for (int i=0; i<TSHAPE::NCornerNodes; i++) {
+            sout << "Id[" << i << "] = " << this->Reference()->NodePtr(i)->Id() << " ";
+        }
+
+        sout << std::endl;
+		sout << "NormalVector/Shape indexes \n";
+        for (int i=0; i<data.fVecShapeIndex.size(); i++) {
+            sout << i << '|' << data.fVecShapeIndex[i] << " ";
+        }
+        sout << std::endl;
+		LOGPZ_DEBUG(logger,sout.str())
+	}
+#endif
+
+}
+
 
 template<class TSHAPE>
 int64_t TPZCompElHDivDuplConnects<TSHAPE>::ConnectIndex(int con) const{
