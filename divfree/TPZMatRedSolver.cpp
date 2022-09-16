@@ -318,7 +318,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         fAnalysis->Solution() = result;
         fAnalysis->LoadSolution();
         // rhsFull.Print("Solution = ");
-        
+        // std::cout << "Result = " << result << std::endl;
+        // std::cout << "solution = " << solution << std::endl;
         ///Calculating approximation error  
         TPZManVector<REAL,5> error;
 

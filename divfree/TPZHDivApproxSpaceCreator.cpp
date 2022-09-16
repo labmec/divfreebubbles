@@ -284,34 +284,34 @@ TPZCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreatePressureCMesh()
     
     
 
-    // if(fSpaceType == EDuplicatedConnects){
-    //     int64_t nconnects_i = cmesh->NConnects();
-    //     // Sets matid to BC geometric elements
-    //     std::set<int> matIdVec2 = fConfig.fBCHybridMatId;
-    //     matIdVec2.insert(fConfig.fLagrange);
-    //     for (std::set<int>::iterator it=matIdVec2.begin(); it!=matIdVec2.end(); ++it)
-    //     {
-    //         TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
-    //         mat->SetDimension(fDimension-1);
-    //         cmesh->InsertMaterialObject(mat);
-    //         mat->SetBigNumber(fBigNumber);
-    //         if(mixedElasticity) mat->SetNStateVariables(fDimension);
-    //     }
+    if(fSpaceType == EDuplicatedConnects){
+        int64_t nconnects_i = cmesh->NConnects();
+        // Sets matid to BC geometric elements
+        std::set<int> matIdVec2 = fConfig.fBCHybridMatId;
+        matIdVec2.insert(fConfig.fLagrange);
+        for (std::set<int>::iterator it=matIdVec2.begin(); it!=matIdVec2.end(); ++it)
+        {
+            TPZNullMaterial<> *mat = new TPZNullMaterial<>(*it);
+            mat->SetDimension(fDimension-1);
+            cmesh->InsertMaterialObject(mat);
+            mat->SetBigNumber(fBigNumber);
+            if(mixedElasticity) mat->SetNStateVariables(fDimension);
+        }
 
 
-    //     cmesh->SetDefaultOrder(0);
-    //     cmesh->SetDimModel(fDimension-1);
-    //     cmesh->SetAllCreateFunctionsDiscontinuous();
-    //     cmesh->AutoBuild(matIdVec2);
+        cmesh->SetDefaultOrder(0);
+        cmesh->SetDimModel(fDimension-1);
+        cmesh->SetAllCreateFunctionsDiscontinuous();
+        cmesh->AutoBuild(matIdVec2);
         
 
-    //     for(int64_t i = nconnects_i; i<cmesh->NConnects(); i++)
-    //     {
-    //         TPZConnect &newnod = cmesh->ConnectVec()[i];
-    //         newnod.SetLagrangeMultiplier(10);
-    //     }
+        for(int64_t i = nconnects_i; i<cmesh->NConnects(); i++)
+        {
+            TPZConnect &newnod = cmesh->ConnectVec()[i];
+            newnod.SetLagrangeMultiplier(10);
+        }
 
-    // }
+    }
     
     cmesh->InitializeBlock();
     return cmesh;
@@ -467,13 +467,13 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
         cmesh->InsertMaterialObject(BCond);
     }
 
-    auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,1);
+    auto *matL2 = new TPZL2ProjectionCS<>(fConfig.fPoint,0,fDimension);
     cmesh->InsertMaterialObject(matL2);
 
-    auto * nullmat2 = new TPZNullMaterialCS<>(fConfig.fWrap,fDimension-1,1);
+    auto * nullmat2 = new TPZNullMaterialCS<>(fConfig.fWrap,fDimension-1,fDimension);
     cmesh->InsertMaterialObject(nullmat2);
 
-    auto * nullmat3 = new TPZNullMaterialCS<>(fConfig.fLagrange,fDimension-1,1);
+    auto * nullmat3 = new TPZNullMaterialCS<>(fConfig.fLagrange,fDimension-1,fDimension);
     cmesh->InsertMaterialObject(nullmat3);
 
     TPZManVector<int> active(meshvector.size(),1);
@@ -488,7 +488,7 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
     cmesh->LoadReferences();
     cmesh->CleanUpUnconnectedNodes(); 
 
-    auto mat3 = new TPZLagrangeMultiplierCS<STATE>(fConfig.fInterface, fDimension-1);
+    auto mat3 = new TPZLagrangeMultiplierCS<STATE>(fConfig.fInterface, fDimension-1, fDimension);
     cmesh->InsertMaterialObject(mat3);
 
     auto matIdBCHyb = fConfig.fBCHybridMatId;
@@ -767,11 +767,54 @@ void TPZHDivApproxSpaceCreator<TVar>::CreateFluxHybridezedHDivConstant(TPZCompMe
     if (fSpaceType == EDuplicatedConnects){
         for (int64_t i = 0; i < cmesh->NElements(); i++)
         {
-            TPZCompElHDivDuplConnects<TPZShapeQuad> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cmesh->Element(i)); 
-            TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cmesh->Element(i)); 
-            if (celd) celd->ActiveDuplConnects(fConnDuplicated);
-            if (celb) celb->ActiveDuplConnects(fConnDuplicated);
+            auto celType = cmesh->Element(i)->Type();
+            switch (celType)
+            {
+            case EOned:
+                {
+                    TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeLinear> *> (cmesh->Element(i)); 
+                    if (celb) celb->ActiveDuplConnects(fConnDuplicated);
+                }
+                break;
+
+            case EQuadrilateral:
+                {
+                    TPZCompElHDivDuplConnects<TPZShapeQuad> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeQuad> *> (cmesh->Element(i)); 
+                    if (celd) celd->ActiveDuplConnects(fConnDuplicated);
+                    TPZCompElHDivDuplConnectsBound<TPZShapeQuad> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeQuad> *> (cmesh->Element(i)); 
+                    if (celb) celb->ActiveDuplConnects(fConnDuplicated);
+                }
+                break;
+
+            case ETriangle:
+                {
+                    TPZCompElHDivDuplConnects<TPZShapeTriang> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeTriang> *> (cmesh->Element(i)); 
+                    if (celd) celd->ActiveDuplConnects(fConnDuplicated);
+                    TPZCompElHDivDuplConnectsBound<TPZShapeTriang> *celb = dynamic_cast<TPZCompElHDivDuplConnectsBound<TPZShapeTriang> *> (cmesh->Element(i)); 
+                    if (celb) celb->ActiveDuplConnects(fConnDuplicated);
+                }
+                break;
+
+            case ECube:
+                {
+                    TPZCompElHDivDuplConnects<TPZShapeCube> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeCube> *> (cmesh->Element(i)); 
+                    if (celd) celd->ActiveDuplConnects(fConnDuplicated);
+                }
+                break;
+
+            case ETetraedro:
+                {
+                    TPZCompElHDivDuplConnects<TPZShapeTetra> *celd = dynamic_cast<TPZCompElHDivDuplConnects<TPZShapeTetra> *> (cmesh->Element(i)); 
+                    if (celd) celd->ActiveDuplConnects(fConnDuplicated);
+                }
+                break;
+
+            default:
+                DebugStop();
+                break;
+            }
         }
+
         PartitionDependMatrix(cmesh);
         // for (int64_t i = 0; i < cmesh->NElements(); i++)
         // {

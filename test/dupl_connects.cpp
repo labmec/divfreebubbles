@@ -218,8 +218,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,xdiv};
-    if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
+    if (DIM == 2) nDivs = {xdiv,1};
+    if (DIM == 3) nDivs = {xdiv,1,1};
     
     // Creates/import a geometric mesh
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
@@ -261,7 +261,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
 
     //In the case of hybridized HDivConstant, we need 2 pressure meshes, so a total of 3. Otherwise, only 2 CompMeshes are needed 
-    int nMeshes = 3;
+    int nMeshes = 2;
     TPZVec<TPZCompMesh *> meshvector;
     meshvector.Resize(nMeshes);
 
@@ -279,7 +279,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::cout << "Pressure mesh \n";
     // util.PrintCMeshConnects(meshvector[1]);
 
-    meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
+    // meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
 
     // util.PrintCMeshConnects(meshvector[2]);
     

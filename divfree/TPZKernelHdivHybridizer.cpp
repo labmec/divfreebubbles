@@ -52,7 +52,8 @@ void TPZKernelHdivHybridizer::CreateWrapElements(TPZGeoMesh *gmesh, std::set<int
             if (domainHyb)
             {
                 //If the element side is not in the boundary and its neighbour is a domain element
-                if (!geoside.HasNeighbour(matIdBC) && neighbour.Element()->MaterialId() == fEDomain)
+                // if (!geoside.HasNeighbour(matIdBC) && neighbour.Element()->MaterialId() == fEDomain)
+                if (neighbour.Element()->MaterialId() == fEDomain)
                 {
                     TPZGeoElBC gelbcWrap(geoside, fEWrap);
                                 

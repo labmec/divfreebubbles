@@ -145,7 +145,7 @@ template <class TVar>
 void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{12};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   

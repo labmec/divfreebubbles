@@ -64,8 +64,17 @@ template<class TVar>
 void TPZCompElConstFluxHybrid::CalcStiffInternal(TPZElementMatrixT<TVar> &ek,TPZElementMatrixT<TVar> &ef){
     InitializeElementMatrix(ek, ef);
 
-    ek.fMat(0,1) = TVar(fSideOrient);
-    ek.fMat(1,0) = TVar(fSideOrient);
+    // ek.fMat(0,1) = TVar(fSideOrient);
+    // ek.fMat(1,0) = TVar(fSideOrient);
+
+    int fSize = ek.fMat.Rows();
+    int nvar = fSize/2;
+    for (int i = 0; i < nvar; i++){
+        ek.fMat(i,nvar + i) = TVar(fSideOrient);
+        ek.fMat(nvar + i,i) = TVar(fSideOrient);
+    }
+    // std::cout << "FmAT = " << ek.fMat << std::endl;
+    
     ef.fMat.Zero();
 }
 
