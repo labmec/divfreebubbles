@@ -237,7 +237,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
                  ", Linear Flux = " << nEqLinr << std::endl;
 
     //Sets number of threads to be used by the solver
-    constexpr int nThreads{0};
+    constexpr int nThreads{20};
     
     // Create the RHS vectors
     TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
@@ -292,7 +292,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         
         // std::cout << "ITER = " << iter << std::endl;
         TPZFMatrix<STATE> residual(nMaxIter,1,0.);
-        REAL tol = 1.e-10;
+        REAL tol = 1.e-8;
         TPZFMatrix<STATE> solution(nEqHigh,1,0.);
         clock.start();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
