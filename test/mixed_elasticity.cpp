@@ -111,11 +111,11 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
 TEST_CASE("Hybridization test")
 {
-    const int pOrder = 1;
-    // const int pOrder = GENERATE(2,3,4,5);
+    // const int pOrder = 1;
+    const int pOrder = GENERATE(1,2,3,4,5);
 
-    const int xdiv = 5;//GENERATE(50);
-    // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
+    // const int xdiv = 10;//GENERATE(50);
+    const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
@@ -128,9 +128,9 @@ TEST_CASE("Hybridization test")
     TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);
     
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace);
-    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
+    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam,approxSpace); 
-    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
+    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam,approxSpace);
 }
 
 
@@ -183,9 +183,9 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     if(DIM == 2)
     {
         TElasticity2DAnalytic *elas = new TElasticity2DAnalytic;
-        elas->gE = 1;
-        elas->gPoisson = 0.0;
-        elas->fProblemType = TElasticity2DAnalytic::EDispx;
+        elas->gE = 1.e3;
+        elas->gPoisson = 0.3;
+        elas->fProblemType = TElasticity2DAnalytic::EThiago;
         elas->fPlaneStress = 0;
         gAnalytic = elas;
     }
@@ -194,7 +194,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         TElasticity3DAnalytic *elas = new TElasticity3DAnalytic;
         elas->fE = 1.;//206.8150271873455;
         elas->fPoisson = 0.0;//0.3040039545229857;
-        elas->fProblemType = TElasticity3DAnalytic::EYotov;
+        elas->fProblemType = TElasticity3DAnalytic::EDispx;
         gAnalytic = elas;
     }
 
@@ -304,28 +304,28 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
     // }
 
-    {
+    // {
         
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector_HDiv, cmesh_m_HDiv);
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{0};
+    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector_HDiv, cmesh_m_HDiv);
+    //     TPZSimpleTimer postProc("Post processing2");
+    //     const std::string plotfile = "myfile";//sem o .vtk no final
+    //     constexpr int vtkRes{0};
     
 
-        TPZVec<std::string> fields = {
-        // "ExactDisplacement",
-        // "ExactStress",
-        "Displacement",
-        "SigmaX",
-        "SigmaY",
-        "TauXY"
-        };
-        auto vtk = TPZVTKGenerator(cmesh_m_HDiv, fields, plotfile, vtkRes);
+    //     TPZVec<std::string> fields = {
+    //     // "ExactDisplacement",
+    //     // "ExactStress",
+    //     "Displacement",
+    //     "SigmaX",
+    //     "SigmaY",
+    //     "TauXY"
+    //     };
+    //     auto vtk = TPZVTKGenerator(cmesh_m_HDiv, fields, plotfile, vtkRes);
 
-        vtk.Do();
-        // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
+    //     vtk.Do();
+    //     // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
         
-    }
+    // }
     // //vamos supor que vc atualiza a solucao, roda de novo, sei la
     // vtk.Do();
 
@@ -398,7 +398,7 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
         DebugStop();
     }
 
-    TPZManVector<REAL,3> minX = {0,0,0};
+    TPZManVector<REAL,3> minX = {-1,-1,-1};
     TPZManVector<REAL,3> maxX = {1,1,1};
     int nMats = 2*dim+1;
 
