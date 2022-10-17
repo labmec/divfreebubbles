@@ -13,6 +13,7 @@
 #include "TPZLinearAnalysis.h"
 #include <TPZVTKGeoMesh.h>
 #include "TPZHCurlEquationFilter.h"
+#include "TPZMultiphysicsCompMesh.h"
 //#include "pzgeoelrefless.h"
 
 template<class T>
@@ -23,7 +24,6 @@ class TPZGeoMesh;
 class TPZMaterial;
 class TPZCompElSide;
 class TPZInterpolatedElement;
-class TPZMultiphysicsCompMesh;
 class TPZGeoEl;
 
 template<class T, int N>

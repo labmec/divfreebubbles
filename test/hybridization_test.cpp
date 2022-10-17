@@ -103,13 +103,13 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 TEST_CASE("Hybridization test")
 {
     const int xdiv = GENERATE(1);
-    const int pOrder = GENERATE(1);
+    const int pOrder = GENERATE(2);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
-                                                                    //    TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);//,
+    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = GENERATE(//TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);
+                                                                       TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects);//,
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::EFullHybrid);//,
                                                                     //    TPZHDivApproxSpaceCreator<STATE>::ESemiHybrid);
     
@@ -221,21 +221,21 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     meshvector[0] = createSpace.CreateFluxCMesh();
     std::string fluxFile = "FluxCMesh";
     util.PrintCompMesh(meshvector[0],fluxFile);
-    // std::cout << "Flux mesh \n";
-    // util.PrintCMeshConnects(meshvector[0]);
+    std::cout << "Flux mesh \n";
+    util.PrintCMeshConnects(meshvector[0]);
     
     //Pressure mesh
     meshvector[1]  = createSpace.CreatePressureCMesh();
     std::string presFile = "PressureCMesh";
     util.PrintCompMesh(meshvector[1],presFile);
-    // std::cout << "Pressure mesh \n";
-    // util.PrintCMeshConnects(meshvector[1]);
+    std::cout << "Pressure mesh \n";
+    util.PrintCMeshConnects(meshvector[1]);
 
     if (approxSpace != TPZHDivApproxSpaceCreator<STATE>::ENone && hdivfamily != HDivFamily::EHDivKernel) {
         meshvector[2] = createSpace.CreatePressureCMeshHybridizedHDivConstant();
         util.PrintCompMesh(meshvector[1],presFile);
-        // std::cout << "Pressure mesh2 \n";
-        // util.PrintCMeshConnects(meshvector[2]);
+        std::cout << "Pressure mesh2 \n";
+        util.PrintCMeshConnects(meshvector[2]);
     }
     
     //Multiphysics mesh
@@ -243,8 +243,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // TPZCompMeshTools::CreatedCondensedElements(cmesh,true,false);
     std::string multFile = "MultiCMesh";
     util.PrintCompMesh(cmesh,multFile);
-    // std::cout << "Multi mesh \n";
-    // util.PrintCMeshConnects(cmesh);
+    std::cout << "Multi mesh \n";
+    util.PrintCMeshConnects(cmesh);
 
     // Number of equations without condense elements
     int nEquationsFull = cmesh->NEquations();
@@ -259,7 +259,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Number of condensed problem.
     int nEquationsCondensed = cmesh->NEquations();
-
+    std::cout << "Number of equations condensed = " << nEquationsFull << std::endl;
+    
     //Create analysis environment
     TPZLinearAnalysis an(cmesh,false);
     an.SetExact(exactSol,solOrder);
@@ -354,9 +355,9 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
     TPZVec<int> matIds(nMats,bcId);
     matIds[0] = volId;
     matIds[1] = EBoundary1;
-    matIds[2] = EBoundary2;
-    matIds[3] = EBoundary3;
-    matIds[4] = EBoundary4;
+    matIds[2] = EBoundary1;
+    matIds[3] = EBoundary1;
+    matIds[4] = EBoundary1;
     
     TPZGeoMesh* gmesh = TPZGeoMeshTools::CreateGeoMeshOnGrid(dim, minX, maxX,
                         matIds, nDivs, meshType,createBoundEls);

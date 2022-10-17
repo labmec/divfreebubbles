@@ -47,7 +47,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     std::ofstream myfile2("MultiCMesh2.txt");
     fAnalysis->Mesh()->Print(myfile2);
 
-    std::set<int> lag={10};
+    std::set<int> lag={1};
     matRed2->ReorderEquations(cmesh,lag,nEqFull,nEqLinr);
 
     std::ofstream myfile3("MultiCMesh3.txt");
@@ -121,7 +121,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     matRed->F1Red(rhsHigh);
     // rhsFull.Zero();
 
-
+    std::cout << "Assembling block diagonal " << std::endl;
     TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(fAnalysis->Mesh());
     BDFmatrix.SetEquationRange(nEqLinr,nEqLinr+nEqHigh);
     TPZBlockDiagonal<REAL> KBD;
@@ -135,7 +135,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
     TPZVec<REAL> errors(nMaxIter);
     errors.Fill(0.);
 
-    ComputeConditionNumber(*matRed,precond->Matrix());
+    // ComputeConditionNumber(*matRed,precond->Matrix());
 
     // for (int64_t iter = 1; iter < nMaxIter; iter++){
         
@@ -216,7 +216,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     step.SetMatrix(&K00);
 
     //Cria a matriz esparsa
-    std::set<int> lag = {10};
+    std::set<int> lag = {1};
     TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(cmesh,lag);
     std::cout << "Allocating Sub Matrices ...\n";
     //Transfere as submatrizes da matriz auxiliar para a matriz correta.
@@ -271,7 +271,9 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     std::cout << "Finish assembling BlockDiag ...\n";
     // std::ofstream out3("out.txt");
     
-    // matRed->Print("MatRed = ",std::cout,EMathematicaInput);
+    // matRed->Print("MatRed = ",out3,EMathematicaInput);
+    std::ofstream out2("out3.txt");
+    matRed->Print("MATRED",out2,EMathematicaInput);
 
     matRed->SetF(rhsFull);
     matRed->SetReduced();
@@ -292,17 +294,18 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         
         // std::cout << "ITER = " << iter << std::endl;
         TPZFMatrix<STATE> residual(nMaxIter,1,0.);
-        REAL tol = 1.e-8;
+        REAL tol = 1.e-7;
         TPZFMatrix<STATE> solution(nEqHigh,1,0.);
         clock.start();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
 
         // std::ofstream out2("out3.txt");
         // matRed->Print("MATRED",out2,EMathematicaInput);
-        // KBD.Print("BDiag",out2,EMathematicaInput);
+        KBD.Print("BDiag",out2,EMathematicaInput);
 
         std::cout << "Start CG ...\n";
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
+        // matRed->K11().SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         std::cout << "Finish CG ...\n";
         
         clock.stop();
@@ -350,12 +353,13 @@ void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZSparseMatRed<STATE> &matRe
     TPZFMatrix<REAL> KBDInv;
     TPZAutoPointer<TPZFMatrix<REAL>> Res = new TPZFMatrix<REAL>;
     auto dim = precond->Rows();
-    // Res->(dim,dim,true);
+    Res->Redim(dim,dim);
     precond->Inverse(KBDInv,ELU);
     // KBDInv.Identity();
     // KBDInv.Print("KBDInv=",std::cout,EMathematicaInput);
-    // matRed.Print("MatRed=",std::cout,EMathematicaInput);
-    matRed.MultAdd(KBDInv,*Res,*Res,1.,0.);
+    // matRed.K11().Print("K11=",std::cout,EMathematicaInput);
+    // matRed.MultAdd(KBDInv,*Res,*Res,1.,0.);
+    matRed.K11().MultAdd(KBDInv,*Res,*Res,1.,0.);
     // KBDInv.Multiply(*matRed,Res);
 
     
@@ -366,8 +370,7 @@ void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZSparseMatRed<STATE> &matRe
     
     TPZVec<std::complex<REAL>> eigenvalues;
     eigSolver.SetMatrixA(Res);
-    // auto a = eigSolver.ComputeConditionNumber();
-    // auto a1 = eigSolver.SolveEigenProblem(eigenvalues);
+    auto a1 = eigSolver.SolveEigenProblem(eigenvalues);
 
     std::ofstream rprint3,rprint4;
     rprint3.open("REAL_EIGEN_ALL.txt",std::ios_base::app);

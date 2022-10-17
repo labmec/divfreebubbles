@@ -34,6 +34,8 @@
 #include "pzshapetriang.h"
 #include "pzshapecube.h"
 #include "pzshapetetra.h"
+#include "pzbuildmultiphysicsmesh.h"
+
 using namespace pzshape;
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh

@@ -369,15 +369,14 @@ TPZMultiphysicsCompMesh * TPZHDivApproxSpaceCreator<TVar>::CreateMultiphysicsCMe
 
     TPZManVector<int> active(meshvector.size(),1);
     cmesh->SetAllCreateFunctionsMultiphysicElem();
-    cmesh->AdjustBoundaryElements();
-    cmesh->CleanUpUnconnectedNodes();
+    // cmesh->AdjustBoundaryElements();
     cmesh->BuildMultiphysicsSpace(active, meshvector);
-    if (fShapeType == HDivFamily::EHDivConstant) {
-        TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
-        TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
-    }
-    cmesh->LoadReferences();
-    cmesh->CleanUpUnconnectedNodes(); 
+    // if (fShapeType == HDivFamily::EHDivConstant) {
+    //     TPZBuildMultiphysicsMesh::AddElements(meshvector, cmesh);
+    //     TPZBuildMultiphysicsMesh::TransferFromMeshes(meshvector, cmesh);
+    // }
+    // cmesh->LoadReferences();
+    // cmesh->CleanUpUnconnectedNodes(); 
 
     auto mat3 = new TPZLagrangeMultiplierCS<STATE>(fConfig.fInterface, fDimension-1);
     cmesh->InsertMaterialObject(mat3);
