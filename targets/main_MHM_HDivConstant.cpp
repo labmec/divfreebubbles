@@ -109,16 +109,14 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     std::ofstream vtkfile(vtk_name.c_str());
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
 
-    TPZMHMCompMeshCreator mhm_ccreator(mhm_gcreator,HDivFamily::EHDivConstant);
-    mhm_ccreator.DuplicateConnects();
-    mhm_ccreator.fAvPresLevel = 5;
-    mhm_ccreator.fDistFluxLevel = 4;
+    TPZMHMCompMeshCreator mhm_ccreator(mhm_gcreator,gmesh);
 
     auto multiCmesh = mhm_ccreator.BuildMultiphysicsCMesh(pOrder+1,pOrder,gmesh,LaplaceExact);
     if(1)
     {
         std::cout << "NEQUATIONS = " << multiCmesh ->NEquations() << std::endl;
-        std::ofstream out("mphysics.txt");
+        // std::ofstream out("mphysics.txt");
+        std::ofstream out("mphysics2.txt");
         multiCmesh->Print(out);
         std::ofstream out2("cmesh_multi.vtk");
         TPZVTKGeoMesh::PrintCMeshVTK(multiCmesh, out2);
