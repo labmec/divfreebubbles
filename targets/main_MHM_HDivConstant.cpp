@@ -25,7 +25,7 @@
 #include "TPZRefPatternDataBase.h"
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZMHMGeoMeshCreator.h"
-#include "TPZMHMCompMeshCreator.h"
+#include "TPZMHMApproxCreator.h"
 #include "TPZSSpStructMatrix.h"
 #include "pzstepsolver.h"
 #include "TPZLinearAnalysis.h"
@@ -109,9 +109,20 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     std::ofstream vtkfile(vtk_name.c_str());
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
 
-    TPZMHMCompMeshCreator mhm_ccreator(mhm_gcreator,gmesh);
+    TPZMHMApproxCreator mhm_ccreator(mhm_gcreator,gmesh);
 
-    auto multiCmesh = mhm_ccreator.BuildMultiphysicsCMesh(pOrder+1,pOrder,gmesh,LaplaceExact);
+    mhm_ccreator.HdivFamily() = HDivFamily::EHDivConstant;
+    mhm_ccreator.ProbType() = ProblemType::EDarcy;
+    mhm_ccreator.IsRigidBodySpaces() = true;
+    mhm_ccreator.SetDefaultOrder(pOrder+1);
+    mhm_ccreator.SetExtraInternalOrder(0);
+    mhm_ccreator.SetShouldCondense(false);
+    mhm_ccreator.HybridType() = HybridizationType::ENone;
+    mhm_ccreator.SetPOrderSkeleton(pOrder);
+
+    mhm_ccreator.InsertMaterialObjects(LaplaceExact);
+    auto multiCmesh = mhm_ccreator.BuildMultiphysicsCMesh();
+
     if(1)
     {
         std::cout << "NEQUATIONS = " << multiCmesh ->NEquations() << std::endl;

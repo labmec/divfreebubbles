@@ -32,6 +32,7 @@
 #include "pzbdstrmatrix.h"
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
+std::ofstream printerrors("results_errors.txt",std::ofstream::out);
 
 /** @brief Returns the name of the HDiv Family approximation space. */
 inline std::string MHDivFamily_Name(HDivFamily hdivfam)
@@ -91,9 +92,9 @@ TEST_CASE("Hybridization test")
 {
     #define TEST
     // const int pOrder = GENERATE(9,10,11,12,13,14,15);
-    const int pOrder = 1;//GENERATE(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+    const int pOrder = GENERATE(5);
 
-    // const int xdiv = 20;//GENERATE(50);
+    // const int xdiv = 10;//GENERATE(5,10,15);
     const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
@@ -191,9 +192,9 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZVec<int> nDivs;
 
     if (DIM == 2) nDivs = {xdiv,xdiv};
-    if (DIM == 3) nDivs = {1,1,1};
+    if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
-    // Creates/import a geometric mesh
+    // Creates/import a geometric mesh  
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
 
     // Util for HDivKernel printing and solving
@@ -323,25 +324,32 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
         vtk.Do();
     }
+    std::string txt2 = "cmeshSol.txt";
+    std::ofstream myfile2(txt2);
+    cmesh->Print(myfile2);
+
     // //vamos supor que vc atualiza a solucao, roda de novo, sei la
     // vtk.Do();
 
-    // //Compute error
-    // std::ofstream anPostProcessFile("postprocess.txt");
-    // TPZManVector<REAL,5> error;
-    // int64_t nelem = cmesh->NElements();
-    // cmesh->LoadSolution(cmesh->Solution());
-    // cmesh->ExpandSolution();
-    // cmesh->ElementSolution().Redim(nelem, 5);
-    // an.PostProcessError(error,false,anPostProcessFile);
+    //Compute error
+    std::ofstream anPostProcessFile("postprocess.txt");
+    TPZManVector<REAL,5> error;
+    int64_t nelem = cmesh->NElements();
+    cmesh->LoadSolution(cmesh->Solution());
+    cmesh->ExpandSolution();
+    cmesh->ElementSolution().Redim(nelem, 5);
+    an.PostProcessError(error,false,anPostProcessFile);
     
-    // //Check error
+    printerrors << xdiv << std::scientific << std::setprecision(8) << " " << error[0] << " " 
+     << error[1] << " " << error[2] << " "  << error[3] << " "  << error[4] << std::endl;
+
+    //Check error
     // REAL tolerance = 1.e-6;
-    // std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
-    // std::cout << "ERROR[1] = " << error[1] << std::endl;
-    // std::cout << "ERROR[2] = " << error[2] << std::endl;
-    // // // std::cout << "ERROR[3] = " << error[3] << std::endl;
-    // // // std::cout << "ERROR[4] = " << error[4] << std::endl;
+    std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
+    std::cout << "ERROR[1] = " << error[1] << std::endl;
+    std::cout << "ERROR[2] = " << error[2] << std::endl;
+    std::cout << "ERROR[3] = " << error[3] << std::endl;
+    std::cout << "ERROR[4] = " << error[4] << std::endl;
     // // REQUIRE(error[1] < tolerance);
 
     //Trying to design other criteria besides the approximation error

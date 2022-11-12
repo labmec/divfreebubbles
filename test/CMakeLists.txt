@@ -16,4 +16,9 @@ add_unit_test(hybridization_test hybridization_test.cpp)
 add_unit_test(dupl_connects dupl_connects.cpp)
 
 add_unit_test(mixed_elasticity mixed_elasticity.cpp)
+
+configure_file(InputData/spe_perm.dat InputData/spe_perm.dat COPYONLY)
+
+add_unit_test(spe10 spe10.cpp)
+
 add_unit_test(PGD PGD.cpp)

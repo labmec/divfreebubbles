@@ -6,6 +6,8 @@ set(MATERIAL_HEADERS
   TPZMatCurlDotCurl.h
   TPZMixedDarcyFlowHybrid.h
   Common.h
+  TPZOrtotropicPermeability.h
+  TPZMixedDarcyFlowOrtotropic.h
   )
 
 set(MATERIAL_SRCS
@@ -13,6 +15,8 @@ set(MATERIAL_SRCS
   TPZMatCurlDotCurl.cpp
   TPZMixedDarcyFlowHybrid.cpp
   Common.cpp
+  TPZOrtotropicPermeability.cpp
+  TPZMixedDarcyFlowOrtotropic.cpp
   )
 
 
@@ -20,14 +24,14 @@ set(MESH_HEADERS
     TPZCompElHDivDuplConnects.h
     TPZCompElHDivDuplConnectsBound.h
     TPZMHMGeoMeshCreator.h
-    TPZMHMCompMeshCreator.h
+    TPZMHMHDivApproxCreator.h
   )
 
 set(MESH_SRCS
     TPZCompElHDivDuplConnects.cpp
     TPZCompElHDivDuplConnectsBound.cpp
     TPZMHMGeoMeshCreator.cpp
-    TPZMHMCompMeshCreator.cpp
+    TPZMHMHDivApproxCreator.cpp
   )
 
 # let us create a config file with the directory containing the meshes

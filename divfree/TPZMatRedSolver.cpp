@@ -255,25 +255,29 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     //Monta a matriz auxiliar
     rhsFull.Zero();
     TPZTimer clock;
-    clock.start();
+    auto start_time_assemble = std::chrono::steady_clock::now();
     std::cout << "Start assembling matRed ...\n";
     Stiffness.Assemble(*matRed,rhsFull,guiInterface);
     std::cout << "Finish assembling matRed ...\n";
-    clock.stop();
-    // std::cout << "Time Assemble " << clock << std::endl;
+    auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
+    std::cout << "Time Assemble " << total_time_assemble << std::endl;
 
     TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(fAnalysis->Mesh());
+    BDFmatrix.SetNumThreads(nThreads);
     BDFmatrix.SetEquationRange(nEqLinr,nEqLinr+nEqHigh);
     TPZBlockDiagonal<REAL> KBD;
     
+    auto start_time_bd = std::chrono::steady_clock::now();
     std::cout << "Start assembling BlockDiag ...\n";
     BDFmatrix.AssembleBlockDiagonal(KBD);
     std::cout << "Finish assembling BlockDiag ...\n";
+    auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
+    std::cout << "Time Assembling block diagonal " << total_time_bd << std::endl;
     // std::ofstream out3("out.txt");
     
     // matRed->Print("MatRed = ",out3,EMathematicaInput);
-    std::ofstream out2("out3.txt");
-    matRed->Print("MATRED",out2,EMathematicaInput);
+    // std::ofstream out2("out3.txt");
+    // matRed->Print("MATRED",out2,EMathematicaInput);
 
     matRed->SetF(rhsFull);
     matRed->SetReduced();
@@ -294,22 +298,22 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         
         // std::cout << "ITER = " << iter << std::endl;
         TPZFMatrix<STATE> residual(nMaxIter,1,0.);
-        REAL tol = 1.e-7;
+        REAL tol = 1.e-10;
         TPZFMatrix<STATE> solution(nEqHigh,1,0.);
-        clock.start();
+        auto start_time_solve = std::chrono::steady_clock::now();
         // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
 
         // std::ofstream out2("out3.txt");
         // matRed->Print("MATRED",out2,EMathematicaInput);
-        KBD.Print("BDiag",out2,EMathematicaInput);
+        // KBD.Print("BDiag",out2,EMathematicaInput);
 
         std::cout << "Start CG ...\n";
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         // matRed->K11().SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         std::cout << "Finish CG ...\n";
         
-        clock.stop();
-        // std::cout << "Time CG " << clock << std::endl;
+        auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count()/1000.;
+        std::cout << "Time CG " << total_time_solve << std::endl;
 
         REAL norm = 0.;
         std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
