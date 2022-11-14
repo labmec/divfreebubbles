@@ -325,8 +325,8 @@ TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x) {
     auto permz = perm_vec[n_cells * 2 + rounded_x + rounded_y * 60 +rounded_z*60*220];
     TPZManVector<REAL,3> perm(3,0.);
     perm[0] = permx;
-    perm[1] = permx;
-    perm[2] = permx;
+    perm[1] = permy;
+    perm[2] = permz;
 
     return perm;
 }
