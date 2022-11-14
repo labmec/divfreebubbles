@@ -296,7 +296,12 @@ void TPZSparseMatRed<TVar>::F1Red(TPZFMatrix<TVar> &F1Red)
 #endif
     SimetrizeMatRed();
 	//make [F1]=[F1]-[K10][F0Invert]
-	fK10.MultAdd((fF0),fF1,(F1Red),-1,1);
+    if (fK00NegativeDefinite){
+        fK10.MultAdd((fF0),fF1,(F1Red),1,1);
+    } else {
+        fK10.MultAdd((fF0),fF1,(F1Red),-1,1);
+    }
+	
 #ifdef PZ_LOG
     if (logger.isDebugEnabled()) {
         std::stringstream sout;
@@ -383,7 +388,12 @@ void TPZSparseMatRed<TVar>::UGlobal(const TPZFMatrix<TVar> & U1, TPZFMatrix<TVar
             fF0IsComputed = true;
         }
 		//make [u0]=[F0]-[U1]
-		fK01.MultAdd(U1,(fF0),u0,-1,1);
+        if (fK00NegativeDefinite){
+            fK01.MultAdd(U1,(fF0),u0,1,1);
+        } else {
+            fK01.MultAdd(U1,(fF0),u0,-1,1);
+        }
+		
 	} else {
         if(!fF0IsComputed)
         {
@@ -396,7 +406,12 @@ void TPZSparseMatRed<TVar>::UGlobal(const TPZFMatrix<TVar> & U1, TPZFMatrix<TVar
         // fK01.MultAdd(U1,fF0,K01U1,-1.,1.);
         DecomposeK00();
         fSolver->Solve(K01U1, u0);
-        u0 = fF0 - u0;
+        if (fK00NegativeDefinite){
+            fF0.MultiplyByScalar(-1,fF0);
+            u0 = fF0 + u0;
+        } else {
+            u0 = fF0 - u0;
+        }
 	}
 	
 	//compute result
@@ -610,7 +625,12 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
         // fK10.Print("fK10 ",std::cout);
         // l_ResFinal.Print("Intermediate product l_ResFinal",std::cout);
 #endif
-        fK10.MultAdd(l_Res,l_ResFinal,z,-alpha,alpha,opt);
+        if (fK00NegativeDefinite){
+            fK10.MultAdd(l_Res,l_ResFinal,z,alpha,alpha,opt);
+        } else {
+            fK10.MultAdd(l_Res,l_ResFinal,z,-alpha,alpha,opt);
+        }
+        
         // l_Res.MultiplyByScalar(-alpha,l_Res);
 		// fK10.Multiply(l_Res,z);
 		// z += l_ResFinal;
@@ -638,6 +658,9 @@ void TPZSparseMatRed<TVar>::DecomposeK00()
     if(fK00->IsDecomposed())
     {
         return;
+    }
+    if (fK00NegativeDefinite){
+        fK00->MultiplyByScalar(-1.,fK00);
     }
     TPZStepSolver<TVar> *stepsolve = dynamic_cast<TPZStepSolver<TVar> *>(fSolver.operator->());
     TPZStepSolver<TVar> *directsolve(0);

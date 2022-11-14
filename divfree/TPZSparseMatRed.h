@@ -242,6 +242,14 @@ public:
 
     void AllocateSubMatrices(TPZCompMesh *cmesh);
 
+    void SetK00IsNegativeDefinite(){
+        fK00NegativeDefinite = true;
+    }
+
+    bool &K00IsNegativeDefinite(){
+        return fK00NegativeDefinite;
+    }
+
 /** @brief Saveable methods */
 public:
     int ClassId() const override;
@@ -297,6 +305,8 @@ private:
     /** @brief Number of rigid body modes identified during the decomposition of fK00 */
     int fNumberRigidBodyModes;
 
+    // False if K00 is positive definite, true if negative definite. Used to multiply matrix by -1 when decomposing int
+    bool fK00NegativeDefinite = false;
 
 };
 

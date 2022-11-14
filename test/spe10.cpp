@@ -23,7 +23,7 @@
 #include "TPZVTKGenerator.h"
 
 // --------------------- Global variables ---------------------
-// #define PROBLEM_3D
+#define PROBLEM_3D
 
 #ifndef PROBLEM_3D
 constexpr int nx = 220;
@@ -106,7 +106,7 @@ int main(){
     hdivCreator.SetDefaultOrder(1);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::ENone;
+    hdivCreator.HybridType() = HybridizationType::ESemi;
 
     //Insert Materials
     TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,dim);
@@ -146,7 +146,7 @@ int main(){
     cout << "\n--------------------- Creating Analysis ---------------------\n" << endl;
     auto start_time_anal = std::chrono::steady_clock::now();
     std::cout << "Number of equations = " << mpmesh->NEquations() << std::endl;
-    TPZLinearAnalysis an(mpmesh, true);
+    TPZLinearAnalysis an(mpmesh, false);
     auto total_time_anal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_anal).count()/1000.;
     cout << "\nTotal time opt band = " << total_time_anal << " seconds" << endl;
         

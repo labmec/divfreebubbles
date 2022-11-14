@@ -7,6 +7,7 @@
 #include "pzbdstrmatrix.h"
 #include "TPZEigenSolver.h"
 #include "TPZLapackEigenSolver.h"
+#include "pzspblockdiagpivot.h"
 
 template<class TVar>
 void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
@@ -211,18 +212,23 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     TPZSYsmpMatrix<REAL> K00;
     
     TPZStepSolver<STATE> step;
-    step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+    step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
     fAnalysis->SetSolver(step);
     step.SetMatrix(&K00);
 
     //Cria a matriz esparsa
     std::set<int> lag = {1};
     TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(cmesh,lag);
+    matRed->SetK00IsNegativeDefinite();
     std::cout << "Allocating Sub Matrices ...\n";
+    auto start_time_allocating = std::chrono::steady_clock::now();
     //Transfere as submatrizes da matriz auxiliar para a matriz correta.
     matRed->SetSolver(&step);
     K00.Resize(matRed->Dim0(),matRed->Dim0());
     matRed->AllocateSubMatrices(cmesh);
+    auto total_time_allocating = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_allocating).count()/1000.;
+    std::cout << "Time Allocating Sub Matrices = " << total_time_allocating << " seconds" << std::endl;
+
 
     //Compute the number of equations in the system
     int64_t nEqFull = cmesh->NEquations();
@@ -254,36 +260,39 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
 
     //Monta a matriz auxiliar
     rhsFull.Zero();
-    TPZTimer clock;
-    auto start_time_assemble = std::chrono::steady_clock::now();
-    std::cout << "Start assembling matRed ...\n";
-    Stiffness.Assemble(*matRed,rhsFull,guiInterface);
-    std::cout << "Finish assembling matRed ...\n";
-    auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
-    std::cout << "Time Assemble " << total_time_assemble << std::endl;
 
-    TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(fAnalysis->Mesh());
-    BDFmatrix.SetNumThreads(nThreads);
-    BDFmatrix.SetEquationRange(nEqLinr,nEqLinr+nEqHigh);
-    TPZBlockDiagonal<REAL> KBD;
-    
+    auto start_time_assemble = std::chrono::steady_clock::now();
+    Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+    auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
+    std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " seconds" << std::endl;
+
+    //Block Diagonal
     auto start_time_bd = std::chrono::steady_clock::now();
-    std::cout << "Start assembling BlockDiag ...\n";
-    BDFmatrix.AssembleBlockDiagonal(KBD);
-    std::cout << "Finish assembling BlockDiag ...\n";
+    TPZBlockDiagonal<REAL> KBD;
+    int ord = cmesh->GetDefaultOrder();
+    TPZVec<int> blocksize(nEqHigh/ord,ord);
+
+    KBD.Initialize(blocksize);    
+    KBD.UpdateFrom(matRed->K11());
     auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
-    std::cout << "Time Assembling block diagonal " << total_time_bd << std::endl;
-    // std::ofstream out3("out.txt");
+    std::cout << "Time Assembling block diagonal " << total_time_bd << " seconds" << std::endl;
     
-    // matRed->Print("MatRed = ",out3,EMathematicaInput);
+    
     // std::ofstream out2("out3.txt");
     // matRed->Print("MATRED",out2,EMathematicaInput);
 
     matRed->SetF(rhsFull);
     matRed->SetReduced();
+    
+    //Decomposes the reduced matrix
+    auto start_time_decomp = std::chrono::steady_clock::now();
     matRed->F1Red(rhsHigh);
+    auto total_time_decomp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_decomp).count()/1000.;
+    std::cout << "Time Assembling decomposing k00 " << total_time_decomp << " seconds" << std::endl;
 
-    // rhsHigh.Print("RhsHigh=");
+    // std::ofstream out3("out.txt");
+    
+    // matRed->Print("MatRed = ",out3,EMathematicaInput);
 
     //Creates the preconditioner 
     TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
@@ -307,10 +316,10 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
         // matRed->Print("MATRED",out2,EMathematicaInput);
         // KBD.Print("BDiag",out2,EMathematicaInput);
 
-        std::cout << "Start CG ...\n";
+        // std::cout << "Start CG ...\n";
         matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
         // matRed->K11().SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
-        std::cout << "Finish CG ...\n";
+        // std::cout << "Finish CG ...\n";
         
         auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count()/1000.;
         std::cout << "Time CG " << total_time_solve << std::endl;
