@@ -146,7 +146,7 @@ int main(){
     cout << "\n--------------------- Creating Analysis ---------------------\n" << endl;
     auto start_time_anal = std::chrono::steady_clock::now();
     std::cout << "Number of equations = " << mpmesh->NEquations() << std::endl;
-    TPZLinearAnalysis an(mpmesh, false);
+    TPZLinearAnalysis an(mpmesh, true);
     auto total_time_anal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_anal).count()/1000.;
     cout << "\nTotal time opt band = " << total_time_anal << " seconds" << endl;
         
