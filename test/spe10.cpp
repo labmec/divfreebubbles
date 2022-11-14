@@ -23,7 +23,7 @@
 #include "TPZVTKGenerator.h"
 
 // --------------------- Global variables ---------------------
-#define PROBLEM_3D
+// #define PROBLEM_3D
 
 #ifndef PROBLEM_3D
 constexpr int nx = 220;
@@ -359,7 +359,7 @@ void PrintResultsVTK(const int dim, TPZLinearAnalysis &an, const std::string &pl
 
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 {
-    constexpr int nThreads{12};
+    constexpr int nThreads{50};
     //    TPZFStructMatrix<STATE> matskl(cmesh); // slowest - good for debugging
     //    TPZSkylineStructMatrix<STATE> matskl(cmesh); // medium speed - pz only
     TPZSSpStructMatrix<STATE> matskl(cmesh); // fast - works great with mkl
