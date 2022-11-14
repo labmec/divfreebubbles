@@ -243,7 +243,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
                  ", Linear Flux = " << nEqLinr << std::endl;
 
     //Sets number of threads to be used by the solver
-    constexpr int nThreads{20};
+    constexpr int nThreads{50};
     
     // Create the RHS vectors
     TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
@@ -288,7 +288,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     auto start_time_decomp = std::chrono::steady_clock::now();
     matRed->F1Red(rhsHigh);
     auto total_time_decomp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_decomp).count()/1000.;
-    std::cout << "Time Assembling decomposing k00 " << total_time_decomp << " seconds" << std::endl;
+    std::cout << "Time decomposing k00 " << total_time_decomp << " seconds" << std::endl;
 
     // std::ofstream out3("out.txt");
     
