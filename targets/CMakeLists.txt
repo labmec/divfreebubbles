@@ -24,3 +24,6 @@ target_link_libraries(3d_hdiv PRIVATE divfree)
 
 add_executable(MHM_HDivConstant main_MHM_HDivConstant.cpp)
 target_link_libraries(MHM_HDivConstant PRIVATE divfree)
+
+add_executable(dupl_connects2 dupl_connects.cpp)
+target_link_libraries(dupl_connects2 PRIVATE divfree)

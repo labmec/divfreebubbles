@@ -21,6 +21,7 @@
 #include "TPZMatRedSolver.h"
 #include "TPZGenGrid3D.h"
 #include "TPZVTKGenerator.h"
+#include "pzintel.h"
 
 // --------------------- Global variables ---------------------
 #define PROBLEM_3D
@@ -56,6 +57,8 @@ TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x);
 TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x);
 void PrintResultsVTK(const int dim, TPZLinearAnalysis &an, const std::string &plotfile);
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
+
+void ThresholdPermeability(TPZCompMesh* cmesh, std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> &permFunction, REAL threshold);
 
 
 //-------------------------------------------------------------------------------------------------
@@ -103,7 +106,7 @@ int main(){
     hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
     hdivCreator.ProbType() = ProblemType::EDarcy;
     hdivCreator.IsRigidBodySpaces() = false;
-    hdivCreator.SetDefaultOrder(1);
+    hdivCreator.SetDefaultOrder(2);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
     hdivCreator.HybridType() = HybridizationType::ESemi;
@@ -138,10 +141,23 @@ int main(){
     hdivCreator.InsertMaterialObject(BCondRight);
 
     //Multiphysics mesh
-    TPZMultiphysicsCompMesh *mpmesh = hdivCreator.CreateApproximationSpace();
+    TPZMultiphysicsCompMesh *mpmesh = nullptr;
+    
+    // hdivCreator.CheckSetupConsistency();
+
+    int lagLevelCounter = 1;
+    TPZManVector<TPZCompMesh*,7> meshvec(2);
+    hdivCreator.CreateAtomicMeshes(meshvec,lagLevelCounter);
+
+    ThresholdPermeability(meshvec[0],func,1.e-5);
+    
+    // TPZMultiphysicsCompMesh *cmeshmulti = nullptr;
+    hdivCreator.CreateMultiPhysicsMesh(meshvec,lagLevelCounter,mpmesh);
+    
+    
     std::string txt = "cmesh.txt";
     std::ofstream myfile(txt);
-    // mpmesh->Print(myfile);
+    mpmesh->Print(myfile);
 
     cout << "\n--------------------- Creating Analysis ---------------------\n" << endl;
     auto start_time_anal = std::chrono::steady_clock::now();
@@ -403,3 +419,69 @@ void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
+
+
+void ThresholdPermeability(TPZCompMesh* cmesh, std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> &permFunction, REAL threshold){
+
+    for (TPZCompEl* cel : cmesh->ElementVec()){
+        if (!cel) continue;
+        int dim = cel->Dimension();
+        if (dim != cmesh->Dimension()) continue;
+
+        TPZGeoEl* gel = cel->Reference();
+        if (!gel) DebugStop();
+
+        int nFaces = gel->NSides(dim-1);
+        int nSides = gel->NSides();
+
+        for (int iFace = 0; iFace < nFaces; iFace++){
+            // Pega o geoElSide de cada face, depois pega CenterX.
+            
+            TPZGeoElSide gelside(gel,nSides-1-nFaces+iFace);
+            TPZManVector<REAL,3> xCenter(3,0.), perm(3,0.);
+            gelside.CenterX(xCenter);
+
+            perm = permFunction(xCenter);
+
+            if (perm[2] < threshold){
+                
+                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
+                if (!intel) DebugStop();
+                int64_t conindex1 = cel->ConnectIndex(2*iFace);
+                int64_t conindex2 = cel->ConnectIndex(2*iFace+1);
+
+                TPZConnect &c1 = cmesh->ConnectVec()[conindex1];
+                TPZConnect &c2 = cmesh->ConnectVec()[conindex2];
+
+                // std::cout << "Dim = " << dim << std::endl;
+                // std::cout << "Connect index = " << conindex1 << " " << conindex2 << std::endl;
+
+                int64_t index;
+                //Sets the new connect order
+                c2.SetOrder(0,index);//Div constant function
+                c1.SetOrder(0,index);//High order div-free functions
+
+                //Gets connect information to update block size (stiffness matrix data structure)
+                int64_t seqnum = c2.SequenceNumber();
+                int nvar = 1;
+                TPZMaterial * mat = cel->Material();
+                if (mat) nvar = mat->NStateVariables();
+                int nshape = intel->NConnectShapeF(2*iFace,c1.Order());
+                int nshape2 = intel->NConnectShapeF(2*iFace+1,c2.Order());
+                c2.SetNShape(nshape2);
+                // c.SetNState(nvar);
+                cmesh->Block().Set(seqnum, nvar * nshape2);
+
+
+                seqnum = c1.SequenceNumber();
+                // nshape = 1;
+                cmesh->Block().Set(seqnum, nvar * nshape);
+
+            }
+        }
+    }
+    cmesh->InitializeBlock();
+    cmesh->ExpandSolution();
+
+
+}

@@ -1,9 +1,7 @@
-/*
-  This unit test verifies if the hybridization and semi hybridization techniques are working
-  for any specified polynomial order and topology.
-  
-*/
-#include <catch2/catch.hpp>
+#ifdef HAVE_CONFIG_H
+#include <pz_config.h>
+#endif
+
 #include <TPZGeoMeshTools.h>
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
@@ -35,33 +33,14 @@
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 std::ofstream printerrors("results_errors.txt",std::ofstream::out);
 
-/** @brief Returns the name of the HDiv Family approximation space. */
-inline std::string MHDivFamily_Name(HDivFamily hdivfam)
-{
-	switch (hdivfam)
-	{
-		case HDivFamily::EHDivStandard:
-		{
-			return "EHDivStandard";
-		}
-		case HDivFamily::EHDivConstant:
-		{
-			return "EHDivConstant";
-		}
-		case HDivFamily::EHDivKernel:
-		{
-			return "EHDivKernel";
-		}
-		default:
-        {
-            return "HDivFamily not found!";
-        }
-    }
-    DebugStop();
-	return "";
-}
-
-
+//-------------------------------------------------------------------------------------------------
+//   __  __      _      _   _   _     
+//  |  \/  |    / \    | | | \ | |
+//  | |\/| |   / _ \   | | |  \| |
+//  | |  | |  / ___ \  | | | |\  |
+//  |_|  |_| /_/   \_\ |_| |_| \_|
+//-------------------------------------------------------------------------------------------------
+using namespace std;
 
 enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb};
 
@@ -75,41 +54,6 @@ enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb};
 template<class tshape>
 TPZGeoMesh*
 CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId);
-
-/**
-   @brief Reads the test mesh from gmsh
-   @param[in] file_name the .msh mesh file.
-*/
-template<class tshape>
-TPZGeoMesh*
-ReadMeshFromGmsh(std::string file_name);
-
-
-// The test function
-template<class tshape>
-void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily);
-
-TEST_CASE("Hybridization test")
-{
-    #define TEST
-    // const int pOrder = GENERATE(9,10,11,12,13,14,15);
-    const int pOrder = GENERATE(2);
-
-    const int xdiv = 2;//GENERATE(5,10,15);
-    // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
-    // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
-    // const int xdiv = GENERATE(2,3,4,5,6,7,8);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
-    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
-
-    // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam);
-    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam); 
-    // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam); 
-    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam);
-}
 
 //Analytical solution
 constexpr int solOrder{4};
@@ -178,26 +122,29 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 
 };
 
-template<class tshape>
-void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily)
+int main(int argc, char* argv[])
 {
+    
+    const int xdiv = 20;
+    const int pOrder = 1;
+    const HDivFamily hdivfamily = HDivFamily::EHDivConstant;
+    int DIM = 2;
 
 #ifdef PZ_LOG
     TPZLogger::InitializePZLOG();
 #endif
     
-    std::cout << "\nTest Case: \nTopology = " << MElementType_Name(tshape::Type()) << 
-                 ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
-                 ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
+    // std::cout << "\nTest Case: \nTopology = " << MElementType_Name(tshape::Type()) << 
+    //              ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
+    //              ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
     
-    int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
     if (DIM == 2) nDivs = {xdiv,xdiv};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh  
-    auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
+    auto gmesh = CreateGeoMesh<pzshape::TPZShapeQuad>(nDivs, EDomain, EBoundary);
 
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -232,9 +179,9 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     //Multiphysics mesh
     TPZMultiphysicsCompMesh *cmesh = hdivCreator.CreateApproximationSpace();
-    std::string txt = "cmesh.txt";
-    std::ofstream myfile(txt);
-    cmesh->Print(myfile);
+    // std::string txt = "cmesh.txt";
+    // std::ofstream myfile(txt);
+    // cmesh->Print(myfile);
 
   
     // Number of equations without condense elements
@@ -314,74 +261,57 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // //Print results
     // {
     //     TPZSimpleTimer postProc("Post processing1");
-        util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
+        // util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
     // }
 
-    {
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{0};
+    // {
+    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+    //     TPZSimpleTimer postProc("Post processing2");
+    //     const std::string plotfile = "myfile";//sem o .vtk no final
+    //     constexpr int vtkRes{0};
     
 
-        TPZVec<std::string> fields = {
-        "Pressure",
-        "ExactPressure",
-        "Flux",
-        "ExactFlux"};
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+    //     TPZVec<std::string> fields = {
+    //     "Pressure",
+    //     "ExactPressure",
+    //     "Flux",
+    //     "ExactFlux"};
+    //     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-        vtk.Do();
-    }
-    std::string txt2 = "cmeshSol.txt";
-    std::ofstream myfile2(txt2);
-    cmesh->Print(myfile2);
+    //     vtk.Do();
+    // }
+    // std::string txt2 = "cmeshSol.txt";
+    // std::ofstream myfile2(txt2);
+    // cmesh->Print(myfile2);
 
     // //vamos supor que vc atualiza a solucao, roda de novo, sei la
     // vtk.Do();
 
-    //Compute error
-    std::ofstream anPostProcessFile("postprocess.txt");
-    TPZManVector<REAL,5> error;
-    int64_t nelem = cmesh->NElements();
-    cmesh->LoadSolution(cmesh->Solution());
-    cmesh->ExpandSolution();
-    cmesh->ElementSolution().Redim(nelem, 5);
-    an.PostProcessError(error,false,anPostProcessFile);
+    // //Compute error
+    // std::ofstream anPostProcessFile("postprocess.txt");
+    // TPZManVector<REAL,5> error;
+    // int64_t nelem = cmesh->NElements();
+    // cmesh->LoadSolution(cmesh->Solution());
+    // cmesh->ExpandSolution();
+    // cmesh->ElementSolution().Redim(nelem, 5);
+    // an.PostProcessError(error,false,anPostProcessFile);
     
-    printerrors << xdiv << std::scientific << std::setprecision(8) << " " << error[0] << " " 
-     << error[1] << " " << error[2] << " "  << error[3] << " "  << error[4] << std::endl;
+    // printerrors << xdiv << std::scientific << std::setprecision(8) << " " << error[0] << " " 
+    //  << error[1] << " " << error[2] << " "  << error[3] << " "  << error[4] << std::endl;
 
-    //Check error
-    // REAL tolerance = 1.e-6;
-    std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
-    std::cout << "ERROR[1] = " << error[1] << std::endl;
-    std::cout << "ERROR[2] = " << error[2] << std::endl;
-    std::cout << "ERROR[3] = " << error[3] << std::endl;
-    std::cout << "ERROR[4] = " << error[4] << std::endl;
-    // // REQUIRE(error[1] < tolerance);
-
-    //Trying to design other criteria besides the approximation error
-    //Contar numero de equações condensadas = numero de arestas internas * porder
-    int nInternalEdges = 0;
-    switch (tshape::Type()){
-    case EQuadrilateral:
-        nInternalEdges = xdiv*(xdiv-1)*2;
-        break;
-    case ETriangle:
-        nInternalEdges = xdiv*(xdiv-1)*2 + xdiv*xdiv;
-        break;
-    
-    default:
-        break;
-    }
-
-    
-    // REQUIRE(nInternalEdges * pOrder == nEquationsCondensed);
+    // //Check error
+    // // REAL tolerance = 1.e-6;
+    // std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
+    // std::cout << "ERROR[1] = " << error[1] << std::endl;
+    // std::cout << "ERROR[2] = " << error[2] << std::endl;
+    // std::cout << "ERROR[3] = " << error[3] << std::endl;
+    // std::cout << "ERROR[4] = " << error[4] << std::endl;
+    // // // REQUIRE(error[1] < tolerance);
 
 
+
+    return 0;
 }
-
 //Create 
 template <class tshape>
 TPZGeoMesh*
@@ -433,52 +363,3 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
     return gmesh;
     
 }
-
-
-template <class tshape>
-TPZGeoMesh*
-ReadMeshFromGmsh(std::string file_name)
-{
-    //read mesh from gmsh
-    TPZGeoMesh *gmesh;
-    gmesh = new TPZGeoMesh();
-    {
-        TPZGmshReader reader;
-        // essa interface permite voce mapear os nomes dos physical groups para
-        // o matid que voce mesmo escolher
-        TPZManVector<std::map<std::string,int>,4> stringtoint(4);
-        stringtoint[3]["Domain"] = 1;
-        stringtoint[2]["Surfaces"] = 2;
-
-        reader.SetDimNamePhysical(stringtoint);
-        reader.GeometricGmshMesh(file_name,gmesh);
-    }
-
-    return gmesh;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

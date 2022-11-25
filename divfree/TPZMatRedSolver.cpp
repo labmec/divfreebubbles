@@ -270,6 +270,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     auto start_time_bd = std::chrono::steady_clock::now();
     TPZBlockDiagonal<REAL> KBD;
     int ord = cmesh->GetDefaultOrder();
+    if (ord == 0) ord = 1;
     TPZVec<int> blocksize(nEqHigh/ord,ord);
 
     KBD.Initialize(blocksize);    

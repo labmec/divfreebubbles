@@ -21,15 +21,15 @@ set(MATERIAL_SRCS
 
 
 set(MESH_HEADERS
-    TPZCompElHDivDuplConnects.h
-    TPZCompElHDivDuplConnectsBound.h
+    # TPZCompElHDivDuplConnects.h
+    # TPZCompElHDivDuplConnectsBound.h
     TPZMHMGeoMeshCreator.h
     TPZMHMHDivApproxCreator.h
   )
 
 set(MESH_SRCS
-    TPZCompElHDivDuplConnects.cpp
-    TPZCompElHDivDuplConnectsBound.cpp
+    # TPZCompElHDivDuplConnects.cpp
+    # TPZCompElHDivDuplConnectsBound.cpp
     TPZMHMGeoMeshCreator.cpp
     TPZMHMHDivApproxCreator.cpp
   )
@@ -42,24 +42,24 @@ configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/divfree_config.h.in" ${CONFIG_H})
 
 set(UTIL_HEADERS
   divfree_config.h
-  TPZHDivApproxSpaceCreator.h
-  TPZKernelHdivHybridizer.h
+#   TPZHDivApproxSpaceCreator.h
+#   TPZKernelHdivHybridizer.h
   TPZKernelHdivUtils.h
   TPZSparseMatRed.h
   TPZMatRedSolver.h
-  TPZCompElConstFluxHybrid.h
+#   TPZCompElConstFluxHybrid.h
   TPZMixedElasticityND.h
   TPZMixedElasticityCMeshCreator.h
   TPZCompelDiscScaled.h
   )
 
 set(UTIL_SRCS
-  TPZKernelHdivHybridizer.cpp
-  TPZHDivApproxSpaceCreator.cpp
+#   TPZKernelHdivHybridizer.cpp
+#   TPZHDivApproxSpaceCreator.cpp
   TPZKernelHdivUtils.cpp
   TPZSparseMatRed.cpp
   TPZMatRedSolver.cpp
-  TPZCompElConstFluxHybrid.cpp
+#   TPZCompElConstFluxHybrid.cpp
   TPZMixedElasticityND.cpp
   TPZMixedElasticityCMeshCreator.cpp
   TPZCompelDiscScaled.cpp
