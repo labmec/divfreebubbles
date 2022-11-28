@@ -48,7 +48,7 @@ set(UTIL_HEADERS
   TPZSparseMatRed.h
   TPZMatRedSolver.h
 #   TPZCompElConstFluxHybrid.h
-  TPZMixedElasticityND.h
+#   TPZMixedElasticityND.h
   TPZMixedElasticityCMeshCreator.h
   TPZCompelDiscScaled.h
   )
@@ -60,7 +60,7 @@ set(UTIL_SRCS
   TPZSparseMatRed.cpp
   TPZMatRedSolver.cpp
 #   TPZCompElConstFluxHybrid.cpp
-  TPZMixedElasticityND.cpp
+#   TPZMixedElasticityND.cpp
   TPZMixedElasticityCMeshCreator.cpp
   TPZCompelDiscScaled.cpp
   )
