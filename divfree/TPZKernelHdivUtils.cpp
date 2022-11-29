@@ -35,7 +35,7 @@
 #include "pzshapecube.h"
 #include "pzshapetetra.h"
 #include "pzbuildmultiphysicsmesh.h"
-
+#include "TPZSimpleTimer.h"
 using namespace pzshape;
 
 // Util to print a summary of element information (mainly the connects) of a computational mesh
@@ -196,6 +196,91 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     an.Assemble();
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+
+    ///solves the system
+    std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
+    an.Solve();
+    std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
+    std::cout << "Time Solve = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin2).count() << "[ms]" << std::endl;
+
+    return;
+}
+
+// Util to solve the arising linear sistem by means of a direct method
+template <class TVar>
+void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
+{
+    //sets number of threads to be used by the solver
+    constexpr int nThreads{12};
+    // TPZSkylineStructMatrix<REAL> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE> matskl(cmesh);
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
+    
+    // 
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);
+    // TPZSSpStructMatrix<STATE,TPZStructMatrixTBBFlow<STATE>> matskl(cmesh);
+    matskl.SetNumThreads(nThreads);
+    TPZHCurlEquationFilter<TVar> filter;
+    //-----------------------
+    if (filterEquations){    
+        
+
+        TPZVec<int64_t> activeEqs;
+    
+        if(filter.FilterEdgeEquations(cmesh, activeEqs, domainHybridization)){
+            return;
+        }
+        // vertexData = filter.GetVertexDataStructure();
+        // edgeData = filter.GetEdgeDataStructure();
+        const int neqs = activeEqs.size();
+        // std::cout << "ACtiveEqu - " << activeEqs << std::endl;
+        matskl.EquationFilter().SetActiveEquations(activeEqs);
+        std::cout << "Active equations = " << activeEqs.size() << std::endl;
+    }
+    //----------------------
+
+    an.SetStructuralMatrix(matskl);
+    
+
+    ///Setting a direct solver
+    TPZStepSolver<STATE> step;
+    step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
+
+    // TPZStepSolver<STATE> jac;
+    // REAL tol = 1.e-30;
+    // jac.SetJacobi(100,tol,0);
+    // jac.ShareMatrix(step);
+// #ifdef USING_MKL
+    an.SetSolver(step);
+// #endif
+    //assembles the system
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    an.Assemble();
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+
+    std::cout << "\n\n======> Changing mat" << std::endl;
+    TPZSimpleTimer timerchangemat;
+    // Multiply mat and rhs by -1 to make it positive definite
+    TPZMatrix<STATE>* mat = an.MatrixSolver<STATE>().Matrix().operator->();
+    TPZSYsmpMatrix<STATE>* spmat = dynamic_cast<TPZSYsmpMatrix<STATE>*>(mat);
+    const int nspel = spmat->A().size();
+    for (int isp = 0; isp < nspel; isp++) {
+        spmat->A()[isp] *= -1.;
+    }
+    const int neq = an.Rhs().Rows();
+    TPZMatrix<STATE>& rhsmat = an.Rhs();
+    for (int ieq = 0; ieq < neq; ieq++) {
+        rhsmat(ieq,0) *= -1.;
+    }
+    std::cout << "==> Total change mat time: " << timerchangemat.ReturnTimeDouble()/1000. << " seconds" << std::endl << std::endl;
+
+
+
+    
+    
 
     ///solves the system
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();

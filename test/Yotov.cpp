@@ -85,21 +85,21 @@ TEST_CASE("Hybridization test")
 {
     rprint.open("results_MElasticity2D.txt",std::ios_base::app);
     // const int pOrder = 1;
-    const int pOrder = GENERATE(1,2,4,8,16);
+    const int pOrder = GENERATE(3);
 
-    // const int xdiv = 5;//GENERATE(50);
+    // const int xdiv = 2;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
-    const int xdiv = GENERATE(1);
+    const int xdiv = GENERATE(16);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
-    // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
+    // HDivFamily hdivfam = GENERATE(HDivFamily ::EHDivStandard,HDivFamily::EHDivConstant);
     
-    TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam);
+    // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam);
     // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam); 
-    // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam); 
+    TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam); 
     // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam);
 }
 
@@ -131,19 +131,25 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZHDivApproxCreator hdivCreator(gmesh);
     hdivCreator.HdivFamily() = hdivfamily;
     hdivCreator.ProbType() = ProblemType::EElastic;
-    hdivCreator.IsRigidBodySpaces() = true;
+    hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(pOrder);
-    hdivCreator.SetExtraInternalOrder(1);
+    hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::ENone;
+    hdivCreator.HybridType() = HybridizationType::EStandard;
+
+    //Prints gmesh mesh properties
+    // std::string vtk_name = "geoMesh.vtk";
+    // std::ofstream vtkfile(vtk_name.c_str());
+
+    // TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
 
     TPZAnalyticSolution *gAnalytic = 0;
     TPZMixedElasticityND* matelastic = 0;
     if(DIM == 2)
     {
         TElasticity2DAnalytic *elas = new TElasticity2DAnalytic;
-        elas->gE = 1.e3;
-        elas->gPoisson = 0.3;
+        elas->gE = 206.815;
+        elas->gPoisson = 0.304004;
         elas->fProblemType = TElasticity2DAnalytic::EThiago;
         elas->fPlaneStress = 0;
         gAnalytic = elas;
@@ -180,11 +186,12 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // std::ofstream myfile(txt);
     // cmesh->Print(myfile);
 
-    hdivCreator.PrintAllMeshes(cmesh);
+    // hdivCreator.PrintAllMeshes(cmesh);
   
     // Number of equations without condense elements
     const int nEquationsFull = cmesh->NEquations();
-    std::cout << "Number of equations = " << nEquationsFull << std::endl;
+    std::cout << "Number of equations condensed = " << nEquationsFull << std::endl;
+    std::cout << "Number of equations = " << cmesh->Solution().Rows() << std::endl;
 
     //Create analysis environment
     TPZLinearAnalysis an(cmesh,true);
@@ -207,7 +214,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         bool filter = false;bool domainhybr=false;
         if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
     //     // createSpace.Solve(an, cmesh, true, filter);
-        util.SolveProblemDirect(an,cmesh,filter,domainhybr);
+        // util.SolveProblemDirect(an,cmesh,filter,domainhybr);
+        util.SolveProblemCholesky(an,cmesh,filter,domainhybr);
     // }
 
     // std::cout << "Time running = " << clock << std::endl;
@@ -293,7 +301,7 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
         DebugStop();
     }
 
-    TPZManVector<REAL,3> minX = {-1,-1,-1};
+    TPZManVector<REAL,3> minX = {0,0,0};
     TPZManVector<REAL,3> maxX = {1,1,1};
     int nMats = 2*dim+1;
 

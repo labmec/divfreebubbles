@@ -135,7 +135,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::ESemi;
+    hdivCreator.HybridType() = HybridizationType::ENone;
 
     TPZAnalyticSolution *gAnalytic = 0;
     TPZMixedElasticityND* matelastic = 0;
