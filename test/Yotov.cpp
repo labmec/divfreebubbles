@@ -24,7 +24,7 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZAnalyticSolution.h"
 #include "TPZHDivApproxCreator.h"
-#include "TPZMixedElasticityND.h"
+#include "Elasticity/TPZMixedElasticityND.h"
 
 std::ofstream rprint;
 
@@ -85,12 +85,12 @@ TEST_CASE("Hybridization test")
 {
     rprint.open("results_MElasticity2D.txt",std::ios_base::app);
     // const int pOrder = 1;
-    const int pOrder = GENERATE(3);
+    const int pOrder = GENERATE(1);
 
     // const int xdiv = 2;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
-    const int xdiv = GENERATE(16);
+    const int xdiv = GENERATE(1,2);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
