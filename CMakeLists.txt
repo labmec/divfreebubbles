@@ -23,6 +23,15 @@ get_target_property(lib_files divfree SOURCES)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${lib_files})  
 
+# Making pz "seeable" in Xcode
+file(GLOB_RECURSE PZ_SRC
+     "../neopz/*.h"
+     "../neopz/*.cpp"
+     "../NeoPzDevelop/*.h"
+     "../NeoPzDevelop/*.cpp"
+)
+add_custom_target( GlobalFiles SOURCES ${PZ_SRC})
+
 
 # creating the projects
 add_subdirectory(targets)

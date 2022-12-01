@@ -208,10 +208,8 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
 
 // Util to solve the arising linear sistem by means of a direct method
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
+void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization, const int nThreads)
 {
-    //sets number of threads to be used by the solver
-    constexpr int nThreads{12};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
@@ -256,12 +254,13 @@ void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCo
 // #endif
     //assembles the system
 
+    std::cout << "\n======> Assembling" << std::endl;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     an.Assemble();
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "[ms]" << std::endl;
+    std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " s" << std::endl;
 
-    std::cout << "\n\n======> Changing mat" << std::endl;
+    std::cout << "\n======> Changing mat" << std::endl;
     TPZSimpleTimer timerchangemat;
     // Multiply mat and rhs by -1 to make it positive definite
     TPZMatrix<STATE>* mat = an.MatrixSolver<STATE>().Matrix().operator->();
@@ -275,18 +274,15 @@ void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCo
     for (int ieq = 0; ieq < neq; ieq++) {
         rhsmat(ieq,0) *= -1.;
     }
-    std::cout << "==> Total change mat time: " << timerchangemat.ReturnTimeDouble()/1000. << " seconds" << std::endl << std::endl;
+    std::cout << "Total change mat time: " << timerchangemat.ReturnTimeDouble()/1000. << " seconds" << std::endl << std::endl;
 
-
-
-    
-    
 
     ///solves the system
+    std::cout << "\n======> Solving" << std::endl;
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
     an.Solve();
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
-    std::cout << "Time Solve = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin2).count() << "[ms]" << std::endl;
+    std::cout << "Time Solve = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin2).count()/1000. << " s" << std::endl;
 
     return;
 }

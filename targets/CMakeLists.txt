@@ -27,3 +27,6 @@ target_link_libraries(MHM_HDivConstant PRIVATE divfree)
 
 add_executable(dupl_connects2 dupl_connects.cpp)
 target_link_libraries(dupl_connects2 PRIVATE divfree)
+
+add_executable(hpc4 main_hpc4.cpp)
+target_link_libraries(hpc4 PRIVATE divfree)
