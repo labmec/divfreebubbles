@@ -98,6 +98,7 @@ int main() {
 
     // Creates a geometric mesh
     auto gmesh = CreateGeoMesh<pzshape::TPZShapeTetra>(nDivs);
+    std::cout << "Number of geo elements in mesh = " << gmesh->NElements() << std::endl;
     
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -133,7 +134,7 @@ int main() {
     //Create analysis environment and solve
     TPZLinearAnalysis an(cmesh,true);
     bool filter = false;bool domainhybr=false;
-    const int nthreads = 16;
+    const int nthreads = 64;
     util.SolveProblemCholesky(an,cmesh,filter,domainhybr,nthreads);
 
     // Print results
@@ -158,8 +159,10 @@ template <class tshape> TPZGeoMesh* CreateGeoMesh(TPZVec<int> &nDivs) {
     std::cout << "\n----------- Creating gmesh -----------" << std::endl;
     
     constexpr int ndivInternal = 1;
-    TPZVec<int> nDivsSkel(nDivs.size());
-    for(auto &pos : nDivs) nDivsSkel = pos / (ndivInternal*2);
+    TPZManVector<int,10> nDivsSkel(nDivs.size());
+    for (int i = 0; i < 3; i++) {
+        nDivsSkel[i] = nDivs[i] / (ndivInternal*2);
+    }
     
     // ----- Create Geo Mesh -----
     const TPZManVector<REAL,3> minX = {0.,0.,0.};
