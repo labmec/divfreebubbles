@@ -31,8 +31,11 @@
 //constexpr int Globnx{129}, Globny{129}, Globnz{65};
 //constexpr REAL Globpartsize{78.125}; // 10000/Globnx
 
-constexpr int Globnx{17}, Globny{17}, Globnz{9};
-constexpr REAL Globpartsize{625.}; // 10000/Globnx
+constexpr int Globnx{65}, Globny{65}, Globnz{33};
+constexpr REAL Globpartsize{156.25}; // 10000/Globnx
+
+//constexpr int Globnx{17}, Globny{17}, Globnz{9};
+//constexpr REAL Globpartsize{625.}; // 10000/Globnx
 
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
@@ -91,7 +94,7 @@ int main() {
     TPZSimpleTimer totaltime;
     
     int DIM = 3;
-    TPZManVector<int,3> nDivs = {Globnx,Globny,Globnz}; // one uniform refinement is performed
+    TPZManVector<int,3> nDivs = {Globnx-1,Globny-1,Globnz-1}; // one uniform refinement is performed
 
     // Creates a geometric mesh
     auto gmesh = CreateGeoMesh<pzshape::TPZShapeTetra>(nDivs);
