@@ -239,7 +239,6 @@ void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCo
     //----------------------
 
     an.SetStructuralMatrix(matskl);
-    
 
     ///Setting a direct solver
     TPZStepSolver<STATE> step;
@@ -258,7 +257,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCo
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     an.Assemble();
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << " s" << std::endl;
+    std::cout << "Time Assemble = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()/1000. << " seconds" << std::endl;
 
     std::cout << "\n======> Changing mat" << std::endl;
     TPZSimpleTimer timerchangemat;
@@ -276,13 +275,12 @@ void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCo
     }
     std::cout << "Total change mat time: " << timerchangemat.ReturnTimeDouble()/1000. << " seconds" << std::endl << std::endl;
 
-
     ///solves the system
     std::cout << "\n======> Solving" << std::endl;
     std::chrono::steady_clock::time_point begin2 = std::chrono::steady_clock::now();
     an.Solve();
     std::chrono::steady_clock::time_point end2 = std::chrono::steady_clock::now();
-    std::cout << "Time Solve = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin2).count()/1000. << " s" << std::endl;
+    std::cout << "Time Solve = " << std::chrono::duration_cast<std::chrono::milliseconds>(end2 - begin2).count()/1000. << " seconds" << std::endl;
 
     return;
 }
