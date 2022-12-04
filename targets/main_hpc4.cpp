@@ -31,11 +31,14 @@
 //constexpr int Globnx{129}, Globny{129}, Globnz{65};
 //constexpr REAL Globpartsize{78.125}; // 10000/Globnx
 
-constexpr int Globnx{65}, Globny{65}, Globnz{33};
-constexpr REAL Globpartsize{156.25}; // 10000/Globnx
+//constexpr int Globnx{65}, Globny{65}, Globnz{33};
+//constexpr REAL Globpartsize{156.25}; // 10000/Globnx
 
 //constexpr int Globnx{17}, Globny{17}, Globnz{9};
 //constexpr REAL Globpartsize{625.}; // 10000/Globnx
+
+constexpr int Globnx{9}, Globny{9}, Globnz{5};
+constexpr REAL Globpartsize{1250.}; // 10000/Globnx
 
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
