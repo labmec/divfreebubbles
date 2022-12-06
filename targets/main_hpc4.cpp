@@ -28,17 +28,15 @@
 
 // GLOBAL VARIABLES FOR VARIATION OF ELASTICITY PROPERTIES
 // Due to the matlab code that generates the files we always have to use ndiv = ndiv+1
-//constexpr int Globnx{129}, Globny{129}, Globnz{65};
-//constexpr REAL Globpartsize{78.125}; // 10000/Globnx
 
-//constexpr int Globnx{65}, Globny{65}, Globnz{33};
-//constexpr REAL Globpartsize{156.25}; // 10000/Globnx
+constexpr int Globnx{65}, Globny{65}, Globnz{33};
+constexpr REAL Globpartsize{156.25}; // 10000/Globnx
 
 //constexpr int Globnx{17}, Globny{17}, Globnz{9};
 //constexpr REAL Globpartsize{625.}; // 10000/Globnx
 
-constexpr int Globnx{9}, Globny{9}, Globnz{5};
-constexpr REAL Globpartsize{1250.}; // 10000/Globnx
+//constexpr int Globnx{9}, Globny{9}, Globnz{5};
+//constexpr REAL Globpartsize{1250.}; // 10000/Globnx
 
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
@@ -72,7 +70,7 @@ inline std::string MHDivFamily_Name(HDivFamily hdivfam)
 // ---------------------------------------------------------------------
 // ---------------------------------------------------------------------
 
-enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb, ENeumannZero};
+enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb, ENeumannZero,ENeumannVal};
 using namespace std;
 
 // ---------------------------------------------------------------------
@@ -127,7 +125,7 @@ int main() {
     // Multiphysics mesh
     TPZMultiphysicsCompMesh *cmesh = hdivCreator.CreateApproximationSpace();
 
-    // hdivCreator.PrintAllMeshes(cmesh);
+//    hdivCreator.PrintAllMeshes(cmesh);
   
     // Number of equations without condense elements
     const int nEquationsFull = cmesh->NEquations();
@@ -139,12 +137,13 @@ int main() {
     bool filter = false;bool domainhybr=false;
     const int nthreads = 64;
     util.SolveProblemCholesky(an,cmesh,filter,domainhybr,nthreads);
+//    util.SolveProblemDirect(an, cmesh, filter, domainhybr);
 
     // Print results
     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
     const std::string plotfile = "PostProcess"; //sem o .vtk no final
     constexpr int vtkRes{0};
-    TPZManVector<std::string,6> fields = {"Displacement","SigmaX","SigmaY","TauXY","Young_Modulus","Poisson"};
+    TPZManVector<std::string,6> fields = {"Displacement","SigmaX","SigmaY","SigmaZ","TauXY","Young_Modulus","Poisson"};
     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
     vtk.Do();
@@ -161,10 +160,11 @@ template <class tshape> TPZGeoMesh* CreateGeoMesh(TPZVec<int> &nDivs) {
     
     std::cout << "\n----------- Creating gmesh -----------" << std::endl;
     
-    constexpr int ndivInternal = 1;
+    const int nrefint = 3;
+    const int division = nrefint == 0 ? 1 : pow(2,nrefint);
     TPZManVector<int,10> nDivsSkel(nDivs.size());
     for (int i = 0; i < 3; i++) {
-        nDivsSkel[i] = nDivs[i] / (ndivInternal*2);
+        nDivsSkel[i] = nDivs[i] / division;
     }
     
     // ----- Create Geo Mesh -----
@@ -176,9 +176,10 @@ template <class tshape> TPZGeoMesh* CreateGeoMesh(TPZVec<int> &nDivs) {
     gmesh = gen3d.BuildVolumetricElements(EDomain);
 
     gmesh = gen3d.BuildBoundaryElements(EBoundary,ENeumannZero,ENeumannZero,ENeumannZero,ENeumannZero,ENeumannZero);
+//    gmesh = gen3d.BuildBoundaryElements(EBoundary,ENeumannZero,ENeumannZero,ENeumannZero,ENeumannZero,ENeumannVal);
     
     TPZCheckGeom check(gmesh);
-    check.UniformRefine(ndivInternal);
+    if(nrefint > 0) check.UniformRefine(nrefint);
 
     std::cout << "\n----------- Finished creating gmesh -----------" << std::endl;
     
@@ -212,8 +213,12 @@ void InsertMaterials(TPZHDivApproxCreator &approxCreator, TPZVec<int> &nDivs) {
     TPZManVector<STATE> val2(dim,0.);
     TPZBndCondT<STATE> *BCond1 = matelas->CreateBC(matelas, ENeumannZero, neuType, val1, val2);
     TPZBndCondT<STATE> *BCond2 = matelas->CreateBC(matelas, EBoundary, dirType, val1, val2);
+    TPZManVector<STATE> val2neu(dim,0.);
+    val2neu[2] = -1.;
+    TPZBndCondT<STATE> *BCond3 = matelas->CreateBC(matelas, ENeumannVal, neuType, val1, val2neu);
     approxCreator.InsertMaterialObject(BCond1);
     approxCreator.InsertMaterialObject(BCond2);
+//    approxCreator.InsertMaterialObject(BCond3);
         
     matelas->SetBodyForce(0, 0, -9.81/1.e6); // Gravity forces only
 
@@ -239,6 +244,8 @@ void InsertMaterials(TPZHDivApproxCreator &approxCreator, TPZVec<int> &nDivs) {
                 inNu >> tempNu;
                 edata[iy](iz,ix) = tempE;
                 nudata[iy](iz,ix) = tempNu;
+//                edata[iy](iz,ix) = 2.e7;
+//                nudata[iy](iz,ix) = 0.2;
             }
         }
     }
