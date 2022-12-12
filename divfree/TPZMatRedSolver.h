@@ -16,10 +16,11 @@ public:
 
     TPZMatRedSolver() = default;
 
-    TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType = EDefault){
+    TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType = EDefault, std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> permFunction = nullptr){
         fAnalysis = &an;
         fBCMaterialID = &matIdBC;
         fSolverType = sType;
+        fPermFunction = permFunction;
     };
 
     void Solve(std::ostream &out = std::cout);
@@ -30,7 +31,7 @@ public:
     
     void ComputeConditionNumber(TPZSparseMatRed<STATE> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
     void ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<STATE>> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
-
+    void ThresholdPermeability(REAL threshold);
 
 protected:
     SolverType fSolverType;
@@ -38,6 +39,10 @@ protected:
     TPZLinearAnalysis *fAnalysis;
 
     std::set<int> *fBCMaterialID;
+
+    TPZVec<int64_t> fActiveEquations;
+
+    std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> fPermFunction;
 };
 
 #endif

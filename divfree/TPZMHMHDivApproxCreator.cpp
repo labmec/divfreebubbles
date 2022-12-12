@@ -130,12 +130,14 @@ void TPZMHMHDivApproxCreator::PutinSubstructures(TPZCompMesh &cmesh)
             submeshes[part] = sub;
         }
     }
+    const int dim = cmesh.Dimension();
     int64_t nel = cmesh.NElements();
     for (int64_t el = 0; el<nel; el++) {
         auto *cel = cmesh.Element(el);
         auto *sub = dynamic_cast<TPZSubCompMesh *>(cel);
         if(sub) continue;
         auto *gel = cel->Reference();
+        if(gel->Dimension() != dim) continue;
         auto index = gel->Index();
         auto part = fGeoMeshCreator.fElementPartition[index];
         if(part >= 0) {

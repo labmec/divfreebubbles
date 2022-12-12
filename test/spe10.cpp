@@ -149,7 +149,7 @@ int main(){
     TPZManVector<TPZCompMesh*,7> meshvec(2);
     hdivCreator.CreateAtomicMeshes(meshvec,lagLevelCounter);
 
-    ThresholdPermeability(meshvec[0],func,1.e-5);
+    ThresholdPermeability(meshvec[0],func,5.e-1);
     
     // TPZMultiphysicsCompMesh *cmeshmulti = nullptr;
     hdivCreator.CreateMultiPhysicsMesh(meshvec,lagLevelCounter,mpmesh);
@@ -169,7 +169,7 @@ int main(){
     cout << "\n--------------------- Solving system ---------------------\n" << endl;
     if (hdivCreator.HybridType() == HybridizationType::ESemi){
         std::set<int> matBCAll={ENoFlux,EPressureLeft,EPressureRight};
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse,func);
         solver.Solve(std::cout);
     } else {
         SolveProblemDirect(an, mpmesh);
@@ -440,11 +440,14 @@ void ThresholdPermeability(TPZCompMesh* cmesh, std::function<TPZManVector<STATE,
             TPZGeoElSide gelside(gel,nSides-1-nFaces+iFace);
             TPZManVector<REAL,3> xCenter(3,0.), perm(3,0.);
             gelside.CenterX(xCenter);
+            TPZVec<REAL> normal;
+            TPZVec<REAL> qsi{0.};
+            gelside.Normal(qsi,normal);
 
             perm = permFunction(xCenter);
 
-            if (perm[2] < threshold){
-                
+            // if (perm[0] < threshold){
+            if (fabs(normal[2]) > 0.99){
                 TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
                 if (!intel) DebugStop();
                 int64_t conindex1 = cel->ConnectIndex(2*iFace);

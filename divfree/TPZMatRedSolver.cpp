@@ -8,6 +8,8 @@
 #include "TPZEigenSolver.h"
 #include "TPZLapackEigenSolver.h"
 #include "pzspblockdiagpivot.h"
+#include "pzintel.h"
+#include "TPZMultiphysicsCompMesh.h"
 
 template<class TVar>
 void TPZMatRedSolver<TVar>::Solve(std::ostream &out){
@@ -249,13 +251,17 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
     TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
     TPZFMatrix<STATE> rhsHigh(nEqHigh,1,0.);
 
+    // ThresholdPermeability(5.e-3);
+
     //Creates the problem matrix    
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
     Stiffness.SetNumThreads(nThreads);
+    
 
     TPZAutoPointer<TPZGuiInterface> guiInterface;
   
     Stiffness.EquationFilter().Reset();
+    // Stiffness.EquationFilter().SetActiveEquations(fActiveEquations);
     fAnalysis->SetStructuralMatrix(Stiffness);
 
     //Monta a matriz auxiliar
@@ -275,6 +281,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
 
     KBD.Initialize(blocksize);    
     KBD.UpdateFrom(matRed->K11());
+    
     auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
     std::cout << "Time Assembling block diagonal " << total_time_bd << " seconds" << std::endl;
     
@@ -465,5 +472,138 @@ void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<ST
 
 
 }
+
+
+
+template<class TVar>
+void TPZMatRedSolver<TVar>::ThresholdPermeability(REAL threshold){
+
+    auto cmeshanalysis = fAnalysis->Mesh();
+    TPZMultiphysicsCompMesh *mCmesh = dynamic_cast<TPZMultiphysicsCompMesh *> (cmeshanalysis);
+    auto cmesh = mCmesh->MeshVector()[0];
+    const int64_t nEquations = fAnalysis->Mesh()->NEquations();
+
+    
+    std::set<int64_t> remove_eq;
+
+    for (TPZCompEl* cel : cmesh->ElementVec()){
+        if (!cel) continue;
+        int dim = cel->Dimension();
+        if (dim != cmesh->Dimension()) continue;
+
+        TPZGeoEl* gel = cel->Reference();
+        if (!gel) DebugStop();
+
+        int nFaces = gel->NSides(dim-1);
+        int nSides = gel->NSides();
+
+        for (int iFace = 0; iFace < nFaces; iFace++){
+            // Pega o geoElSide de cada face, depois pega CenterX.
+            
+            TPZGeoElSide gelside(gel,nSides-1-nFaces+iFace);
+            TPZManVector<REAL,3> xCenter(3,0.), perm(3,0.);
+            gelside.CenterX(xCenter);
+
+            perm = fPermFunction(xCenter);
+
+            if (perm[0] < threshold){
+                
+                TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
+                if (!intel) DebugStop();
+                int64_t conindex1 = cel->ConnectIndex(2*iFace);
+                int64_t conindex2 = cel->ConnectIndex(2*iFace+1);
+
+                TPZConnect &c1 = cmesh->ConnectVec()[conindex1];
+                TPZConnect &c2 = cmesh->ConnectVec()[conindex2];
+
+                // std::cout << "Dim = " << dim << std::endl;
+
+                int64_t seqnum = c1.SequenceNumber();
+                const auto pos = cmesh->Block().Position(seqnum);
+                const auto blocksize = cmesh->Block().Size(seqnum);
+                // if (blocksize == 0){
+                //     continue;
+                // }
+                // const auto vs = fActiveEquations.size();
+                if (pos < nEquations){
+                    // fActiveEquations.Resize(vs + blocksize);
+                    for (auto ieq = 0; ieq < blocksize; ieq++) {
+                        remove_eq.insert(pos + ieq);
+                    }
+                }
+                
+                // std::cout << "Connect index = " << conindex1 << " " << blocksize << std::endl;
+
+                // int64_t seqnum2 = c2.SequenceNumber();
+                // const auto pos2 = cmesh->Block().Position(seqnum2);
+                // const auto blocksize2 = cmesh->Block().Size(seqnum2);
+                // if (blocksize == 0){
+                //     continue;
+                // }
+                // if (c2.IsCondensed()){
+                //     std::cout << "Is Condensed " << seqnum2 << std::endl;
+                //     continue;
+                // }
+                // // std::cout << "Connect index = " << conindex2 << " " << blocksize2 << std::endl;
+                // const auto vs2 = fActiveEquations.size();
+                // if (pos2 < nEquations){
+                //     fActiveEquations.Resize(vs2 + blocksize2);
+                //     for (auto ieq = 0; ieq < blocksize2; ieq++) {
+                //         fActiveEquations[vs2 + ieq] = pos2 + ieq;
+                //     }
+                // }
+                
+                
+                // int64_t index;
+                // //Sets the new connect order
+                // c2.SetOrder(0,index);//Div constant function
+                // c1.SetOrder(0,index);//High order div-free functions
+
+                // //Gets connect information to update block size (stiffness matrix data structure)
+                // int64_t seqnum = c2.SequenceNumber();
+                // int nvar = 1;
+                // TPZMaterial * mat = cel->Material();
+                // if (mat) nvar = mat->NStateVariables();
+                // int nshape = intel->NConnectShapeF(2*iFace,c1.Order());
+                // int nshape2 = intel->NConnectShapeF(2*iFace+1,c2.Order());
+                // c2.SetNShape(nshape2);
+                // // c.SetNState(nvar);
+                // cmesh->Block().Set(seqnum, nvar * nshape2);
+
+
+                // seqnum = c1.SequenceNumber();
+                // // nshape = 1;
+                // cmesh->Block().Set(seqnum, nvar * nshape);
+
+            }
+        }
+    }
+    cmesh->InitializeBlock();
+    cmesh->ExpandSolution();
+
+    std::cout << "remove_eq = " ;
+    for (auto it:remove_eq)
+    {
+        std::cout << it << " " ;
+    }
+    
+    fActiveEquations.Resize(nEquations - remove_eq.size());
+    std::cout << "NEquations = " << nEquations << std::endl;
+    std::cout << "remove_eq = " << remove_eq.size() << std::endl;
+    std::cout << "fActiveEquations = " << fActiveEquations.size() << std::endl;
+
+    int64_t count = 0;
+    for (int i = 0; i < nEquations; i++)
+    {
+        if (remove_eq.find(i) == remove_eq.end()) {
+            fActiveEquations[count] = i;
+            std::cout << "Active equation [" << count << "] = " << fActiveEquations[count] << std::endl;
+            count++;
+        }
+    }
+
+}
+
+
 
 template class TPZMatRedSolver<STATE>;

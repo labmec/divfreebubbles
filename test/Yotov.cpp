@@ -226,28 +226,28 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
     // }
 
-    // {
+    {
         
-    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-    //     TPZSimpleTimer postProc("Post processing2");
-    //     const std::string plotfile = "myfile";//sem o .vtk no final
-    //     constexpr int vtkRes{0};
+        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+        TPZSimpleTimer postProc("Post processing2");
+        const std::string plotfile = "myfile";//sem o .vtk no final
+        constexpr int vtkRes{0};
     
 
-    //     TPZVec<std::string> fields = {
-    //     "ExactDisplacement",
-    //     // "ExactStress",
-    //     "Displacement",
-    //     "SigmaX",
-    //     "SigmaY",
-    //     "TauXY"
-    //     };
-    //     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+        TPZVec<std::string> fields = {
+        "ExactDisplacement",
+        // "ExactStress",
+        "Displacement",
+        "SigmaX",
+        "SigmaY",
+        "TauXY"
+        };
+        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-    //     vtk.Do();
-    //     // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
+        vtk.Do();
+        // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
         
-    // }
+    }
 
     //Compute error
     std::ofstream anPostProcessFile("postprocess.txt");

@@ -25,12 +25,13 @@
 #include "TPZRefPatternDataBase.h"
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZMHMGeoMeshCreator.h"
-#include "TPZMHMApproxCreator.h"
+#include "TPZMHMHDivApproxCreator.h"
 #include "TPZSSpStructMatrix.h"
 #include "pzstepsolver.h"
 #include "TPZLinearAnalysis.h"
 #include "Common.h"
 #include "TPZAnalyticSolution.h"
+#include "TPZMatRedSolver.h"
 
 
 enum EMatid  {ENone, EDomain, EBottom, ETop, ELeft, ERight};
@@ -102,22 +103,22 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     // mhm_gcreator.CreateSkeleton(gmesh);
     // mhm_gcreator.CreateSubGrids(gmesh);
     mhm_gcreator.RefineSubGrids(gmesh);
-    mhm_gcreator.RefineSubGrids(gmesh);
-    mhm_gcreator.RefineSkeleton(gmesh);
+    // mhm_gcreator.RefineSubGrids(gmesh);
+    // mhm_gcreator.RefineSkeleton(gmesh);
 
     std::string vtk_name = "geoMeshMHM.vtk";
     std::ofstream vtkfile(vtk_name.c_str());
     TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
 
-    TPZMHMApproxCreator mhm_ccreator(mhm_gcreator,gmesh);
+    TPZMHMHDivApproxCreator mhm_ccreator(mhm_gcreator,gmesh);
 
     mhm_ccreator.HdivFamily() = HDivFamily::EHDivConstant;
     mhm_ccreator.ProbType() = ProblemType::EDarcy;
-    mhm_ccreator.IsRigidBodySpaces() = true;
-    mhm_ccreator.SetDefaultOrder(pOrder+1);
+    mhm_ccreator.IsRigidBodySpaces() = false;
+    mhm_ccreator.SetDefaultOrder(pOrder);
     mhm_ccreator.SetExtraInternalOrder(0);
-    mhm_ccreator.SetShouldCondense(false);
-    mhm_ccreator.HybridType() = HybridizationType::ENone;
+    mhm_ccreator.SetShouldCondense(true);
+    mhm_ccreator.HybridType() = HybridizationType::ESemi;
     mhm_ccreator.SetPOrderSkeleton(pOrder);
 
     mhm_ccreator.InsertMaterialObjects(LaplaceExact);
@@ -126,6 +127,10 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     if(1)
     {
         std::cout << "NEQUATIONS = " << multiCmesh ->NEquations() << std::endl;
+        std::cout << "NGeoEls = " << gmesh->NElements() << std::endl;
+        std::cout << "NCompEls = " << multiCmesh->NElements() << std::endl;
+
+        
         // std::ofstream out("mphysics.txt");
         std::ofstream out("mphysics2.txt");
         multiCmesh->Print(out);
@@ -151,25 +156,35 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
         std::cout.flush();
     }
     
-    TPZStepSolver<STATE> step;
-    step.SetDirect(ELDLt);
-    Analysis->SetSolver(step);
+    if (mhm_ccreator.HybridType() == HybridizationType::ESemi){
+        std::set<int> matBCAll={Ebc1,Ebc2,Ebc3,Ebc4};
+        TPZMatRedSolver<STATE> solver(*Analysis,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+        solver.Solve(std::cout);
+    } else {
+        TPZStepSolver<STATE> step;
+        step.SetDirect(ELDLt);
+        Analysis->SetSolver(step);
+        
+        Analysis->Assemble();
+        
+        if(neq > 20000)
+        {
+            std::cout << "Entering Solve\n";
+            std::cout.flush();
+        }
+        
+        Analysis->Solve();
+
+    }
+
     
-    Analysis->Assemble();
 //    try {
 //        an->Assemble();
 //    } catch (...) {
 //        exit(-1);
 //    }
     
-    if(neq > 20000)
-    {
-        std::cout << "Entering Solve\n";
-        std::cout.flush();
-    }
-    
-    Analysis->Solve();
-
+   
     // // Creates the approximation space generator
     // TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh, approxSpace, hdivfamily);
 
