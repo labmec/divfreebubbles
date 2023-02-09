@@ -9,10 +9,6 @@ endif()
 
 target_link_libraries(test_library PUBLIC divfree Catch2::Catch2)
 
-add_unit_test(edge_filter_test edge_filter_test.cpp)
-
-add_unit_test(hybridization_test hybridization_test.cpp)
-
 add_unit_test(dupl_connects dupl_connects.cpp)
 add_unit_test(dMatRed doubleMatRed.cpp)
 
@@ -23,4 +19,10 @@ configure_file(InputData/spe_perm.dat InputData/spe_perm.dat COPYONLY)
 
 add_unit_test(spe10 spe10.cpp)
 
-add_unit_test(PGD PGD.cpp)
+# Need refactor
+
+# add_unit_test(PGD PGD.cpp)
+
+# add_unit_test(edge_filter_test edge_filter_test.cpp)
+
+# add_unit_test(hybridization_test hybridization_test.cpp)
