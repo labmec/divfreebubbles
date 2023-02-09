@@ -24,7 +24,7 @@
 #include "pzintel.h"
 
 // --------------------- Global variables ---------------------
-#define PROBLEM_3D
+// #define PROBLEM_3D
 
 #ifndef PROBLEM_3D
 constexpr int nx = 220;
@@ -51,10 +51,10 @@ using namespace std;
 void ReadSPE10CellPermeabilities(TPZVec<REAL>*perm_vec, int layer);
 void ReadSPE10CellPermeabilities3D(TPZVec<REAL>*perm_vec);
 TPZGeoMesh *CreateSPE10CoarseGeoMesh();
-// STATE PermeabilityFunction(const TPZVec<REAL> &x);
-TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x);
-// STATE PermeabilityFunction3D(const TPZVec<REAL> &x);
-TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x);
+STATE PermeabilityFunction(const TPZVec<REAL> &x);
+// TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x);
+STATE PermeabilityFunction3D(const TPZVec<REAL> &x);
+// TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x);
 void PrintResultsVTK(const int dim, TPZLinearAnalysis &an, const std::string &plotfile);
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 
@@ -106,16 +106,16 @@ int main(){
     hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
     hdivCreator.ProbType() = ProblemType::EDarcy;
     hdivCreator.IsRigidBodySpaces() = false;
-    hdivCreator.SetDefaultOrder(2);
+    hdivCreator.SetDefaultOrder(1);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
     hdivCreator.HybridType() = HybridizationType::ESemi;
 
     //Insert Materials
-    // TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,dim);
-    TPZMixedDarcyFlowOrtotropic* matdarcy = new TPZMixedDarcyFlowOrtotropic(EDomain,dim);
-    std::function<TPZManVector<REAL,3>(const TPZVec<REAL> &coord)> func;
-    // std::function<STATE(const TPZVec<REAL> &coord)> func;
+    TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,dim);
+    // TPZMixedDarcyFlowOrtotropic* matdarcy = new TPZMixedDarcyFlowOrtotropic(EDomain,dim);
+    // std::function<TPZManVector<REAL,3>(const TPZVec<REAL> &coord)> func;
+    std::function<STATE(const TPZVec<REAL> &coord)> func;
     if (dim == 2){
         func = PermeabilityFunction;
     } else if (dim == 3){
@@ -149,7 +149,7 @@ int main(){
     TPZManVector<TPZCompMesh*,7> meshvec(2);
     hdivCreator.CreateAtomicMeshes(meshvec,lagLevelCounter);
 
-    ThresholdPermeability(meshvec[0],func,5.e-1);
+    // ThresholdPermeability(meshvec[0],func,5.e-1);
     
     // TPZMultiphysicsCompMesh *cmeshmulti = nullptr;
     hdivCreator.CreateMultiPhysicsMesh(meshvec,lagLevelCounter,mpmesh);
@@ -312,8 +312,8 @@ TPZGeoMesh *CreateSPE10CoarseGeoMesh() {
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 
-// STATE PermeabilityFunction(const TPZVec<REAL> &x) {
-TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x) {
+STATE PermeabilityFunction(const TPZVec<REAL> &x) {
+// TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x) {
     auto rounded_x = static_cast<int>(x[0]);
     auto rounded_y = static_cast<int>(x[1]);
     if (rounded_x == 220) rounded_x = 219;
@@ -322,14 +322,14 @@ TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x) {
     TPZManVector<REAL,3> perm(3,0.);
     perm[0] = permx;
 
-    return perm;
+    return permx;
 }
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 
-// STATE PermeabilityFunction3D(const TPZVec<REAL> &x) {
-TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x) {
+STATE PermeabilityFunction3D(const TPZVec<REAL> &x) {
+// TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x) {
     auto rounded_x = static_cast<int>(x[0]);
     auto rounded_y = static_cast<int>(x[1]);
     auto rounded_z = static_cast<int>(x[2]);
@@ -344,7 +344,7 @@ TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x) {
     perm[1] = permy;
     perm[2] = permz;
 
-    return perm;
+    return permx;
 }
 
 
@@ -441,13 +441,15 @@ void ThresholdPermeability(TPZCompMesh* cmesh, std::function<TPZManVector<STATE,
             TPZManVector<REAL,3> xCenter(3,0.), perm(3,0.);
             gelside.CenterX(xCenter);
             TPZVec<REAL> normal;
-            TPZVec<REAL> qsi{0.};
+            TPZVec<REAL> qsi;
+            qsi.resize(dim-1);
+            qsi.Fill(0.);
             gelside.Normal(qsi,normal);
 
             perm = permFunction(xCenter);
 
             // if (perm[0] < threshold){
-            if (fabs(normal[2]) > 0.99){
+            if (fabs(normal[2]) > 0.9){
                 TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
                 if (!intel) DebugStop();
                 int64_t conindex1 = cel->ConnectIndex(2*iFace);

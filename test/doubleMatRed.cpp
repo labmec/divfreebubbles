@@ -31,10 +31,14 @@
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
 #include <valgrind/callgrind.h>
+#include "pzelementgroup.h"
+#include "pzcondensedcompel.h"
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 std::ofstream printerrors("results_errors.txt",std::ofstream::out);
 
+void AssociateElementsDuplConnects(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, int keepLagrangian);
+void GroupAndCondenseElements(TPZMultiphysicsCompMesh *mcmesh, int keepLagrangian);
 /** @brief Returns the name of the HDiv Family approximation space. */
 inline std::string MHDivFamily_Name(HDivFamily hdivfam)
 {
@@ -93,7 +97,7 @@ TEST_CASE("Hybridization test")
 {
     #define TEST
     // const int pOrder = GENERATE(9,10,11,12,13,14,15);
-    const int pOrder = GENERATE(2);
+    const int pOrder = GENERATE(1);
 
     const int xdiv = 2;//GENERATE(5,10,15);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
@@ -199,7 +203,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {20,20};
+    if (DIM == 2) nDivs = {2,1};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh  
@@ -234,12 +238,12 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZHDivApproxCreator hdivCreator(gmesh);
     hdivCreator.HdivFamily() = hdivfamily;
     hdivCreator.ProbType() = ProblemType::EDarcy;
-    hdivCreator.IsRigidBodySpaces() = false;
+    hdivCreator.IsRigidBodySpaces() = true;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
-    hdivCreator.SetShouldCondense(true);
-    // hdivCreator.HybridType() = HybridizationType::ESemi;
-    hdivCreator.HybridType() = HybridizationType::EStandard;
+    hdivCreator.SetShouldCondense(false);
+    hdivCreator.HybridType() = HybridizationType::ESemi;
+    // hdivCreator.HybridType() = HybridizationType::EStandard;
 
     // Prints gmesh mesh properties
     std::string vtk_name = "geoMesh.vtk";
@@ -265,6 +269,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     std::ofstream myfile(txt);
     cmesh->Print(myfile);
 
+
   
     // Number of equations without condense elements
     const int nEquationsFull = cmesh->NEquations();
@@ -274,6 +279,23 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     TPZTimer clock,clock2;
     clock.start();
+
+    util.PrintCMeshConnects(cmesh);
+    for (auto &con : cmesh->ConnectVec())
+    {
+        int64_t seqNum = con.SequenceNumber();
+        if (con.IsCondensed()) continue;
+        if (seqNum < 0) continue;
+
+        if (con.LagrangeMultiplier() == 3){
+            con.IncrementElConnected();
+        }
+    }   
+    
+    // TPZCompMeshTools::CreatedCondensedElements(cmesh,3,false);
+    GroupAndCondenseElements(cmesh,3);
+
+    hdivCreator.PrintAllMeshes(cmesh);
 
 
     // std::string multFile = "MultiCMesh";
@@ -289,14 +311,15 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     std::set<int> matBCAll = {EBoundary};
     // Solve problem
     // bool sparse = true;
-    bool sparse = false;
+    bool sparse = true;
     
     if (sparse){
     // if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
         // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
         // CALLGRIND_START_INSTRUMENTATION;
         // CALLGRIND_TOGGLE_COLLECT;
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EMHMSparse);
+        // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
         clock2.start();
         solver.Solve(rprint);
         clock2.stop();
@@ -367,25 +390,6 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     std::cout << "ERROR[3] = " << error[3] << std::endl;
     std::cout << "ERROR[4] = " << error[4] << std::endl;
     // // REQUIRE(error[1] < tolerance);
-
-    //Trying to design other criteria besides the approximation error
-    //Contar numero de equações condensadas = numero de arestas internas * porder
-    int nInternalEdges = 0;
-    switch (tshape::Type()){
-    case EQuadrilateral:
-        nInternalEdges = xdiv*(xdiv-1)*2;
-        break;
-    case ETriangle:
-        nInternalEdges = xdiv*(xdiv-1)*2 + xdiv*xdiv;
-        break;
-    
-    default:
-        break;
-    }
-
-    
-    // REQUIRE(nInternalEdges * pOrder == nEquationsCondensed);
-
 
 }
 
@@ -475,10 +479,130 @@ ReadMeshFromGmsh(std::string file_name)
 
 
 
+void GroupAndCondenseElements(TPZMultiphysicsCompMesh *mcmesh, int keepLagrangian) {
+        
+    const int dim = mcmesh->Dimension();
+    
+    TPZVec<int64_t> elementgroup; // it is resized inside AssociateElements()
+    AssociateElementsDuplConnects(mcmesh,elementgroup,keepLagrangian);
+    
+    for (int i = 0; i < elementgroup.size(); i++)
+    {
+        std::cout << "ElGroup [" << i << "]=" << elementgroup[i] << std::endl;
+    }
+    
+
+    int64_t nel = elementgroup.size();
+
+    std::map<int64_t, TPZElementGroup *> groupmap;
+    //    std::cout << "Groups of connects " << groupindex << std::endl;
+    for (int64_t el = 0; el<nel; el++) {
+        int64_t groupnum = elementgroup[el];
+        if(groupnum == -1) continue;
+        auto iter = groupmap.find(groupnum);
+        if (groupmap.find(groupnum) == groupmap.end()) {
+            int64_t index;
+            TPZElementGroup *elgr = new TPZElementGroup(*mcmesh);
+            groupmap[groupnum] = elgr;
+            elgr->AddElement(mcmesh->Element(el));
+        }
+        else
+        {
+            iter->second->AddElement(mcmesh->Element(el));
+        }
+    }
+    mcmesh->ComputeNodElCon();
+
+    nel = mcmesh->NElements();
+    for (int64_t el = 0; el < nel; el++) {
+        TPZCompEl *cel = mcmesh->Element(el);
+        TPZElementGroup *elgr = dynamic_cast<TPZElementGroup *> (cel);
+        if (!cel) {
+            continue;
+        }
+        if (elgr) {
+            TPZCondensedCompEl *cond = new TPZCondensedCompEl(elgr);
+            cond->SetKeepMatrix(false);
+        }
+    }
+    mcmesh->CleanUpUnconnectedNodes();
+    
+    
+}
 
 
 
+void AssociateElementsDuplConnects(TPZCompMesh *cmesh, TPZVec<int64_t> &elementgroup, int keepLagrangian)
+{
+    
+    int64_t nel = cmesh->NElements();
+    elementgroup.Resize(nel, -1);
+    elementgroup.Fill(-1);
 
+    int64_t nconnects = cmesh->NConnects();
+    TPZVec<int64_t> groupindex(nconnects, -1);
+    int dim = cmesh->Dimension();
+    for (TPZCompEl *cel : cmesh->ElementVec()) {
+        cel->LoadElementReference();
+        if (!cel || !cel->Reference() || cel->Reference()->Dimension() != dim) {
+            continue;
+        }
+        elementgroup[cel->Index()] = cel->Index();
+        TPZStack<int64_t> connectlist;
+        cel->BuildConnectList(connectlist);
+        int count = 0;
+        for (auto cindex : connectlist) {
+#ifdef PZDEBUG
+            if (groupindex[cindex] != -1) {
+                continue;
+                // DebugStop();
+            }
+#endif
+            TPZConnect &c = cel->Connect(count);
+            count++;
+            if (c.LagrangeMultiplier() == keepLagrangian) {
+                c.IncrementElConnected();
+                continue;
+            }
+            groupindex[cindex] = cel->Index();
+        }
+    }
+
+    for (TPZCompEl *cel : cmesh->ElementVec()) {
+        if (!cel || !cel->Reference()) {
+            continue;
+        }
+        TPZStack<int64_t> connectlist;
+        cel->BuildConnectList(connectlist);
+        int64_t celindex = cel->Index();
+        
+        TPZVec<int> connectgroup(connectlist.size());
+        for(int i=0; i<connectlist.size(); i++) connectgroup[i] = groupindex[connectlist[i]];
+        int64_t groupfound = -1;
+        //Already sets the element group to the volumetric elemet
+        if (cel->Dimension() == dim) elementgroup[celindex] = celindex; 
+        int count = 0;
+        for (auto cindex : connectlist) {
+            TPZConnect &c = cel->Connect(count);
+            count++;
+            if (c.LagrangeMultiplier() == keepLagrangian) {
+                c.IncrementElConnected();
+                continue;
+            }
+            //Gets only the first connect to avoid trouble with the duplicated connect
+            if (groupindex[cindex] != -1 && elementgroup[celindex] == -1) {
+                elementgroup[celindex] = groupindex[cindex];
+                //two connects in the same element can't belong to different computational element groups,
+                //but in interface elements, some connects might belong to a certain element group, while others might not be initialized.
+                if(groupfound != -1 && groupfound != groupindex[cindex])
+                {
+                    // DebugStop();
+                }
+                groupfound = groupindex[cindex];
+            }
+        }
+    }
+}
 
 
 

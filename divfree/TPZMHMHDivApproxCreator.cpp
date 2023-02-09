@@ -10,7 +10,6 @@
 #include "pzsubcmesh.h"
 #include "pzcondensedcompel.h"
 #include "Common.h"
-#include "TPZHDivApproxSpaceCreator.h"
 #include "TPZCompElHDivDuplConnects.h"
 #include "TPZCompElHDivDuplConnectsBound.h"
 #include "pzshapecube.h"
@@ -24,6 +23,8 @@
 #include "TPZLagrangeMultiplierCS.h"
 #include "pzconnect.h"
 #include "TPZHDivApproxCreator.h"
+#include "TPZMatRedSolver.h"
+#include "pzsmanal.h"
 
 using namespace pzshape;
 
@@ -55,6 +56,11 @@ TPZMultiphysicsCompMesh * TPZMHMHDivApproxCreator::BuildMultiphysicsCMesh(){
     meshvec[0]->SetDefaultOrder(fPOrderSkeleton);
     std::set<int> matSkel={fGeoMeshCreator.fSkeletonMatId};
     meshvec[0]->AutoBuild(matSkel);
+    if (this->HybridType() == HybridizationType::ESemi) {
+        DebugStop();
+        // this->DisableDuplicatedConnects(meshvec[0]);
+        // this->ActivateDuplicatedConnects(meshvec[0]);
+    }
 
     // skeleton elements have lagrange multiplier 4
     int64_t nel = meshvec[0]->NElements();
@@ -74,13 +80,13 @@ TPZMultiphysicsCompMesh * TPZMHMHDivApproxCreator::BuildMultiphysicsCMesh(){
     fAvPresLevel = lagLevelCounter;
     meshvec[countMesh++] = this->CreateConstantSpace(lagLevelCounter++);    
 
-    std::ofstream outflux("flux2.txt");
+    std::ofstream outflux("fluxMHM.txt");
     meshvec[0]->Print(outflux);
-    std::ofstream outpressure("pressure2.txt");
+    std::ofstream outpressure("pressureMHM.txt");
     meshvec[1]->Print(outpressure);
-    std::ofstream outconstflux("constflux2.txt");
+    std::ofstream outconstflux("constfluxMHM.txt");
     meshvec[2]->Print(outconstflux);
-    std::ofstream outconstpress("constpressure2.txt");
+    std::ofstream outconstpress("constpressureMHM.txt");
     meshvec[3]->Print(outconstpress);
 
     TPZMultiphysicsCompMesh *cmesh = this->CreateMultiphysicsSpace(meshvec);
@@ -193,8 +199,15 @@ void TPZMHMHDivApproxCreator::CondenseElements(TPZCompMesh &cmesh)
         if(subcel) {
             CondenseElements(*subcel);
             subcel->CleanUpUnconnectedNodes();
-            subcel->SetAnalysisSparse(0);
-        //    subcel->SetAnalysisSkyline();
+            //Sets the analysis type for the submeshes
+            subcel->SetAnalysisSparse(50);
+
+            // // subcel->Analysis() = new TPZSubMeshAnalysis(subcel);
+            // TPZSubMeshAnalysis *analysisAux = new TPZSubMeshAnalysis(subcel);
+            // std::set<int> matBCAll={5,6,7,8};
+            // TPZMatRedSolver<STATE> solver(analysisAux,matBCAll,TPZMatRedSolver<STATE>::EMHMSparse);
+            // solver.Solve(std::cout);
+
         }
         else if(cel)
         {

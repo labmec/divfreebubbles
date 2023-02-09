@@ -46,11 +46,12 @@ set(UTIL_HEADERS
 #   TPZKernelHdivHybridizer.h
   TPZKernelHdivUtils.h
   TPZSparseMatRed.h
+  TPZDoubleMatRed.h
   TPZMatRedSolver.h
 #   TPZCompElConstFluxHybrid.h
 #   TPZMixedElasticityND.h
   TPZMixedElasticityCMeshCreator.h
-  TPZCompelDiscScaled.h
+#   TPZCompelDiscScaled.h
   )
 
 set(UTIL_SRCS
@@ -58,11 +59,12 @@ set(UTIL_SRCS
 #   TPZHDivApproxSpaceCreator.cpp
   TPZKernelHdivUtils.cpp
   TPZSparseMatRed.cpp
+  TPZDoubleMatRed.cpp
   TPZMatRedSolver.cpp
 #   TPZCompElConstFluxHybrid.cpp
 #   TPZMixedElasticityND.cpp
   TPZMixedElasticityCMeshCreator.cpp
-  TPZCompelDiscScaled.cpp
+#   TPZCompelDiscScaled.cpp
   )
 
 target_sources(divfree PRIVATE

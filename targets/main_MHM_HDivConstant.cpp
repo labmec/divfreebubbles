@@ -4,7 +4,6 @@
   
 */
 #include <TPZGeoMeshTools.h>
-#include "TPZHDivApproxSpaceCreator.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
 #include <TPZGmshReader.h>
@@ -38,8 +37,18 @@ enum EMatid  {ENone, EDomain, EBottom, ETop, ELeft, ERight};
 
 // The test function
 template<class tshape>
-void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivApproxSpaceCreator<STATE>::MSpaceType &approxSpace);
+void RunMHM(const int &xdiv, const int &pOrder);
 
+/**
+   @brief Creates a geometric mesh with elements of a given type on a unit square or cube (depending on the mesh dimension).
+   @param[in] meshType element type to be created.
+   @param[in] nDivs Number of divisions (rows of elements) in x, y and z.
+   @param[in] volId Material identifier for the volumetric region.
+   @param[in] bcId Material identifier for the boundary.
+*/
+template<class tshape>
+TPZAutoPointer<TPZGeoMesh>
+CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, TPZVec<int64_t> &elpartition, TPZVec<int64_t> &scalingcenterindices);
 
 //Analytical solution
 constexpr int solOrder{4};
@@ -56,7 +65,7 @@ auto exactSol = [](const TPZVec<REAL> &loc,
 };
 
 template<class tshape>
-void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivApproxSpaceCreator<STATE>::MSpaceType &approxSpace)
+void RunMHM(const int &xdiv, const int &pOrder)
 {
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -81,16 +90,26 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     
     // Creates/import a geometric mesh
     std::string filename;
-    filename = "polygon1.txt";
+    filename = "polygon00.txt";
     TPZVec<int64_t> elpartition;
     TPZVec<int64_t> scalingcenterindices;
     TPZAutoPointer<TPZGeoMesh> gmesh = ReadUNSWQuadtreeMesh(filename, mhm_gcreator.fElementPartition, scalingcenterindices);
+    
 
+    // // Creates/import a geometric mesh  
+    // TPZAutoPointer<TPZGeoMesh> gmesh = CreateGeoMesh<pzshape::TPZShapeQuad>(nDivs, EDomain, mhm_gcreator.fElementPartition, scalingcenterindices);
+    
+    // std::string vtk_name = "geoMeshMHM.vtk";
+    // std::ofstream vtkfile(vtk_name.c_str());
+    // TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
+
+    // mhm_gcreator.CreateSkeleton(gmesh);
     mhm_gcreator.AddBoundaryElements(gmesh);
     mhm_gcreator.fElementPartition.Resize(gmesh->NElements(), -1);
     scalingcenterindices.Resize(gmesh->NElements(), -1);
 
-    LaplaceExact.fExact = TLaplaceExample1::E2SinSin;
+    // LaplaceExact.fExact = TLaplaceExample1::E2SinSin;
+    LaplaceExact.fExact = TLaplaceExample1::EX;
 
     std::cout << "Building computational mesh\n";
     std::map<int,int> matmap;
@@ -98,27 +117,30 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     int EPoly = 100;
     matmap[EPoly] = Emat2;
 
+    // std::cout << "scalingcenterindices " << scalingcenterindices << std::endl;
+    // std::cout << "element partition " << mhm_gcreator.fElementPartition << std::endl;
+
     mhm_gcreator.CreateTriangleElements(gmesh, matmap, mhm_gcreator.fElementPartition, scalingcenterindices);
 
     // mhm_gcreator.CreateSkeleton(gmesh);
     // mhm_gcreator.CreateSubGrids(gmesh);
-    mhm_gcreator.RefineSubGrids(gmesh);
+    // mhm_gcreator.RefineSubGrids(gmesh);
     // mhm_gcreator.RefineSubGrids(gmesh);
     // mhm_gcreator.RefineSkeleton(gmesh);
 
-    std::string vtk_name = "geoMeshMHM.vtk";
-    std::ofstream vtkfile(vtk_name.c_str());
-    TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
+    // std::string vtk_name = "geoMeshMHM.vtk";
+    // std::ofstream vtkfile(vtk_name.c_str());
+    // TPZVTKGeoMesh::PrintGMeshVTK(gmesh.operator->(), vtkfile, mhm_gcreator.fElementPartition);
 
     TPZMHMHDivApproxCreator mhm_ccreator(mhm_gcreator,gmesh);
 
     mhm_ccreator.HdivFamily() = HDivFamily::EHDivConstant;
     mhm_ccreator.ProbType() = ProblemType::EDarcy;
-    mhm_ccreator.IsRigidBodySpaces() = false;
+    mhm_ccreator.IsRigidBodySpaces() = true;
     mhm_ccreator.SetDefaultOrder(pOrder);
     mhm_ccreator.SetExtraInternalOrder(0);
     mhm_ccreator.SetShouldCondense(true);
-    mhm_ccreator.HybridType() = HybridizationType::ESemi;
+    mhm_ccreator.HybridType() = HybridizationType::ENone;
     mhm_ccreator.SetPOrderSkeleton(pOrder);
 
     mhm_ccreator.InsertMaterialObjects(LaplaceExact);
@@ -136,6 +158,7 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
         multiCmesh->Print(out);
         std::ofstream out2("cmesh_multi.vtk");
         TPZVTKGeoMesh::PrintCMeshVTK(multiCmesh, out2);
+        util.PrintCMeshConnects(multiCmesh);
     }
     mhm_ccreator.PutinSubstructures(*multiCmesh);
     mhm_ccreator.CondenseElements(*multiCmesh);
@@ -145,7 +168,7 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     TPZLinearAnalysis * Analysis = new TPZLinearAnalysis(SBFem,mustOptimizeBandwidth);
 
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> strmat(multiCmesh);
-    strmat.SetNumThreads(0);
+    strmat.SetNumThreads(10);
     Analysis->SetStructuralMatrix(strmat);
 
     int64_t neq = multiCmesh->NEquations();
@@ -158,7 +181,7 @@ void RunMHM(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily, TPZHDivA
     
     if (mhm_ccreator.HybridType() == HybridizationType::ESemi){
         std::set<int> matBCAll={Ebc1,Ebc2,Ebc3,Ebc4};
-        TPZMatRedSolver<STATE> solver(*Analysis,matBCAll,TPZMatRedSolver<STATE>::ESparse);
+        TPZMatRedSolver<STATE> solver(*Analysis,matBCAll,TPZMatRedSolver<STATE>::EMHMSparse);
         solver.Solve(std::cout);
     } else {
         TPZStepSolver<STATE> step;
@@ -301,18 +324,106 @@ int main(int argc, char *argv[]){
     #define TEST
     const int pOrder = 1;
     const int xdiv = 2;
-    // HDivFamily hdivfam = HDivFamily::EHDivStandard;
-    HDivFamily hdivfam = HDivFamily::EHDivConstant;
-    TPZHDivApproxSpaceCreator<STATE>::MSpaceType approxSpace = TPZHDivApproxSpaceCreator<STATE>::ENone;
-    
-    // RunMHM<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam,approxSpace); 
-    RunMHM<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam,approxSpace); 
+        
+    RunMHM<pzshape::TPZShapeTriang>(xdiv,pOrder); 
 
     return 0;
 }
 
 
+//Create 
+template <class tshape>
+TPZAutoPointer<TPZGeoMesh>
+CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, TPZVec<int64_t> &elpartition, TPZVec<int64_t> &scalingcenterindices)
+{
+    
+    MMeshType meshType;
+    int dim = tshape::Dimension;
 
+    switch (tshape::Type())
+    {
+    case ETriangle:
+        meshType = MMeshType::ETriangular;
+        break;
+    case EQuadrilateral:
+        meshType = MMeshType::EQuadrilateral;
+        break;
+    case ETetraedro:
+        meshType = MMeshType::ETetrahedral;
+        break;
+    case ECube:
+        meshType = MMeshType::EHexahedral;
+        break;
+        case EPrisma:
+        meshType = MMeshType::EPrismatic;
+        break;
+    default:
+        DebugStop();
+    }
+
+    TPZManVector<REAL,3> minX = {-1,-1,0};
+    TPZManVector<REAL,3> maxX = {1,1,0};
+    int nMats = 2*dim+1;
+
+    //all bcs share the same id
+    constexpr bool createBoundEls{true};
+    TPZVec<int> matIds(nMats,volId);
+    matIds[0] = volId;
+    matIds[1] = Ebc1;
+    matIds[2] = Ebc2;
+    matIds[3] = Ebc3;
+    matIds[4] = Ebc4;
+    
+    TPZAutoPointer<TPZGeoMesh> gmesh = TPZGeoMeshTools::CreateGeoMeshOnGrid(dim, minX, maxX,
+                        matIds, nDivs, meshType,createBoundEls);
+    // TPZGeoMesh* gmesh = TPZGeoMeshTools::CreateGeoMeshSingleEl(meshType,
+    //                     volId,createBoundEls, bcId);
+
+    int nVolumes = nDivs[0]*nDivs[1];
+    if (dim == 3) nVolumes *= nDivs[2];
+    scalingcenterindices.Resize(nVolumes*6,-1);
+
+    auto nel = gmesh->NElements();
+    for (int iel = 0; iel < nel; iel++)
+    {
+        TPZGeoEl *gel = gmesh->ElementVec()[iel];
+        if (gel->Dimension() == dim){
+            int nFacets = gel->NSides(dim-1);
+            int nSides = gel->NSides();
+            for (int iside = 0; iside < nFacets; iside++){
+                TPZGeoElSide gelside(gel,nSides-1-nFacets+iside);
+                if (gelside.Neighbour().Element()->Dimension() == dim){
+                    TPZGeoElBC gelbc(gel,nSides-1-nFacets+iside,ESkeleton);
+                }  
+            }
+
+            TPZManVector<REAL,3> midxco(dim,0.);
+            gel->CenterPoint(nSides-1,midxco);
+            midxco.resize(3);
+            int64_t midindex = gmesh->NodeVec().AllocateNewElement();
+            gmesh->NodeVec()[midindex].Initialize(midxco, *gmesh);
+
+            scalingcenterindices[midindex] = gel->Index();
+
+            gmesh->DeleteElement(gel);
+        }
+    }
+    gmesh->ResetReference();
+    
+    
+    elpartition.Resize(gmesh->NElements(),-1);
+    for (int i = 0; i < gmesh->NElements(); i++)
+    {
+        elpartition[i]=i;
+        TPZGeoEl *gel = gmesh->ElementVec()[i];
+        if (!gel) continue;
+        gel->SetMaterialId(100);
+        // if (gel->Dimension() == dim) DebugStop();
+    }
+        
+    return gmesh;
+    
+}
 
 
 

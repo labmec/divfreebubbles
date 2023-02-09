@@ -12,7 +12,7 @@
 template <class TVar>
 class TPZMatRedSolver {
 public:
-    enum SolverType{EDefault, ESparse}; 
+    enum SolverType{EDefault, ESparse, EMHMSparse}; 
 
     TPZMatRedSolver() = default;
 
@@ -28,6 +28,7 @@ public:
     void SolveProblemDefault(std::ostream &out);
 
     void SolveProblemSparse(std::ostream &out); 
+    void SolveProblemMHMSparse(std::ostream &out); 
     
     void ComputeConditionNumber(TPZSparseMatRed<STATE> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
     void ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<STATE>> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);

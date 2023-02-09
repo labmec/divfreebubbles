@@ -5,7 +5,6 @@
 */
 #include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
-#include "TPZHDivApproxSpaceCreator.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
 #include <TPZGmshReader.h>

@@ -144,10 +144,10 @@ void TPZKernelHdivUtils<TVar>::PrintCompMesh(TPZCompMesh *cmesh,std::string file
 
 // Util to solve the arising linear sistem by means of a direct method
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization)
+void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool domainHybridization)
 {
     //sets number of threads to be used by the solver
-    constexpr int nThreads{12};
+    constexpr int nThreads{0};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
@@ -208,7 +208,7 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
 
 // Util to solve the arising linear sistem by means of a direct method
 template <class TVar>
-void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool &domainHybridization, const int nThreads)
+void TPZKernelHdivUtils<TVar>::SolveProblemCholesky(TPZLinearAnalysis &an, TPZCompMesh *cmesh, bool filterEquations, bool domainHybridization, const int nThreads)
 {
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);

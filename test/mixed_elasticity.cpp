@@ -5,7 +5,6 @@
 */
 #include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
-#include "TPZHDivApproxSpaceCreator.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
 #include <TPZGmshReader.h>
@@ -24,7 +23,7 @@
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZAnalyticSolution.h"
 #include "TPZHDivApproxCreator.h"
-#include "TPZMixedElasticityND.h"
+#include "Elasticity/TPZMixedElasticityND.h"
 
 std::ofstream rprint;
 
@@ -118,7 +117,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,xdiv};
+    if (DIM == 2) nDivs = {20,20};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -131,11 +130,11 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     TPZHDivApproxCreator hdivCreator(gmesh);
     hdivCreator.HdivFamily() = hdivfamily;
     hdivCreator.ProbType() = ProblemType::EElastic;
-    hdivCreator.IsRigidBodySpaces() = true;
+    hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::ENone;
+    hdivCreator.HybridType() = HybridizationType::EStandard;
 
     TPZAnalyticSolution *gAnalytic = 0;
     TPZMixedElasticityND* matelastic = 0;
@@ -189,7 +188,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     std::set<int> matBCAll = {EBoundary};
     //Solve problem
-    // if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
+    bool sparse = false;
+    if (sparse){
         // TPZMatRedSolver<STATE> solver(&an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
         TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
         solver.Solve(rprint);
@@ -199,13 +199,13 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         // if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
         // createSpace.Solve(an, cmesh, true, filter);
 
-    // } else {
-    //     //Equation filter (spanning trees), true if 3D and HDivKernel 
-    //     bool filter = false;bool domainhybr=false;
-    //     if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
-    // //     // createSpace.Solve(an, cmesh, true, filter);
-    //     util.SolveProblemDirect(an,cmesh,filter,domainhybr);
-    // }
+    } else {
+        //Equation filter (spanning trees), true if 3D and HDivKernel 
+        bool filter = false;bool domainhybr=false;
+        if (DIM == 3 && hdivfamily == HDivFamily::EHDivKernel) filter = true;
+    //     // createSpace.Solve(an, cmesh, true, filter);
+        util.SolveProblemDirect(an,cmesh,filter,domainhybr);
+    }
 
     // std::cout << "Time running = " << clock << std::endl;
 
@@ -215,28 +215,28 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     //     util.PrintResultsMultiphysics(meshvector,an,cmesh);
     // }
 
-    // {
+    {
         
-    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(meshvector_HDiv, cmesh_m_HDiv);
-    //     TPZSimpleTimer postProc("Post processing2");
-    //     const std::string plotfile = "myfile";//sem o .vtk no final
-    //     constexpr int vtkRes{0};
+        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+        TPZSimpleTimer postProc("Post processing2");
+        const std::string plotfile = "myfile";//sem o .vtk no final
+        constexpr int vtkRes{0};
     
 
-    //     TPZVec<std::string> fields = {
-    //     // "ExactDisplacement",
-    //     // "ExactStress",
-    //     "Displacement",
-    //     "SigmaX",
-    //     "SigmaY",
-    //     "TauXY"
-    //     };
-    //     auto vtk = TPZVTKGenerator(cmesh_m_HDiv, fields, plotfile, vtkRes);
+        TPZVec<std::string> fields = {
+        // "ExactDisplacement",
+        // "ExactStress",
+        "Displacement",
+        "SigmaX",
+        "SigmaY",
+        "TauXY"
+        };
+        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-    //     vtk.Do();
-    //     // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
+        vtk.Do();
+        // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
         
-    // }
+    }
     // //vamos supor que vc atualiza a solucao, roda de novo, sei la
     // vtk.Do();
 

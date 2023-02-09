@@ -2,7 +2,7 @@
 #include "TPZNullMaterial.h"
 #include "pzcompel.h"
 #include "TPZInterfaceEl.h"
-#include "TPZCompelDiscScaled.h"
+#include "TPZCompElDiscScaled.h"
 #include <Elasticity/TPZMixedElasticityND.h>
 #include "pzintel.h"
 #include "TPZAnalyticSolution.h"
