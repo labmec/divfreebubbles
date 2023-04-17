@@ -10,7 +10,14 @@ void TPZOrtotropicPermeability::SetPermeabilityFunction(OrtoPermeabilityFunction
 }
 
 TPZManVector<REAL,3> TPZOrtotropicPermeability::GetPermeability(const TPZVec<REAL> &coord) {
-    return fPermeabilityFunction ? fPermeabilityFunction(coord) : fConstantPermeability;
+  if(fPermeabilityFunction){
+    return fPermeabilityFunction(coord);
+  }
+  else{
+    DebugStop();
+    return TPZManVector<REAL,3>() = {fConstantPermeability,fConstantPermeability,fConstantPermeability};
+  }
+  
 }
 
 int TPZOrtotropicPermeability::ClassId() const {

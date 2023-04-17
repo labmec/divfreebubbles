@@ -19,7 +19,7 @@ using namespace std;
 
 #include "TPZPersistenceManager.h"
 #include "TPZTimer.h"
-#include "pzsysmp.h"
+#include "TPZSYSMPMatrix.h"
 
 #include <sstream>
 #include "pzlog.h"
@@ -39,11 +39,11 @@ TPZDoubleMatRed<TVar>::TPZDoubleMatRed () :
 TPZRegisterClassId(&TPZDoubleMatRed::ClassId),
 TPZMatrix<TVar>( 0, 0 ), fK11(0,0),fK01(0,0),fK10(0,0),fF0(0,0),fF1(0,0), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
 {
-	fDim0=0;
-	fDim1=0;
-	fK01IsComputed = 0;
-	fIsReduced = 0;
-    fF0IsComputed = false;
+  fDim0=0;
+  fDim1=0;
+  fK01IsComputed = 0;
+  fIsReduced = 0;
+  fF0IsComputed = false;
 }
 
 template<class TVar>
@@ -52,12 +52,12 @@ TPZRegisterClassId(&TPZDoubleMatRed::ClassId),
 TPZMatrix<TVar>( dim,dim ), fK11(dim-dim00,dim-dim00), fK01(dim00,dim-dim00),
 fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
 {
-	if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
-	fDim0=dim00;
-	fDim1=dim-dim00;
-	fK01IsComputed = 0;
-    fF0IsComputed = false;
-	fIsReduced = 0;
+  if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
+  fDim0=dim00;
+  fDim1=dim-dim00;
+  fK01IsComputed = 0;
+  fF0IsComputed = false;
+  fIsReduced = 0;
 }
 
 
@@ -65,22 +65,22 @@ template<class TVar>
 TPZDoubleMatRed<TVar>::TPZDoubleMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels):
 TPZRegisterClassId(&TPZDoubleMatRed::ClassId), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
 {
-    int64_t dim, dim00;
-    ReorderEquations(cmesh,LagLevels,dim,dim00);
-
-    fK11.Resize(dim-dim00,dim-dim00); 
-    fK01.Resize(dim00,dim-dim00);
-    fK10.Resize(dim-dim00,dim00);
-    fF0.Resize(dim00,1);
-    fF0.Zero();
-    fF1.Resize(dim-dim00,1);
-    fF1.Zero();
-	if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
-	fDim0=dim00;
-	fDim1=dim-dim00;
-	fK01IsComputed = 0;
-    fF0IsComputed = false;
-	fIsReduced = 0;
+  int64_t dim, dim00;
+  ReorderEquations(cmesh,LagLevels,dim,dim00);
+  
+  fK11.Resize(dim-dim00,dim-dim00);
+  fK01.Resize(dim00,dim-dim00);
+  fK10.Resize(dim-dim00,dim00);
+  fF0.Resize(dim00,1);
+  fF0.Zero();
+  fF1.Resize(dim-dim00,1);
+  fF1.Zero();
+  if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
+  fDim0=dim00;
+  fDim1=dim-dim00;
+  fK01IsComputed = 0;
+  fF0IsComputed = false;
+  fIsReduced = 0;
 }
 
 template<class TVar>
@@ -89,7 +89,8 @@ TPZDoubleMatRed<TVar>::~TPZDoubleMatRed(){
 
 template<class TVar>
 int TPZDoubleMatRed<TVar>::IsSymmetric() const {
-	if(fK00) return this->fK00->IsSymmetric();
+  DebugStop(); // 17/04/2023: Does not exist anymore?
+//	if(fK00) return this->fK00->IsSymmetric();
 	return 0;
 }
 
@@ -97,39 +98,45 @@ template<class TVar>
 void TPZDoubleMatRed<TVar>::SimetrizeMatRed() {
 	// considering fK00 is simetric, only half of the object is assembled.
 	// this method simetrizes the matrix object
-	
-	if(!fK00 || !this->fK00->IsSymmetric()) return;
-	// fK01.Transpose(&fK10);
-    //Transpose:
-    TPZVec<int64_t> IA_K01, JA_K01, IA_K10, JA_K10;
-    TPZVec<TVar> A_K01, A_K10;
-    fK01.GetData(IA_K01,JA_K01,A_K01);
-    fK10.GetData(IA_K10,JA_K10,A_K10);
-
-    IA_K10.Fill(0);
-
-    //The operation below transposes the matrix in the compressed row format
-
-    IA_K10.resize(IA_K10.size()+1); // one extra line to do the operations
-    for (int i = 0; i < JA_K01.size(); ++i) {
-        ++IA_K10[JA_K01[i] + 2];
+  
+  SymProp symprop = this->fK00->VerifySymmetry();
+  
+  //	if(!fK00 || !this->fK00->IsSymmetric()) return;
+  if(!fK00 || symprop != SymProp::Sym) return;
+  // fK01.Transpose(&fK10);
+  //Transpose:
+  TPZVec<int64_t> IA_K01, JA_K01, IA_K10, JA_K10;
+  TPZVec<TVar> A_K01, A_K10;
+  fK01.GetData(IA_K01,JA_K01,A_K01);
+  fK10.GetData(IA_K10,JA_K10,A_K10);
+  
+  IA_K10.Fill(0);
+  
+  //The operation below transposes the matrix in the compressed row format
+  
+  IA_K10.resize(IA_K10.size()+1); // one extra line to do the operations
+  for (int i = 0; i < JA_K01.size(); ++i) {
+    ++IA_K10[JA_K01[i] + 2];
+  }
+  // from count per column generate new rowPtr (but shifted)
+  for (int i = 2; i < IA_K10.size(); ++i) {
+    // create incremental sum
+    IA_K10[i] += IA_K10[i - 1];
+  }
+  for (int i = 0; i < IA_K01.size()-1; i++){
+    for (int j = IA_K01[i]; j < IA_K01[i+1]; j++){
+      const int new_index = IA_K10[JA_K01[j]+1]++;
+      A_K10[new_index] = A_K01[j];
+      JA_K10[new_index] = i;
     }
-    // from count per column generate new rowPtr (but shifted)
-    for (int i = 2; i < IA_K10.size(); ++i) {
-        // create incremental sum
-        IA_K10[i] += IA_K10[i - 1];
-    }
-    for (int i = 0; i < IA_K01.size()-1; i++){
-        for (int j = IA_K01[i]; j < IA_K01[i+1]; j++){
-            const int new_index = IA_K10[JA_K01[j]+1]++;
-            A_K10[new_index] = A_K01[j];
-            JA_K10[new_index] = i;
-        }
-    }
-    IA_K10.resize(IA_K10.size()-1); // remove the extra line
-    
-    fK10.SetData(IA_K10,JA_K10,A_K10);
+  }
+  IA_K10.resize(IA_K10.size()-1); // remove the extra line
+  
+  fK10.SetData(IA_K10,JA_K10,A_K10);
 
+
+  
+  
 	// fK11.Simetrize();
 		
 	// int64_t row,col;

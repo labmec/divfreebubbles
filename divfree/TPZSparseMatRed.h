@@ -11,8 +11,8 @@
 #include "pzreal.h"
 #include "pzfmatrix.h"
 #include "TPZMatrixSolver.h"
-#include "pzsysmp.h"
-#include "pzysmp.h"
+#include "TPZSYSMPMatrix.h"
+#include "TPZYSMPMatrix.h"
 
 template<class TVar>
 class TPZVerySparseMatrix;
@@ -36,163 +36,163 @@ template<class TVar >
 class TPZSparseMatRed: public TPZMatrix<TVar>
 {
 public:
-	
-	// friend class TPZSparseMatRed<TVar, TPZFMatrix<TVar> >;
-	// friend class TPZSparseMatRed<TVar ,TPZVerySparseMatrix<TVar> >;
-	// friend class TPZSparseMatRed<TVar ,TPZSYsmpMatrix<TVar> >;
-	// friend class TPZSparseMatRed<TVar ,TPZFYsmpMatrix<TVar> >;
-	
-    /** @brief Simple constructor */
-	TPZSparseMatRed();
-	
-	/**
-	 * @brief Constructor with 2 parameters
-	 * @param dim assumes the value of n1+n2
-	 * @param dim00 equals n1
-	 */
-	TPZSparseMatRed(const int64_t dim, const int64_t dim00);
-
-	TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels);
-
-	template<class TSideCopy>
-	TPZSparseMatRed<TVar>(const TPZSparseMatRed<TVar> &cp): TPZMatrix<TVar>(cp), fK11(cp.fK11), fK01(cp.fK01), fK10(cp.fK10), fF0(cp.fF0), fF1(cp.fF1),fMaxRigidBodyModes(cp.fMaxRigidBodyModes),fNumberRigidBodyModes(cp.fNumberRigidBodyModes), fF0IsComputed(cp.fF0IsComputed)
-	{
-		fDim0=cp.fDim0;
-		fDim1=cp.fDim1;
-		fK01IsComputed = cp.fK01IsComputed;
-		fIsReduced = cp.fIsReduced;
-		fSolver = cp.fSolver;
-		
-		if(cp.fK00) fK00 = cp.fK00;
-	}
-	inline TPZSparseMatRed<TVar>*NewMatrix() const override {return new TPZSparseMatRed<TVar>{};}
-	CLONEDEF(TPZSparseMatRed)
-
-    /** @brief Creates a copy from another TPZSparseMatRed*/
-    void CopyFrom(const TPZMatrix<TVar> *  mat) override
-    {                                                           
-        auto *from = dynamic_cast<const TPZSparseMatRed<TVar> *>(mat);                
-        if (from) {                                               
-        *this = *from;                                          
-        }                                                         
-        else                                                      
-        {                                                       
-            PZError<<__PRETTY_FUNCTION__;                         
-            PZError<<"\nERROR: Called with incompatible type\n."; 
-            PZError<<"Aborting...\n";                             
-            DebugStop();                                          
-        }                                                       
-    }
-	/** @brief Simple destructor */
-	~TPZSparseMatRed();
-	
-	/** @brief returns 1 or 0 depending on whether the fK00 matrix is zero or not */
-	virtual int IsSymmetric() const override;
-
-	/** @brief changes the declared dimension of the matrix to fDim1 */
-	void SetReduced()
-	{
-		TPZMatrix<TVar>::Resize(fDim1, fDim1);
-		fIsReduced = 1;
-	}
-	
-    void ReallocSolver() {
-        fSolver->ReallocMatrix();
-    }
-	/**
-	 * @brief Put and Get values without bounds checking
-	 * these methods are faster than "Put" e "Get" if DEBUG is defined
-	 */
-	virtual int PutVal(const int64_t row, const int64_t col, const TVar& value) override;
-	virtual const TVar GetVal(const int64_t row, const int64_t col) const override;
-	virtual TVar &s(const int64_t row, const int64_t col) override;
-	
-	/** @brief This method will zero all submatrices associated with this reducable matrix class */
-	virtual int Zero() override;
-	
-	/**
-	 * @brief Sets the matrix pointer of the upper left matrix to K00
-	 * @param K00 pointer to an upper left matrix
-	 */
-	void SetK00(TPZAutoPointer<TPZSYsmpMatrix<TVar> > K00);
+  
+  // friend class TPZSparseMatRed<TVar, TPZFMatrix<TVar> >;
+  // friend class TPZSparseMatRed<TVar ,TPZVerySparseMatrix<TVar> >;
+  // friend class TPZSparseMatRed<TVar ,TPZSYsmpMatrix<TVar> >;
+  // friend class TPZSparseMatRed<TVar ,TPZFYsmpMatrix<TVar> >;
+  
+  /** @brief Simple constructor */
+  TPZSparseMatRed();
+  
+  /**
+   * @brief Constructor with 2 parameters
+   * @param dim assumes the value of n1+n2
+   * @param dim00 equals n1
+   */
+  TPZSparseMatRed(const int64_t dim, const int64_t dim00);
+  
+  TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels);
+  
+  template<class TSideCopy>
+  TPZSparseMatRed<TVar>(const TPZSparseMatRed<TVar> &cp): TPZMatrix<TVar>(cp), fK11(cp.fK11), fK01(cp.fK01), fK10(cp.fK10), fF0(cp.fF0), fF1(cp.fF1),fMaxRigidBodyModes(cp.fMaxRigidBodyModes),fNumberRigidBodyModes(cp.fNumberRigidBodyModes), fF0IsComputed(cp.fF0IsComputed)
+  {
+    fDim0=cp.fDim0;
+    fDim1=cp.fDim1;
+    fK01IsComputed = cp.fK01IsComputed;
+    fIsReduced = cp.fIsReduced;
+    fSolver = cp.fSolver;
     
-    /**
-     * @brief Sets K01 as computed
-     */
-    void SetK01IsComputed (bool directive)
-    {
-        fK01IsComputed = directive;
+    if(cp.fK00) fK00 = cp.fK00;
+  }
+  inline TPZSparseMatRed<TVar>*NewMatrix() const override {return new TPZSparseMatRed<TVar>{};}
+  CLONEDEF(TPZSparseMatRed)
+  
+  /** @brief Creates a copy from another TPZSparseMatRed*/
+  void CopyFrom(const TPZMatrix<TVar> *  mat) override
+  {
+    auto *from = dynamic_cast<const TPZSparseMatRed<TVar> *>(mat);
+    if (from) {
+      *this = *from;
     }
-    
-    /**
-     * @brief Sets F0 as computed
-     */
-    void SetF0IsComputed (bool directive)
+    else
     {
-        fF0IsComputed = directive;
+      PZError<<__PRETTY_FUNCTION__;
+      PZError<<"\nERROR: Called with incompatible type\n.";
+      PZError<<"Aborting...\n";
+      DebugStop();
     }
-	
-	TPZAutoPointer<TPZMatrix<TVar> > K00()
-	{
-		return fK00;
-	}
-	TPZFYsmpMatrix<TVar> &K01()
-	{
-		return fK01;
-	}
-	TPZFYsmpMatrix<TVar> &K10()
-	{
-		return fK10;
-	}
-    
-    TPZSYsmpMatrix<TVar> &K11()
-    {
-        return fK11;
-    }
-    
-    TPZFMatrix<TVar> &F1()
-    {
-        return fF1;
-    }
-    
-    TPZFMatrix<TVar> &F0()
-    {
-        return fF0;
-    }
-    
-    int64_t Dim0()
-    {
-        return fDim0;
-    }
-    
-    int64_t Dim1()
-    {
-        return fDim1;
-    }
-    
-	void SetSolver(TPZAutoPointer<TPZMatrixSolver<TVar> > solver);
-    TPZAutoPointer<TPZMatrixSolver<TVar> > Solver()
-    {
-        return fSolver;
-    }
-	/**
-	 * @brief Copies the F vector in the internal data structure
-	 * @param F vector containing data to stored in current object
-	 */
-	void SetF(const TPZFMatrix<TVar> & F);
-    
-    /** @brief indicate how many degrees of freedom are reserved for rigid body modes */
-    void SetMaxNumberRigidBodyModes(int maxrigid)
-    {
-        fMaxRigidBodyModes = maxrigid;
-    }
-    
-    /** @brief return the number of rigid body modes detected during decomposition */
-    int NumberRigidBodyModes()
-    {
-        return fNumberRigidBodyModes;
-    }
-	
+  }
+  /** @brief Simple destructor */
+  ~TPZSparseMatRed();
+  
+  /** @brief returns 1 or 0 depending on whether the fK00 matrix is zero or not */
+  virtual int IsSymmetric() const;
+  
+  /** @brief changes the declared dimension of the matrix to fDim1 */
+  void SetReduced()
+  {
+    TPZMatrix<TVar>::Resize(fDim1, fDim1);
+    fIsReduced = 1;
+  }
+  
+  void ReallocSolver() {
+    fSolver->ReallocMatrix();
+  }
+  /**
+   * @brief Put and Get values without bounds checking
+   * these methods are faster than "Put" e "Get" if DEBUG is defined
+   */
+  virtual int PutVal(const int64_t row, const int64_t col, const TVar& value) override;
+  virtual const TVar GetVal(const int64_t row, const int64_t col) const override;
+  virtual TVar &s(const int64_t row, const int64_t col) override;
+  
+  /** @brief This method will zero all submatrices associated with this reducable matrix class */
+  virtual int Zero() override;
+  
+  /**
+   * @brief Sets the matrix pointer of the upper left matrix to K00
+   * @param K00 pointer to an upper left matrix
+   */
+  void SetK00(TPZAutoPointer<TPZSYsmpMatrix<TVar> > K00);
+  
+  /**
+   * @brief Sets K01 as computed
+   */
+  void SetK01IsComputed (bool directive)
+  {
+    fK01IsComputed = directive;
+  }
+  
+  /**
+   * @brief Sets F0 as computed
+   */
+  void SetF0IsComputed (bool directive)
+  {
+    fF0IsComputed = directive;
+  }
+  
+  TPZAutoPointer<TPZMatrix<TVar> > K00()
+  {
+    return fK00;
+  }
+  TPZFYsmpMatrix<TVar> &K01()
+  {
+    return fK01;
+  }
+  TPZFYsmpMatrix<TVar> &K10()
+  {
+    return fK10;
+  }
+  
+  TPZSYsmpMatrix<TVar> &K11()
+  {
+    return fK11;
+  }
+  
+  TPZFMatrix<TVar> &F1()
+  {
+    return fF1;
+  }
+  
+  TPZFMatrix<TVar> &F0()
+  {
+    return fF0;
+  }
+  
+  int64_t Dim0()
+  {
+    return fDim0;
+  }
+  
+  int64_t Dim1()
+  {
+    return fDim1;
+  }
+  
+  void SetSolver(TPZAutoPointer<TPZMatrixSolver<TVar> > solver);
+  TPZAutoPointer<TPZMatrixSolver<TVar> > Solver()
+  {
+    return fSolver;
+  }
+  /**
+   * @brief Copies the F vector in the internal data structure
+   * @param F vector containing data to stored in current object
+   */
+  void SetF(const TPZFMatrix<TVar> & F);
+  
+  /** @brief indicate how many degrees of freedom are reserved for rigid body modes */
+  void SetMaxNumberRigidBodyModes(int maxrigid)
+  {
+    fMaxRigidBodyModes = maxrigid;
+  }
+  
+  /** @brief return the number of rigid body modes detected during decomposition */
+  int NumberRigidBodyModes()
+  {
+    return fNumberRigidBodyModes;
+  }
+  
 	
 	/** @brief Computes the reduced version of the right hand side \f$ [F1]=[F1]-[K10][A00^-1][F0] \f$ */
 	void F1Red(TPZFMatrix<TVar> &F1);
@@ -235,20 +235,42 @@ public:
 				 const TVar alpha, const TVar beta, const int opt = 0) const override;
 	
 	/** @brief If fK00 is simetric, only part of the matrix is accessible to external objects. */
-	/** Simetrizes copies the data of the matrix to make its data simetric */
-	void SimetrizeMatRed();
-    
-    void ReorderEquations(TPZCompMesh *cmesh, std::set<int> &LagLevels, int64_t &dim, int64_t &dim00);
-
-    void AllocateSubMatrices(TPZCompMesh *cmesh);
-
-    void SetK00IsNegativeDefinite(){
-        fK00NegativeDefinite = true;
-    }
-
-    bool &K00IsNegativeDefinite(){
-        return fK00NegativeDefinite;
-    }
+  /** Simetrizes copies the data of the matrix to make its data simetric */
+  void SimetrizeMatRed();
+  
+  void ReorderEquations(TPZCompMesh *cmesh, std::set<int> &LagLevels, int64_t &dim, int64_t &dim00);
+  
+  void AllocateSubMatrices(TPZCompMesh *cmesh);
+  
+  void SetK00IsNegativeDefinite(){
+    fK00NegativeDefinite = true;
+  }
+  
+  bool &K00IsNegativeDefinite(){
+    return fK00NegativeDefinite;
+  }
+  
+  
+  /** @brief decompose the system of equations acording to the decomposition
+   * scheme */
+  virtual int Decompose(const DecomposeType dt) override {
+      DebugStop();
+      return 0;
+  }
+  /**
+   * @brief Solves the linear system using Direct methods
+   * @param F The right hand side of the system and where the solution is stored.
+   * @param dt Indicates type of decomposition
+   */
+  virtual int SolveDirect ( TPZFMatrix<TVar>& F , const DecomposeType dt) override
+  {
+      DebugStop();
+      return 0;
+  }
+  virtual int SolveDirect ( TPZFMatrix<TVar>& F , const DecomposeType dt) const override{
+      DebugStop();
+      return 0;
+  }
 
 /** @brief Saveable methods */
 public:

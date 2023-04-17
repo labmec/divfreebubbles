@@ -30,7 +30,7 @@
 #include <pzstepsolver.h> //for TPZStepSolver
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
-#include <valgrind/callgrind.h>
+//#include <valgrind/callgrind.h>
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 std::ofstream printerrors("results_errors.txt",std::ofstream::out);
