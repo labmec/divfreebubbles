@@ -87,13 +87,6 @@ TPZSparseMatRed<TVar>::~TPZSparseMatRed(){
 }
 
 template<class TVar>
-int TPZSparseMatRed<TVar>::IsSymmetric() const {
-  DebugStop(); // 17/04/2023: Does not exist anymore?
-//	if(fK00) return this->fK00->IsSymmetric();
-	return 0;
-}
-
-template<class TVar>
 void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
   // considering fK00 is simetric, only half of the object is assembled.
   // this method simetrizes the matrix object
@@ -150,7 +143,7 @@ template<class TVar>
 int
 TPZSparseMatRed<TVar>::PutVal(const int64_t r,const int64_t c,const TVar& value ){
 	int64_t row(r),col(c);
-	if (IsSymmetric() && row > col ) Swap( &row, &col );
+	if (this->GetSymmetry() != SymProp::NonSym && row > col ) Swap( &row, &col );
 	if (row<fDim0 &&  col<fDim0)  fK00->PutVal(row,col,value);
 	if (row<fDim0 &&  col>=fDim0)  fK01.PutVal(row,col-fDim0,(TVar)value);
 	if (row>=fDim0 &&  col<fDim0)  fK10.PutVal(row-fDim0,col,(TVar)value);
@@ -164,7 +157,7 @@ const TVar
 TPZSparseMatRed<TVar>::GetVal(const int64_t r,const int64_t c ) const {
 	int64_t row(r),col(c);
 	
-	if (IsSymmetric() && row > col ) Swap( &row, &col );
+	if (this->GetSymmetry() != SymProp::NonSym && row > col ) Swap( &row, &col );
 	if (row<fDim0 &&  col<fDim0)  return ( fK00->GetVal(row,col) );
 	if (row<fDim0 &&  col>=fDim0)  return ( fK01.GetVal(row,col-fDim0) );
 	if (row>=fDim0 &&  col<fDim0)  return ( fK10.GetVal(row-fDim0,col) );
@@ -176,7 +169,7 @@ template<class TVar>
 TVar& TPZSparseMatRed<TVar>::s(const int64_t r,const int64_t c ) {
 	int64_t row(r),col(c);
 	
-	if (r < fDim0 && IsSymmetric() && row > col ) Swap( &row, &col );
+	if (r < fDim0 && this->GetSymmetry() != SymProp::NonSym && row > col ) Swap( &row, &col );
 	if (row<fDim0 &&  col<fDim0)  return ( fK00->s(row,col) );
 	if (row<fDim0 &&  col>=fDim0)  return ( (TVar &)fK01.s(row,col-fDim0) );
 	if (row>=fDim0 &&  col<fDim0)  return ( (TVar &)(fK10.s(row-fDim0,col)) );
@@ -224,6 +217,7 @@ void
 TPZSparseMatRed<TVar>::SetK00(TPZAutoPointer<TPZSYsmpMatrix<TVar> > K00)
 {
 	fK00=K00;
+  this->fSymProp = fK00->GetSymmetry();
 }
 
 template<class TVar>

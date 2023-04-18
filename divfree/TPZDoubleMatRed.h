@@ -85,10 +85,7 @@ public:
   }
   /** @brief Simple destructor */
   ~TPZDoubleMatRed();
-  
-  /** @brief returns 1 or 0 depending on whether the fK00 matrix is zero or not */
-  virtual int IsSymmetric() const;
-  
+    
   /** @brief changes the declared dimension of the matrix to fDim1 */
   void SetReduced()
   {
