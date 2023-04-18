@@ -92,9 +92,9 @@ void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
   // this method simetrizes the matrix object
   
   SymProp symprop = this->fK00->VerifySymmetry();
-  
+  if(!fK00 || symprop == SymProp::NonSym) return;
   //  if(!fK00 || !this->fK00->IsSymmetric()) return;
-  if(!fK00 || symprop != SymProp::Sym) return;
+//   if(!fK00 || symprop != SymProp::Sym) return;
   // fK01.Transpose(&fK10);
   //Transpose:
   TPZVec<int64_t> IA_K01, JA_K01, IA_K10, JA_K10;
@@ -123,7 +123,7 @@ void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
     }
   }
   IA_K10.resize(IA_K10.size()-1); // remove the extra line
-  
+
   fK10.SetData(IA_K10,JA_K10,A_K10);
   
   // fK11.Simetrize();
@@ -946,6 +946,8 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh) {
     fK01.SetData(IA_K01,JA_K01,A_K01);
     fK10.SetData(IA_K10,JA_K10,A_K10);
     fK11.SetData(IA_K11,auxK11,A_K11);
+
+    SimetrizeMatRed();
 
 }
 
