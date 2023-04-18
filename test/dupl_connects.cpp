@@ -3,7 +3,6 @@
   for any specified polynomial order and topology.
   
 */
-#include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
@@ -31,6 +30,13 @@
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
 //#include <valgrind/callgrind.h>
+
+// ----- Run tests with or without main -----
+#define RUNWITHMAIN
+
+#ifndef RUNWITHMAIN
+#include <catch2/catch.hpp>
+#endif
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 std::ofstream printerrors("results_errors.txt",std::ofstream::out);
@@ -89,6 +95,7 @@ ReadMeshFromGmsh(std::string file_name);
 template<class tshape>
 void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily);
 
+#ifndef RUNWITHMAIN
 TEST_CASE("Hybridization test")
 {
     #define TEST
@@ -110,6 +117,16 @@ TEST_CASE("Hybridization test")
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam); 
     // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam);
 }
+
+#else
+int main() {
+  const int xdiv = 2;
+  const int pOrder = 2;
+  HDivFamily hdivfam = HDivFamily::EHDivConstant;
+  TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam);
+  return 0;
+}
+#endif
 
 //Analytical solution
 constexpr int solOrder{4};
@@ -237,7 +254,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
-    hdivCreator.SetShouldCondense(true);
+//    hdivCreator.SetShouldCondense(true);
+    hdivCreator.SetShouldCondense(false);
     // hdivCreator.HybridType() = HybridizationType::ESemi;
     hdivCreator.HybridType() = HybridizationType::EStandard;
 
@@ -288,8 +306,8 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     std::set<int> matBCAll = {EBoundary};
     // Solve problem
-    // bool sparse = true;
-    bool sparse = false;
+    bool sparse = true;
+//    bool sparse = false;
     
     if (sparse){
     // if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
@@ -324,7 +342,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         // util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
     // }
 
-    {
+    if(0) {
         TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
         TPZSimpleTimer postProc("Post processing2");
         const std::string plotfile = "myfile";//sem o .vtk no final
@@ -339,6 +357,21 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
         vtk.Do();
+    }
+    else {
+      TPZManVector<std::string,10> scalnames(2), vecnames(2);
+
+
+      scalnames[0] = "Pressure";
+      scalnames[1] = "ExactPressure";
+      vecnames[0]= "Flux";
+      vecnames[1]= "ExactFlux";
+
+      constexpr int resolution{0};
+      std::string plotfile = "myfile.vtk";
+      an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
+      an.PostProcess(resolution,cmesh->Dimension());
+
     }
     std::string txt2 = "cmeshSol.txt";
     std::ofstream myfile2(txt2);

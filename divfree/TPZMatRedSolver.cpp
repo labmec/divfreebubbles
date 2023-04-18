@@ -249,7 +249,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
                  ", Linear Flux = " << nEqLinr << std::endl;
 
     //Sets number of threads to be used by the solver
-    constexpr int nThreads{50};
+//    constexpr int nThreads{50};
+    constexpr int nThreads{0};
     
     // Create the RHS vectors
     TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
