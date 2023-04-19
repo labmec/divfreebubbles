@@ -28,7 +28,7 @@
 #include <pzstepsolver.h> //for TPZStepSolver
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
-#include <valgrind/callgrind.h>
+//#include <valgrind/callgrind.h>
 
 std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
 std::ofstream printerrors("results_errors.txt",std::ofstream::out);
@@ -155,7 +155,8 @@ int main(int argc, char* argv[])
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
-    hdivCreator.SetShouldCondense(true);
+//    hdivCreator.SetShouldCondense(true);
+    hdivCreator.SetShouldCondense(false);
     hdivCreator.HybridType() = HybridizationType::ESemi;
 
     //Prints gmesh mesh properties
