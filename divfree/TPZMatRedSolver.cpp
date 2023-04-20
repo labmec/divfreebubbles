@@ -239,7 +239,6 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   auto total_time_allocating = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_allocating).count()/1000.;
   std::cout << "Time Allocating Sub Matrices = " << total_time_allocating << " seconds" << std::endl;
   
-  
   //Compute the number of equations in the system
   int64_t nEqFull = cmesh->NEquations();
   int64_t nEqLinr = matRed->Dim0();
@@ -253,8 +252,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   ", Linear Flux = " << nEqLinr << std::endl;
   
   //Sets number of threads to be used by the solver
-  //    constexpr int nThreads{50};
-  constexpr int nThreads{0};
+     constexpr int nThreads{50};
+//   constexpr int nThreads{0};
   
   // Create the RHS vectors
   TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
@@ -266,16 +265,14 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
   Stiffness.SetNumThreads(nThreads);
   
-  
   TPZAutoPointer<TPZGuiInterface> guiInterface;
   
   Stiffness.EquationFilter().Reset();
   // Stiffness.EquationFilter().SetActiveEquations(fActiveEquations);
   fAnalysis->SetStructuralMatrix(Stiffness);
   
-  //Monta a matriz auxiliar
+  //Monta a matriz
   rhsFull.Zero();
-  
   auto start_time_assemble = std::chrono::steady_clock::now();
   Stiffness.Assemble(*matRed,rhsFull,guiInterface);
   auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
@@ -294,10 +291,6 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
   std::cout << "Time Assembling block diagonal " << total_time_bd << " seconds" << std::endl;
   
-  
-  // std::ofstream out2("out3.txt");
-  // matRed->Print("MATRED",out2,EMathematicaInput);
-  
   matRed->SetF(rhsFull);
   matRed->SetReduced();
   
@@ -306,11 +299,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   matRed->F1Red(rhsHigh);
   auto total_time_decomp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_decomp).count()/1000.;
   std::cout << "Time decomposing k00 " << total_time_decomp << " seconds" << std::endl;
-  
-  // std::ofstream out3("out.txt");
-  
-  // matRed->Print("MatRed = ",out3,EMathematicaInput);
-  
+      
   //Creates the preconditioner
   TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
   precond->SetDirect(ELU);
@@ -327,15 +316,13 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   REAL tol = 1.e-10;
   TPZFMatrix<STATE> solution(nEqHigh,1,0.);
   auto start_time_solve = std::chrono::steady_clock::now();
-  // K11Red->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
-  
+
   // std::ofstream out2("out3.txt");
   // matRed->Print("MATRED",out2,EMathematicaInput);
-  // KBD.Print("BDiag",out2,EMathematicaInput);
+//   KBD.Print("BDiag",std::cout,EMathematicaInput);
   
   // std::cout << "Start CG ...\n";
   matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
-  // matRed->K11().SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
   // std::cout << "Finish CG ...\n";
   
   auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count()/1000.;
@@ -347,12 +334,10 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   TPZFMatrix<STATE> result(nEqLinr+nEqHigh,1,0.);
   
   matRed->UGlobal(solution,result);
-  
+
   fAnalysis->Solution() = result;
   fAnalysis->LoadSolution();
-  // rhsFull.Print("Solution = ");
-  // std::cout << "Result = " << result << std::endl;
-  // std::cout << "solution = " << solution << std::endl;
+
   ///Calculating approximation error
   TPZManVector<REAL,5> error;
   

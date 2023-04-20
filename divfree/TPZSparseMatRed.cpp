@@ -209,6 +209,7 @@ void TPZSparseMatRed<TVar>::SetSolver(TPZAutoPointer<TPZMatrixSolver<TVar> > sol
   // TPZAutoPointer<TPZSYsmpMatrix<TVar>> mat = TPZAutoPointerDynamicCast<TPZSYsmpMatrix<TVar>>(solver->Matrix());
   fK00=solver->Matrix();
   fSolver = solver;
+  this->fSymProp = fK00->GetSymmetry();
 }
 
 
@@ -301,9 +302,16 @@ void TPZSparseMatRed<TVar>::F1Red(TPZFMatrix<TVar> &F1Red)
   }
   
 #ifdef PZ_LOG
+    // F1Red.Print("F1 Reduced", std::cout);
+    // fK00->Print("K00",std::cout);
+    // fK10.Print("K10",std::cout);
+    // fK11.Print("K11",std::cout);
+    // fF1.Print("F1",std::cout);
+    // fF0.Print("F0",std::cout);
   if (logger.isDebugEnabled()) {
     std::stringstream sout;
     F1Red.Print("F1 Reduced", sout);
+    
     LOGPZ_DEBUG(logger, sout.str())
   }
 #endif
@@ -324,9 +332,9 @@ void TPZSparseMatRed<TVar>::K11Reduced(TPZFMatrix<TVar> &K11, TPZFMatrix<TVar> &
     clock.stop();
     std::cout << "Time Decompose " << clock << std::endl;
     
-    clock.start();
-    SimetrizeMatRed();//Actually assemble K10;
-    clock.stop();
+    // clock.start();
+    // SimetrizeMatRed();//Actually assemble K10;
+    // clock.stop();
     std::cout << "Time Simetrize " << clock << std::endl;
     
     clock.start();
@@ -411,7 +419,9 @@ void TPZSparseMatRed<TVar>::UGlobal(const TPZFMatrix<TVar> & U1, TPZFMatrix<TVar
       u0 = fF0 - u0;
     }
   }
-  
+//   U1.Print("U1 = ",std::cout,EMathematicaInput);
+//     fF0.Print("fF0 ",std::cout,EMathematicaInput);
+//     u0.Print("u0 " ,std::cout,EMathematicaInput);
   //compute result
 #ifdef PZ_LOG
   if(logger.isDebugEnabled())
@@ -574,6 +584,8 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
                                     const TVar alpha,const TVar beta,
                                     const int opt) const
 {
+    // x.Print("x= ",std::cout);
+    // y.Print("y= ",std::cout);
   // #warning Not functional yet. Still need to Identify all the variables
   if(!fIsReduced)
   {
@@ -601,7 +613,6 @@ void TPZSparseMatRed<TVar>::MultAdd(const TPZFMatrix<TVar> &x,
     fSolver->Solve(l_Res,l_Res);
     
 #ifdef PZ_LOG
-    // l_Res.Print("Internal solution",std::cout);
     if(logger.isDebugEnabled())
     {
       std::stringstream sout;
@@ -946,8 +957,6 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh) {
   fK01.SetData(IA_K01,JA_K01,A_K01);
   fK10.SetData(IA_K10,JA_K10,A_K10);
   fK11.SetData(IA_K11,auxK11,A_K11);
-  
-  SimetrizeMatRed();
   
 }
 

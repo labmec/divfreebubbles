@@ -121,7 +121,7 @@ TEST_CASE("Hybridization test")
 #else
 int main() {
   const int xdiv = 2;
-  const int pOrder = 2;
+  const int pOrder = 1;
   HDivFamily hdivfam = HDivFamily::EHDivConstant;
   TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam);
   return 0;
@@ -184,15 +184,15 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
     // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
 
-    // u[0] = exp(M_PI*x)*sin(M_PI*y);
-    // gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
-    // gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
+    u[0] = exp(M_PI*x)*sin(M_PI*y);
+    gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
+    gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
     // u[0] = x + y;
     // gradU(0,0) = 1.;
     // gradU(1,0) = 1.;
-    u[0] = x*x - y*y;
-    gradU(0,0) = 2.*x;
-    gradU(1,0) = -2.*y;
+    // u[0] = x*x - y*y;
+    // gradU(0,0) = 2.*x;
+    // gradU(1,0) = -2.*y;
 
     // u[0] = 0.5*(x)*x+0.5*(y)*y-(z)*z;
     // gradU(0,0) = -x;//(x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
@@ -254,10 +254,10 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
-//    hdivCreator.SetShouldCondense(true);
-    hdivCreator.SetShouldCondense(false);
-    // hdivCreator.HybridType() = HybridizationType::ESemi;
-    hdivCreator.HybridType() = HybridizationType::EStandard;
+   hdivCreator.SetShouldCondense(true);
+    // hdivCreator.SetShouldCondense(false);
+    hdivCreator.HybridType() = HybridizationType::ESemi;
+    // hdivCreator.HybridType() = HybridizationType::EStandard;
 
     // Prints gmesh mesh properties
     std::string vtk_name = "geoMesh.vtk";
@@ -330,19 +330,10 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         bool domHyb = false;
         util.SolveProblemDirect(an,cmesh,false,domHyb);
     }
-
-    
-
     clock.stop();
-    // std::cout << "Time running = " << clock << std::endl;
 
-    // //Print results
-    // {
-    //     TPZSimpleTimer postProc("Post processing1");
-        // util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
-    // }
 
-    if(0) {
+    if(1) {
         TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
         TPZSimpleTimer postProc("Post processing2");
         const std::string plotfile = "myfile";//sem o .vtk no final
@@ -359,6 +350,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
         vtk.Do();
     }
     else {
+    //   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), an.Mesh());
       TPZManVector<std::string,10> scalnames(2), vecnames(2);
 
 
