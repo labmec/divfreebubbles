@@ -38,8 +38,8 @@
 #include <catch2/catch.hpp>
 #endif
 
-std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
-std::ofstream printerrors("results_errors.txt",std::ofstream::out);
+std::ofstream rprint("results_Harmonic2D.txt",std::ios_base::app);
+std::ofstream printerrors("results_errors.txt",std::ios_base::app);
 
 /** @brief Returns the name of the HDiv Family approximation space. */
 inline std::string MHDivFamily_Name(HDivFamily hdivfam)
@@ -100,12 +100,14 @@ TEST_CASE("Hybridization test")
 {
     #define TEST
     // const int pOrder = GENERATE(9,10,11,12,13,14,15);
-    const int pOrder = GENERATE(2);
+    // const int pOrder = GENERATE(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15);
+    const int pOrder = GENERATE(1,2,3,4,5);
+    // const int pOrder = GENERATE(8,9,10,11,12,13,14,15);
 
-    const int xdiv = 2;//GENERATE(5,10,15);
+    // const int xdiv = 2;//GENERATE(5,10,15);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
-    // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
-    // const int xdiv = GENERATE(2,3,4,5,6,7,8);
+    // const int xdiv = GENERATE(2);
+    const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
     HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
@@ -113,17 +115,18 @@ TEST_CASE("Hybridization test")
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
 
     // TestHybridization<pzshape::TPZShapeTriang>(xdiv,pOrder,hdivfam);
-    TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam); 
+    // TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam); 
     // TestHybridization<pzshape::TPZShapeTetra>(xdiv,pOrder,hdivfam); 
-    // TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam);
+    TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam);
 }
 
 #else
 int main() {
-  const int xdiv = 2;
-  const int pOrder = 1;
+  const int xdiv = 5;
+  const int pOrder = 2;
   HDivFamily hdivfam = HDivFamily::EHDivConstant;
-  TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam);
+//   TestHybridization<pzshape::TPZShapeQuad>(xdiv,pOrder,hdivfam);
+  TestHybridization<pzshape::TPZShapeCube>(xdiv,pOrder,hdivfam);
   return 0;
 }
 #endif
@@ -138,9 +141,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &z=loc[2];
 
     // const auto &d = 1.; // distanc between injection and production wells
-    // u[0]= x*x-y*y ;
-    // gradU(0,0) = -2*x;
-    // gradU(1,0) = 2.*y;
+    // u[0]= x ;
+    // gradU(0,0) = 1.;
+    // gradU(1,0) = 0.;
     // gradU(2,0) = 0.;
 
     // u[0] =  5. + 3. * x + 2. * y + 4. * x * y;
@@ -157,16 +160,16 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -2.*y;
     // // gradU(2,0) = -1;
 
-    // REAL aux = 1./sinh(sqrt(2)*M_PI);
-    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    REAL aux = 1./sinh(sqrt(2)*M_PI);
+    u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
     // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
     // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
     // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
-
+    // std::cout << "U[0] = " << u[0] << std::endl;
     // u[0]=pow(2,2 - pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
     //    pow(5,-pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
     //    (-2*M_PI + 15.*x);
@@ -184,9 +187,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
     // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
 
-    u[0] = exp(M_PI*x)*sin(M_PI*y);
-    gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
-    gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
+    // u[0] = exp(M_PI*x)*sin(M_PI*y);
+    // gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
+    // gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
     // u[0] = x + y;
     // gradU(0,0) = 1.;
     // gradU(1,0) = 1.;
@@ -216,11 +219,38 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {20,20};
+    if (DIM == 2) nDivs = {xdiv,xdiv};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh  
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
+
+
+    std::set<int> fBCMatId = {EBoundary};
+    for(auto gel : gmesh->ElementVec())
+    {
+        if (!gel || gel->Dimension() < gmesh->Dimension()) continue;
+
+        int nSides = gel->NSides();
+        //For tetrahedra only, loop over the surface sides
+        for (int side = 0; side < nSides; side++){
+            if (gel->SideDimension(side) != gel->Dimension()-1) continue;
+
+            TPZGeoElSide gelside(gel,side);
+            TPZGeoElSide neighbour = gelside.Neighbour();
+            //Neighbour material id
+            auto Nmatid = neighbour.Element()->MaterialId();
+
+            /*  If the boundary has BC, delete the neighbour GeoElement and  
+                create another one from TPZGeoElBC with the same material id
+            */
+            if (fBCMatId.find(Nmatid) == fBCMatId.end()) continue;
+            gmesh->DeleteElement(neighbour.Element(),neighbour.Element()->Index()); 
+            TPZGeoElBC gelbcWrap(gelside, Nmatid);
+           
+        }
+    }
+
 
     // int dim = gmesh->Dimension();
     // TPZManVector<TPZGeoEl*,10> children;
@@ -301,7 +331,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int nEquationsCondensed = cmesh->NEquations();
     std::cout << "Number of equations condensed = " << nEquationsCondensed << std::endl;
     //Create analysis environment
-    TPZLinearAnalysis an(cmesh,true);
+    TPZLinearAnalysis an(cmesh,RenumType::ESloan);
     an.SetExact(exactSol,solOrder);
 
     std::set<int> matBCAll = {EBoundary};
@@ -333,80 +363,80 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     clock.stop();
 
 
-    if(1) {
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{0};
+    // if(1) {
+    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+    //     TPZSimpleTimer postProc("Post processing2");
+    //     const std::string plotfile = "myfile";//sem o .vtk no final
+    //     constexpr int vtkRes{0};
     
 
-        TPZVec<std::string> fields = {
-        "Pressure",
-        "ExactPressure",
-        "Flux",
-        "ExactFlux"};
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+    //     TPZVec<std::string> fields = {
+    //     "Pressure",
+    //     "ExactPressure",
+    //     "Flux",
+    //     "ExactFlux"};
+    //     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-        vtk.Do();
-    }
-    else {
-    //   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), an.Mesh());
-      TPZManVector<std::string,10> scalnames(2), vecnames(2);
+    //     vtk.Do();
+    // }
+    // else {
+    // //   TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), an.Mesh());
+    //   TPZManVector<std::string,10> scalnames(2), vecnames(2);
 
 
-      scalnames[0] = "Pressure";
-      scalnames[1] = "ExactPressure";
-      vecnames[0]= "Flux";
-      vecnames[1]= "ExactFlux";
+    //   scalnames[0] = "Pressure";
+    //   scalnames[1] = "ExactPressure";
+    //   vecnames[0]= "Flux";
+    //   vecnames[1]= "ExactFlux";
 
-      constexpr int resolution{0};
-      std::string plotfile = "myfile.vtk";
-      an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
-      an.PostProcess(resolution,cmesh->Dimension());
+    //   constexpr int resolution{0};
+    //   std::string plotfile = "myfile.vtk";
+    //   an.DefineGraphMesh(cmesh->Dimension(),scalnames,vecnames,plotfile);
+    //   an.PostProcess(resolution,cmesh->Dimension());
 
-    }
-    std::string txt2 = "cmeshSol.txt";
-    std::ofstream myfile2(txt2);
-    cmesh->Print(myfile2);
+    // }
+    // std::string txt2 = "cmeshSol.txt";
+    // std::ofstream myfile2(txt2);
+    // cmesh->Print(myfile2);
 
-    // //vamos supor que vc atualiza a solucao, roda de novo, sei la
-    // vtk.Do();
+    // // //vamos supor que vc atualiza a solucao, roda de novo, sei la
+    // // vtk.Do();
 
-    //Compute error
-    std::ofstream anPostProcessFile("postprocess.txt");
-    TPZManVector<REAL,5> error;
-    int64_t nelem = cmesh->NElements();
-    cmesh->LoadSolution(cmesh->Solution());
-    cmesh->ExpandSolution();
-    cmesh->ElementSolution().Redim(nelem, 5);
-    an.PostProcessError(error,false,anPostProcessFile);
+    // //Compute error
+    // std::ofstream anPostProcessFile("postprocess.txt");
+    // TPZManVector<REAL,5> error;
+    // int64_t nelem = cmesh->NElements();
+    // cmesh->LoadSolution(cmesh->Solution());
+    // cmesh->ExpandSolution();
+    // cmesh->ElementSolution().Redim(nelem, 5);
+    // an.PostProcessError(error,false,anPostProcessFile);
     
-    printerrors << xdiv << std::scientific << std::setprecision(8) << " " << error[0] << " " 
-     << error[1] << " " << error[2] << " "  << error[3] << " "  << error[4] << std::endl;
+    // printerrors << xdiv << std::scientific << std::setprecision(8) << " " << error[0] << " " 
+    //  << error[1] << " " << error[2] << " "  << error[3] << " "  << error[4] << std::endl;
 
-    //Check error
-    // REAL tolerance = 1.e-6;
-    std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
-    std::cout << "ERROR[1] = " << error[1] << std::endl;
-    std::cout << "ERROR[2] = " << error[2] << std::endl;
-    std::cout << "ERROR[3] = " << error[3] << std::endl;
-    std::cout << "ERROR[4] = " << error[4] << std::endl;
-    // // REQUIRE(error[1] < tolerance);
+    // //Check error
+    // // REAL tolerance = 1.e-6;
+    // std::cout << "ERROR[0] = " << std::scientific << std::setprecision(15) << error[0] << std::endl;
+    // std::cout << "ERROR[1] = " << error[1] << std::endl;
+    // std::cout << "ERROR[2] = " << error[2] << std::endl;
+    // std::cout << "ERROR[3] = " << error[3] << std::endl;
+    // std::cout << "ERROR[4] = " << error[4] << std::endl;
+    // // // REQUIRE(error[1] < tolerance);
 
-    //Trying to design other criteria besides the approximation error
-    //Contar numero de equações condensadas = numero de arestas internas * porder
-    int nInternalEdges = 0;
-    switch (tshape::Type()){
-    case EQuadrilateral:
-        nInternalEdges = xdiv*(xdiv-1)*2;
-        break;
-    case ETriangle:
-        nInternalEdges = xdiv*(xdiv-1)*2 + xdiv*xdiv;
-        break;
+    // //Trying to design other criteria besides the approximation error
+    // //Contar numero de equações condensadas = numero de arestas internas * porder
+    // int nInternalEdges = 0;
+    // switch (tshape::Type()){
+    // case EQuadrilateral:
+    //     nInternalEdges = xdiv*(xdiv-1)*2;
+    //     break;
+    // case ETriangle:
+    //     nInternalEdges = xdiv*(xdiv-1)*2 + xdiv*xdiv;
+    //     break;
     
-    default:
-        break;
-    }
+    // default:
+    //     break;
+    // }
 
     
     // REQUIRE(nInternalEdges * pOrder == nEquationsCondensed);

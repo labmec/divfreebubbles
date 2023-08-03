@@ -221,7 +221,7 @@ void TPZMHMHDivApproxCreator::CondenseElements(TPZCompMesh &cmesh)
                         c.IncrementElConnected();
                     }
                 }
-                auto *cond = new TPZCondensedCompEl(cel);
+                // auto *cond = new TPZCondensedCompEl(cel);
             }
         }
     }

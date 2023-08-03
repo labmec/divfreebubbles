@@ -209,29 +209,6 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // Creates/import a geometric mesh  
     auto gmesh = CreateGeoMesh<tshape>(nDivs, EDomain, EBoundary);
 
-    // int dim = gmesh->Dimension();
-    // TPZManVector<TPZGeoEl*,10> children;
-    // int64_t nel = gmesh->NElements();
-    // // for (int i = 0; i < nel; i++)
-    // // {
-    //     // if (gmesh->ElementVec()[0]->Dimension()==dim) 
-    //     gmesh->ElementVec()[4]->Divide(children);
-    
-    //     for(int64_t el = 0; el<nel; el++) {
-    //         TPZGeoEl *gel = gmesh->Element(el);
-    //         if(gel->Dimension() != dim-1) continue;
-    //         if(gel->HasSubElement()) continue;
-    //         TPZGeoElSide gelside(gel);
-    //         TPZGeoElSide neighbour = gelside.Neighbour();
-    //         if(neighbour.HasSubElement()) {
-    //             TPZManVector<TPZGeoEl*,10> children2;
-    //             gel->Divide(children2);
-    //         }
-    //     }
-    // // }
-    
-   
-
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
 

@@ -5,6 +5,7 @@ set(MATERIAL_HEADERS
   TPZMatDivFreeBubbles.h
   TPZMatCurlDotCurl.h
   TPZMixedDarcyFlowHybrid.h
+  TPZMixedDarcyH1.h
   Common.h
   TPZOrtotropicPermeability.h
   TPZMixedDarcyFlowOrtotropic.h
@@ -14,6 +15,7 @@ set(MATERIAL_SRCS
   TPZMatDivFreeBubbles.cpp
   TPZMatCurlDotCurl.cpp
   TPZMixedDarcyFlowHybrid.cpp
+  TPZMixedDarcyH1.cpp
   Common.cpp
   TPZOrtotropicPermeability.cpp
   TPZMixedDarcyFlowOrtotropic.cpp

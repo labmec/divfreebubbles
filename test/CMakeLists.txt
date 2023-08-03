@@ -14,6 +14,8 @@ add_unit_test(dMatRed doubleMatRed.cpp)
 
 add_unit_test(mixed_elasticity mixed_elasticity.cpp)
 add_unit_test(Yotov Yotov.cpp)
+add_unit_test(mixedH1 mixedH1.cpp)
+add_unit_test(fOrthog FunctionOrthogonality.cpp)
 
 configure_file(InputData/spe_perm.dat InputData/spe_perm.dat COPYONLY)
 

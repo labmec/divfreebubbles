@@ -216,20 +216,20 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   
   //HERE STARTS THE ITERATIVE SOLVER SET
   auto cmesh = fAnalysis->Mesh();
-  
+  int dimension = cmesh->Dimension();
   //Primeiro cria a matriz auxiliar K00 - que será decomposta
   //    TPZSYsmpMatrix<REAL> K00;
   TPZSYsmpMatrixPardiso<REAL> K00;
   
   TPZStepSolver<STATE> step;
-  step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
+  step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
   fAnalysis->SetSolver(step);
   step.SetMatrix(&K00);
   
   //Cria a matriz esparsa
   std::set<int> lag = {1};
   TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(cmesh,lag);
-  matRed->SetK00IsNegativeDefinite();
+//   matRed->SetK00IsNegativeDefinite();
   std::cout << "Allocating Sub Matrices ...\n";
   auto start_time_allocating = std::chrono::steady_clock::now();
   //Transfere as submatrizes da matriz auxiliar para a matriz correta.
@@ -283,11 +283,19 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   TPZBlockDiagonal<REAL> KBD;
   int ord = cmesh->GetDefaultOrder();
   if (ord == 0) ord = 1;
-  TPZVec<int> blocksize(nEqHigh/ord,ord);
+  int bsize=0;
+  if (dimension == 2){
+    bsize = ord;
+  } else if (dimension == 3){
+    bsize = (ord+1)*(ord+1)-1;
+  }
+  TPZVec<int> blocksize(nEqHigh/bsize,bsize);
   
   KBD.Initialize(blocksize);
   KBD.UpdateFrom(matRed->K11());
   
+//   KBD.Print("KBD",std::cout,EMathematicaInput);
+
   auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
   std::cout << "Time Assembling block diagonal " << total_time_bd << " seconds" << std::endl;
   
@@ -307,8 +315,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   TPZVec<REAL> errors(nMaxIter);
   errors.Fill(0.);
   
-  // ComputeConditionNumber(*matRed,precond->Matrix());
-  
+//   ComputeConditionNumber(*matRed,precond->Matrix());
+//   return;
   // for (int64_t iter = 1; iter < nMaxIter; iter++){
   
   // std::cout << "ITER = " << iter << std::endl;
@@ -322,6 +330,10 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
 //   KBD.Print("BDiag",std::cout,EMathematicaInput);
   
   // std::cout << "Start CG ...\n";
+//   precond->Matrix()->Print("Precond",std::cout,EMathematicaInput);
+//   rhsHigh.Print("rhsHigh",std::cout,EMathematicaInput);
+//   solution.Print("solution",std::cout,EMathematicaInput);
+//   residual.Print("residual",std::cout,EMathematicaInput);
   matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
   // std::cout << "Finish CG ...\n";
   
@@ -405,7 +417,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   ", Linear Flux = " << nEqLinr << std::endl;
   
   //Sets number of threads to be used by the solver
-  constexpr int nThreads{50};
+  constexpr int nThreads{10};
   
   // Create the RHS vectors
   TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
@@ -440,7 +452,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   TPZVec<int> blocksize(nEqHigh/ord,ord);
   
   KBD.Initialize(blocksize);
-  KBD.UpdateFrom(matRed->K11());
+//   KBD.UpdateFrom(matRed->K11());
   
   auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
   std::cout << "Time Assembling block diagonal " << total_time_bd << " seconds" << std::endl;
@@ -536,16 +548,16 @@ void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZSparseMatRed<STATE> &matRe
   auto dim = precond->Rows();
   Res->Redim(dim,dim);
   precond->Inverse(KBDInv,ELU);
+//   KBDInv.Print("KBD=",std::cout,EMathematicaInput);
   // KBDInv.Identity();
   // KBDInv.Print("KBDInv=",std::cout,EMathematicaInput);
   // matRed.K11().Print("K11=",std::cout,EMathematicaInput);
   // matRed.MultAdd(KBDInv,*Res,*Res,1.,0.);
-  matRed.K11().MultAdd(KBDInv,*Res,*Res,1.,0.);
-  // KBDInv.Multiply(*matRed,Res);
+  TPZFMatrix<REAL> F1,Aux(dim,dim,0);
+  matRed.K11Reduced(Aux,F1);
+  Aux.Multiply(KBDInv,Res);
   
-  
-  
-  // Res->Print("Res=",std::cout,EMathematicaInput);
+//   Res->Print("Res=",std::cout,EMathematicaInput);
   
   TPZLapackEigenSolver<REAL> eigSolver;
   
@@ -562,7 +574,7 @@ void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZSparseMatRed<STATE> &matRe
   REAL minAbs = 1e3;
   REAL maxAbs = 0.;
   int nonzeroEigenvalues = 0;
-  REAL tol = 1e-10;
+  REAL tol = 1e-8;
   for (int i = 0; i < eigenvalues.size(); i++)
   {
     rprint3 << eigenvalues[i].real() << std::endl;
@@ -589,15 +601,15 @@ void TPZMatRedSolver<TVar>::ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<ST
   // Res->(dim,dim,true);
   precond->Inverse(KBDInv,ELU);
   // KBDInv.Identity();
-  KBDInv.Print("KBDInv=",std::cout,EMathematicaInput);
-  matRed.Print("MatRed=",std::cout,EMathematicaInput);
+//   KBDInv.Print("KBDInv=",std::cout,EMathematicaInput);
+//   matRed.Print("MatRed=",std::cout,EMathematicaInput);
   
   matRed.Multiply(KBDInv,Res);
   // KBDInv.Multiply(*matRed,Res);
   
   
   
-  Res->Print("Res=",std::cout,EMathematicaInput);
+//   Res->Print("Res=",std::cout,EMathematicaInput);
   
   TPZLapackEigenSolver<REAL> eigSolver;
   
