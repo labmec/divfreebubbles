@@ -13,6 +13,9 @@ target_link_libraries(dupl_connects2 PRIVATE divfree)
 add_executable(hpc4 main_hpc4.cpp)
 target_link_libraries(hpc4 PRIVATE divfree)
 
+add_executable(voronoi_mixed_elas voronoi_mixed_elas.cpp)
+target_link_libraries(voronoi_mixed_elas PRIVATE divfree)
+
 # Need refactor
 # add_executable(SHIterative SHIterative.cpp)
 # target_link_libraries(SHIterative PRIVATE divfree)

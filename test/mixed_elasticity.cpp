@@ -117,7 +117,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {20,20};
+    if (DIM == 2) nDivs = {3,3};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -183,7 +183,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
     //Create analysis environment
-    TPZLinearAnalysis an(cmesh,true);
+    TPZLinearAnalysis an(cmesh);
     an.SetExact(gAnalytic->ExactSolution());
 
     std::set<int> matBCAll = {EBoundary};
