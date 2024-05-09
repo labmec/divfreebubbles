@@ -111,23 +111,35 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
     // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
 
-    u[0] = exp(M_PI*x)*sin(M_PI*y);
-    gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
-    gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
+    // u[0] = exp(M_PI*x)*sin(M_PI*y);
+    // gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
+    // gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
 
     // u[0] = 0.5*(x)*x+0.5*(y)*y-(z)*z;
     // gradU(0,0) = -x;//(x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
     // gradU(1,0) = -y;//(x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
     // gradU(2,0) = 2.*z;//(x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
 
+    u[0] = exp(M_PI*x)*sin(M_PI*y)*x;
+    gradU(0,0) = x*M_PI*exp(M_PI*x)*sin(M_PI*y)+exp(M_PI*x)*sin(M_PI*y);
+    gradU(1,0) = x*M_PI*exp(M_PI*x)*cos(M_PI*y);
+};
+auto forcefunction = [](const TPZVec<REAL> &loc,
+    TPZVec<STATE>&u){
+    const auto &x=loc[0];
+    const auto &y=loc[1];
+    const auto &z=loc[2];
+
+    u[0] = -exp(M_PI*x)*sin(M_PI*y)*M_PI*2.;
 };
 
 int main(int argc, char* argv[])
 {
     
-    const int xdiv = 20;
+    const int xdiv = 200;
     const int pOrder = 1;
     const HDivFamily hdivfamily = HDivFamily::EHDivConstant;
+    // const HDivFamily hdivfamily = HDivFamily::EHDivStandard;
     int DIM = 2;
 
 #ifdef PZ_LOG
@@ -155,8 +167,8 @@ int main(int argc, char* argv[])
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
-//    hdivCreator.SetShouldCondense(true);
-    hdivCreator.SetShouldCondense(false);
+    hdivCreator.SetShouldCondense(true);
+    // hdivCreator.SetShouldCondense(false);
     hdivCreator.HybridType() = HybridizationType::ESemi;
 
     //Prints gmesh mesh properties
@@ -169,6 +181,7 @@ int main(int argc, char* argv[])
     TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,DIM);
     matdarcy->SetConstantPermeability(1.);
     matdarcy->SetExactSol(exactSol,4);
+    matdarcy->SetForcingFunction(forcefunction,4);
 
     hdivCreator.InsertMaterialObject(matdarcy);
 
@@ -202,7 +215,7 @@ int main(int argc, char* argv[])
     int nEquationsCondensed = cmesh->NEquations();
     std::cout << "Number of equations condensed = " << nEquationsCondensed << std::endl;
     //Create analysis environment
-    TPZLinearAnalysis an(cmesh,true);
+    TPZLinearAnalysis an(cmesh);
     an.SetExact(exactSol,solOrder);
 
     std::set<int> matBCAll = {EBoundary};
@@ -246,8 +259,9 @@ int main(int argc, char* argv[])
         errors.Fill(0.);
 
         TPZStepSolver<STATE> step;
-        // step.SetCG(nMaxIter,*precond,1.e-10,0);
-        step.SetGMRES(nMaxIter,100,*precond,1.e-10,0);
+        step.SetDirect(ELDLt);
+        // // step.SetCG(nMaxIter,*precond,1.e-10,0);
+        // step.SetGMRES(nMaxIter,100,*precond,1.e-10,0);
         an.SetSolver(step);
 
         an.Assemble();        
@@ -265,22 +279,22 @@ int main(int argc, char* argv[])
         // util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
     // }
 
-    // {
-    //     TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-    //     TPZSimpleTimer postProc("Post processing2");
-    //     const std::string plotfile = "myfile";//sem o .vtk no final
-    //     constexpr int vtkRes{0};
+    {
+        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+        TPZSimpleTimer postProc("Post processing2");
+        const std::string plotfile = "myfile";//sem o .vtk no final
+        constexpr int vtkRes{0};
     
 
-    //     TPZVec<std::string> fields = {
-    //     "Pressure",
-    //     "ExactPressure",
-    //     "Flux",
-    //     "ExactFlux"};
-    //     auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+        TPZVec<std::string> fields = {
+        "Pressure",
+        "ExactPressure",
+        "Flux",
+        "ExactFlux"};
+        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-    //     vtk.Do();
-    // }
+        vtk.Do();
+    }
     // std::string txt2 = "cmeshSol.txt";
     // std::ofstream myfile2(txt2);
     // cmesh->Print(myfile2);

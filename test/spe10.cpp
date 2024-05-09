@@ -24,7 +24,7 @@
 #include "pzintel.h"
 
 // --------------------- Global variables ---------------------
-// #define PROBLEM_3D
+#define PROBLEM_3D
 
 #ifndef PROBLEM_3D
 constexpr int nx = 220;
@@ -103,7 +103,8 @@ int main(){
     
     cout << "\n--------------------- Creating CompMeshes ---------------------\n" << endl;
     TPZHDivApproxCreator hdivCreator(gmesh);
-    hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
+    // hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
+    hdivCreator.HdivFamily() = HDivFamily::EHDivStandard;
     hdivCreator.ProbType() = ProblemType::EDarcy;
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(1);
@@ -162,7 +163,7 @@ int main(){
     cout << "\n--------------------- Creating Analysis ---------------------\n" << endl;
     auto start_time_anal = std::chrono::steady_clock::now();
     std::cout << "Number of equations = " << mpmesh->NEquations() << std::endl;
-    TPZLinearAnalysis an(mpmesh, false);
+    TPZLinearAnalysis an(mpmesh);
     auto total_time_anal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_anal).count()/1000.;
     cout << "\nTotal time opt band = " << total_time_anal << " seconds" << endl;
         
@@ -177,12 +178,12 @@ int main(){
     
     
     cout << "\n--------------------- Post processing ---------------------\n" << endl;
-    auto start_time_pp = std::chrono::steady_clock::now();
-    TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(mpmesh->MeshVector(), mpmesh);
-    string outres = "HDivResults.vtk";
-    PrintResultsVTK(dim, an, outres);
-    auto total_time_pp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_pp).count()/1000.;
-    cout << "Total time post process = " << total_time_pp << " seconds" << endl;
+    // auto start_time_pp = std::chrono::steady_clock::now();
+    // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(mpmesh->MeshVector(), mpmesh);
+    // string outres = "HDivResults.vtk";
+    // PrintResultsVTK(dim, an, outres);
+    // auto total_time_pp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_pp).count()/1000.;
+    // cout << "Total time post process = " << total_time_pp << " seconds" << endl;
         
     cout << "\n--------------------- End of execution ---------------------\n" << endl;
     auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count()/1000.;
@@ -197,7 +198,7 @@ void ReadSPE10CellPermeabilities(TPZVec<REAL> *perm_vec, const int layer) {
     // Fuction copied from ErrorEstimation/Projects/SPE10
     std::cout << "Reading permeability data...\n";
 
-    std::ifstream perm_file("test/InputData/spe_perm.dat", std::ios::in);
+    std::ifstream perm_file("../test/InputData/spe_perm.dat", std::ios::in);
     if (!perm_file) {
         std::cerr << "Unable to open input file\n";
         DebugStop();

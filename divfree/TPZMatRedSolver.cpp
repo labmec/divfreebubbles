@@ -673,12 +673,12 @@ void TPZMatRedSolver<TVar>::ThresholdPermeability(REAL threshold){
       // Pega o geoElSide de cada face, depois pega CenterX.
       
       TPZGeoElSide gelside(gel,nSides-1-nFaces+iFace);
-      TPZManVector<REAL,3> xCenter(3,0.), perm(3,0.);
+      TPZManVector<REAL,3> xCenter(3,0.);//, perm(3,0.);
       gelside.CenterX(xCenter);
       
-      perm = fPermFunction(xCenter);
+      double perm = fPermFunction(xCenter);
       
-      if (perm[0] < threshold){
+      if (perm < threshold){
         
         TPZInterpolatedElement *intel = dynamic_cast<TPZInterpolatedElement *> (cel);
         if (!intel) DebugStop();

@@ -86,7 +86,7 @@ TEST_CASE("Hybridization test")
     // const int pOrder = 1;
     const int pOrder = GENERATE(1);
 
-    const int xdiv = 10;//GENERATE(50);
+    const int xdiv = 50;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
@@ -117,7 +117,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     int DIM = tshape::Dimension;
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {3,3};
+    if (DIM == 2) nDivs = {xdiv,xdiv};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     // Creates/import a geometric mesh
@@ -134,7 +134,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::EStandard;
+    hdivCreator.HybridType() = HybridizationType::ESemi;
 
     TPZAnalyticSolution *gAnalytic = 0;
     TPZMixedElasticityND* matelastic = 0;
@@ -188,7 +188,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     std::set<int> matBCAll = {EBoundary};
     //Solve problem
-    bool sparse = false;
+    bool sparse = true;
     if (sparse){
         // TPZMatRedSolver<STATE> solver(&an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
         TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);

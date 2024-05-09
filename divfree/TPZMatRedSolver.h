@@ -16,7 +16,8 @@ public:
 
     TPZMatRedSolver() = default;
 
-    TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType = EDefault, std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> permFunction = nullptr){
+    // TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType = EDefault, std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> permFunction = nullptr){
+    TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType = EDefault, std::function<STATE(const TPZVec<REAL> &coord)> permFunction = nullptr){
         fAnalysis = &an;
         fBCMaterialID = &matIdBC;
         fSolverType = sType;
@@ -43,7 +44,8 @@ protected:
 
     TPZVec<int64_t> fActiveEquations;
 
-    std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> fPermFunction;
+    // std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> fPermFunction;
+    std::function<STATE (const TPZVec<REAL> &coord)> fPermFunction;
 };
 
 #endif
