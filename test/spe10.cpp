@@ -34,9 +34,9 @@ constexpr int dim{2};
 constexpr int n_cells = nx * ny * nz;
 TPZManVector<REAL, n_cells> perm_vec(n_cells, 1);
 #else
-constexpr int nx = 60;
-constexpr int ny = 220;
-constexpr int nz = 85;
+constexpr int nx = 30;
+constexpr int ny = 110;
+constexpr int nz = 42;
 // constexpr int nx = 15;
 // constexpr int ny = 50;
 // constexpr int nz = 20;

@@ -90,15 +90,14 @@ template<class TVar>
 void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
   // considering fK00 is simetric, only half of the object is assembled.
   // this method simetrizes the matrix object
-  
-  bool checksymmetry = false; //it takes a long time...
-  if (checksymmetry){
-    SymProp symprop = this->fK00->VerifySymmetry();
-    if(!fK00 || symprop == SymProp::NonSym) return;
-  } else {
-    if(!fK00) return;
-  }
 
+#ifdef PZ_LOG
+  SymProp symprop = this->fK00->VerifySymmetry();
+  if(symprop == SymProp::NonSym){
+    DebugStop();
+  };
+#endif
+  if(!fK00) DebugStop(); 
   //  if(!fK00 || !this->fK00->IsSymmetric()) return;
   //   if(!fK00 || symprop != SymProp::Sym) return;
   // fK01.Transpose(&fK10);
