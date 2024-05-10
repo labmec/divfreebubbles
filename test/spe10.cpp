@@ -37,8 +37,11 @@ TPZManVector<REAL, n_cells> perm_vec(n_cells, 1);
 constexpr int nx = 60;
 constexpr int ny = 220;
 constexpr int nz = 85;
+// constexpr int nx = 15;
+// constexpr int ny = 50;
+// constexpr int nz = 20;
 constexpr int dim{3};
-constexpr int n_cells = nx * ny * nz;
+constexpr int n_cells = 60 * 220 * 85;
 TPZManVector<REAL, n_cells> perm_vec(n_cells * 3, 1);
 #endif
 
@@ -103,11 +106,12 @@ int main(){
     
     cout << "\n--------------------- Creating CompMeshes ---------------------\n" << endl;
     TPZHDivApproxCreator hdivCreator(gmesh);
-    // hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
-    hdivCreator.HdivFamily() = HDivFamily::EHDivStandard;
+    hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
+    // hdivCreator.HdivFamily() = HDivFamily::EHDivStandard;
     hdivCreator.ProbType() = ProblemType::EDarcy;
     hdivCreator.IsRigidBodySpaces() = false;
-    hdivCreator.SetDefaultOrder(1);
+    int pOrder = 1;
+    hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
     hdivCreator.HybridType() = HybridizationType::ESemi;
@@ -156,14 +160,18 @@ int main(){
     hdivCreator.CreateMultiPhysicsMesh(meshvec,lagLevelCounter,mpmesh);
     
     
-    std::string txt = "cmesh.txt";
-    std::ofstream myfile(txt);
-    mpmesh->Print(myfile);
+    // std::string txt = "cmesh.txt";
+    // std::ofstream myfile(txt);
+    // mpmesh->Print(myfile);
 
     cout << "\n--------------------- Creating Analysis ---------------------\n" << endl;
     auto start_time_anal = std::chrono::steady_clock::now();
     std::cout << "Number of equations = " << mpmesh->NEquations() << std::endl;
-    TPZLinearAnalysis an(mpmesh);
+    // TPZLinearAnalysis an(mpmesh,RenumType::ENone);
+    // TPZLinearAnalysis an(mpmesh,RenumType::ESloan);
+    // TPZLinearAnalysis an(mpmesh,RenumType::ECutHillMcKee);
+    // TPZLinearAnalysis an(mpmesh,RenumType::ECutHillMcKeeFast);
+    TPZLinearAnalysis an(mpmesh,RenumType::EMetis);
     auto total_time_anal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_anal).count()/1000.;
     cout << "\nTotal time opt band = " << total_time_anal << " seconds" << endl;
         
@@ -178,12 +186,12 @@ int main(){
     
     
     cout << "\n--------------------- Post processing ---------------------\n" << endl;
-    // auto start_time_pp = std::chrono::steady_clock::now();
-    // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(mpmesh->MeshVector(), mpmesh);
-    // string outres = "HDivResults.vtk";
-    // PrintResultsVTK(dim, an, outres);
-    // auto total_time_pp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_pp).count()/1000.;
-    // cout << "Total time post process = " << total_time_pp << " seconds" << endl;
+    auto start_time_pp = std::chrono::steady_clock::now();
+    TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(mpmesh->MeshVector(), mpmesh);
+    string outres = "HDivResults" + std::to_string(pOrder) + ".vtk";
+    PrintResultsVTK(dim, an, outres);
+    auto total_time_pp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_pp).count()/1000.;
+    cout << "Total time post process = " << total_time_pp << " seconds" << endl;
         
     cout << "\n--------------------- End of execution ---------------------\n" << endl;
     auto total_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count()/1000.;
@@ -225,11 +233,11 @@ void ReadSPE10CellPermeabilities(TPZVec<REAL> *perm_vec, const int layer) {
         }
         if (cell_id == n_cells) break;
     }
-    std::ofstream outmat("perm.txt");
-    for (int i = 0; i < perm_vec->size(); i++)
-    {
-        outmat << perm_vec->operator[](i) << std::endl;
-    }
+    // std::ofstream outmat("perm.txt");
+    // for (int i = 0; i < perm_vec->size(); i++)
+    // {
+    //     outmat << perm_vec->operator[](i) << std::endl;
+    // }
     
     std::cout << "Finished reading permeability data from input file!\n";
 }
@@ -268,12 +276,12 @@ void ReadSPE10CellPermeabilities3D(TPZVec<REAL> *perm_vec) {
         }
         if (cell_id == n_cells) break;
     }
-    std::ofstream outmat("perm.txt");
-    for (int i = 0; i < perm_vec->size(); i++)
-    {
-        outmat << perm_vec->operator[](i) << std::endl;
-    }
-    std::cout << "Finished reading permeability data from input file!\n";
+    // std::ofstream outmat("perm.txt");
+    // for (int i = 0; i < perm_vec->size(); i++)
+    // {
+    //     outmat << perm_vec->operator[](i) << std::endl;
+    // }
+    // std::cout << "Finished reading permeability data from input file!\n";
 }
 
 // -------------------------------------------------------------------------------------------------

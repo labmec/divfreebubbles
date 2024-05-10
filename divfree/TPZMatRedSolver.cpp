@@ -222,14 +222,18 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   TPZSYsmpMatrixPardiso<REAL> K00;
   
   TPZStepSolver<STATE> step;
-  step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+  K00.SetSymmetry(SymProp::Sym);
+  // step.SetDirect(ELU);//ELU //ECholesky // ELDLt
+  step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
+  // step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+  
   fAnalysis->SetSolver(step);
   step.SetMatrix(&K00);
   
   //Cria a matriz esparsa
   std::set<int> lag = {1};
   TPZSparseMatRed<STATE> *matRed = new TPZSparseMatRed<STATE>(cmesh,lag);
-//   matRed->SetK00IsNegativeDefinite();
+  matRed->SetK00IsNegativeDefinite();
   std::cout << "Allocating Sub Matrices ...\n";
   auto start_time_allocating = std::chrono::steady_clock::now();
   //Transfere as submatrizes da matriz auxiliar para a matriz correta.
@@ -386,7 +390,8 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   TPZSYsmpMatrix<REAL> K00;
   
   TPZStepSolver<STATE> step;
-  step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
+  step.SetJacobi(100,1.e-10,0);
+  // step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
   fAnalysis->SetSolver(step);
   step.SetMatrix(&K00);
   
