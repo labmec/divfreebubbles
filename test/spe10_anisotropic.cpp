@@ -54,10 +54,10 @@ using namespace std;
 void ReadSPE10CellPermeabilities(TPZVec<REAL>*perm_vec, int layer);
 void ReadSPE10CellPermeabilities3D(TPZVec<REAL>*perm_vec);
 TPZGeoMesh *CreateSPE10CoarseGeoMesh();
-STATE PermeabilityFunction(const TPZVec<REAL> &x);
-// TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x);
-STATE PermeabilityFunction3D(const TPZVec<REAL> &x);
-// TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x);
+// STATE PermeabilityFunction(const TPZVec<REAL> &x);
+TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x);
+// STATE PermeabilityFunction3D(const TPZVec<REAL> &x);
+TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x);
 void PrintResultsVTK(const int dim, TPZLinearAnalysis &an, const std::string &plotfile);
 void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh);
 
@@ -117,10 +117,10 @@ int main(){
     hdivCreator.HybridType() = HybridizationType::ESemi;
 
     //Insert Materials
-    TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,dim);
-    // TPZMixedDarcyFlowOrtotropic* matdarcy = new TPZMixedDarcyFlowOrtotropic(EDomain,dim);
-    // std::function<TPZManVector<REAL,3>(const TPZVec<REAL> &coord)> func;
-    std::function<STATE(const TPZVec<REAL> &coord)> func;
+    // TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,dim);
+    TPZMixedDarcyFlowOrtotropic* matdarcy = new TPZMixedDarcyFlowOrtotropic(EDomain,dim);
+    std::function<TPZManVector<REAL,3>(const TPZVec<REAL> &coord)> func;
+    // std::function<STATE(const TPZVec<REAL> &coord)> func;
     if (dim == 2){
         func = PermeabilityFunction;
     } else if (dim == 3){
@@ -321,8 +321,8 @@ TPZGeoMesh *CreateSPE10CoarseGeoMesh() {
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 
-STATE PermeabilityFunction(const TPZVec<REAL> &x) {
-// TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x) {
+// STATE PermeabilityFunction(const TPZVec<REAL> &x) {
+TPZManVector<REAL,3> PermeabilityFunction(const TPZVec<REAL> &x) {
     auto rounded_x = static_cast<int>(x[0]);
     auto rounded_y = static_cast<int>(x[1]);
     if (rounded_x == 220) rounded_x = 219;
@@ -331,14 +331,14 @@ STATE PermeabilityFunction(const TPZVec<REAL> &x) {
     TPZManVector<REAL,3> perm(3,0.);
     perm[0] = permx;
 
-    return permx;
+    return perm;
 }
 
 // -------------------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------------------
 
-STATE PermeabilityFunction3D(const TPZVec<REAL> &x) {
-// TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x) {
+// STATE PermeabilityFunction3D(const TPZVec<REAL> &x) {
+TPZManVector<REAL,3> PermeabilityFunction3D(const TPZVec<REAL> &x) {
     auto rounded_x = static_cast<int>(x[0]);
     auto rounded_y = static_cast<int>(x[1]);
     auto rounded_z = static_cast<int>(x[2]);
@@ -353,7 +353,7 @@ STATE PermeabilityFunction3D(const TPZVec<REAL> &x) {
     perm[1] = permy;
     perm[2] = permz;
 
-    return permx;
+    return perm;
 }
 
 

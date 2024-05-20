@@ -20,6 +20,7 @@ add_unit_test(fOrthog FunctionOrthogonality.cpp)
 configure_file(InputData/spe_perm.dat InputData/spe_perm.dat COPYONLY)
 
 add_unit_test(spe10 spe10.cpp)
+add_unit_test(spe10_an spe10_anisotropic.cpp)
 
 # Need refactor
 

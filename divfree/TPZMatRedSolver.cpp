@@ -222,10 +222,10 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   TPZSYsmpMatrixPardiso<REAL> K00;
   
   TPZStepSolver<STATE> step;
-  K00.SetSymmetry(SymProp::Sym);
+  // K00.SetSymmetry(SymProp::Sym);
   // step.SetDirect(ELU);//ELU //ECholesky // ELDLt
-  step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
-  // step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
+  // step.SetDirect(ECholesky);//ELU //ECholesky // ELDLt
+  step.SetDirect(ELDLt);//ELU //ECholesky // ELDLt
   
   fAnalysis->SetSolver(step);
   step.SetMatrix(&K00);
