@@ -91,7 +91,7 @@ void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
   // considering fK00 is simetric, only half of the object is assembled.
   // this method simetrizes the matrix object
 
-#ifdef PZ_LOG
+#ifdef PZDEBUG
   SymProp symprop = this->fK00->VerifySymmetry();
   if(symprop == SymProp::NonSym){
     DebugStop();
@@ -676,6 +676,7 @@ void TPZSparseMatRed<TVar>::DecomposeK00()
   if (fK00NegativeDefinite){
     fK00->MultiplyByScalar(-1.,fK00);
   }
+  fK00->SetDefPositive(true);
   TPZStepSolver<TVar> *stepsolve = dynamic_cast<TPZStepSolver<TVar> *>(fSolver.operator->());
   TPZStepSolver<TVar> *directsolve(0);
   if(!stepsolve)
