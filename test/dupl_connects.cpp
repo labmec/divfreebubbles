@@ -161,10 +161,17 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // // gradU(2,0) = -1;
 
     REAL aux = 1./sinh(sqrt(2)*M_PI);
+    //homogeneous solution
     u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
     gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
     gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
     gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+
+    //non-homogeneous solution
+    // u[0] = cos(y) + sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux - sin(y);
+    // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
     // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
     // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
