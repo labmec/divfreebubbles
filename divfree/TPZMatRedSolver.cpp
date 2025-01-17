@@ -84,9 +84,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
   //Creates the problem matrix
   TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
   Stiffness.SetNumThreads(nThreads);
-  
-  TPZAutoPointer<TPZGuiInterface> guiInterface;
-  
+    
   //Cria duas matrizes, para inverter a ordem das matrizes em bloco
   TPZMatRed<STATE, TPZFMatrix<STATE>> *matRed = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqLinr+nEqHigh,nEqLinr);
   // TPZMatRed<STATE, TPZFMatrix<STATE>> *K00red = new TPZMatRed<STATE, TPZFMatrix<STATE>>(nEqLinr,nEqLinr-25);
@@ -113,7 +111,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
   //Monta a matriz auxiliar
   rhsFull.Zero();
   std::cout << "Start assembling matRed ...\n";
-  Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+  Stiffness.Assemble(*matRed,rhsFull);
   std::cout << "Finish assembling matRed ...\n";
   clock.stop();
   // std::cout << "Time Assemble " << clock << std::endl;
@@ -238,7 +236,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   auto start_time_allocating = std::chrono::steady_clock::now();
   //Transfere as submatrizes da matriz auxiliar para a matriz correta.
   matRed->SetSolver(&step);
-  K00.Resize(matRed->Dim0(),matRed->Dim0());
+  K00 = TPZSYsmpMatrixPardiso<REAL>(matRed->Dim0(),matRed->Dim0());
+  // K00.Resize(matRed->Dim0(),matRed->Dim0());
   matRed->AllocateSubMatrices(cmesh);
   auto total_time_allocating = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_allocating).count()/1000.;
   std::cout << "Time Allocating Sub Matrices = " << total_time_allocating << " seconds" << std::endl;
@@ -268,9 +267,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   //Creates the problem matrix
   TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
   Stiffness.SetNumThreads(nThreads);
-  
-  TPZAutoPointer<TPZGuiInterface> guiInterface;
-  
+    
   Stiffness.EquationFilter().Reset();
   // Stiffness.EquationFilter().SetActiveEquations(fActiveEquations);
   fAnalysis->SetStructuralMatrix(Stiffness);
@@ -278,7 +275,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   //Monta a matriz
   rhsFull.Zero();
   auto start_time_assemble = std::chrono::steady_clock::now();
-  Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+  Stiffness.Assemble(*matRed,rhsFull);
   auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
   std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " seconds" << std::endl;
   
@@ -432,11 +429,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   
   //Creates the problem matrix
   TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(fAnalysis->Mesh());
-  Stiffness.SetNumThreads(nThreads);
-  
-  
-  TPZAutoPointer<TPZGuiInterface> guiInterface;
-  
+  Stiffness.SetNumThreads(nThreads);  
   Stiffness.EquationFilter().Reset();
   // Stiffness.EquationFilter().SetActiveEquations(fActiveEquations);
   fAnalysis->SetStructuralMatrix(Stiffness);
@@ -445,7 +438,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   rhsFull.Zero();
   
   auto start_time_assemble = std::chrono::steady_clock::now();
-  Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+  Stiffness.Assemble(*matRed,rhsFull);
   auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
   std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " seconds" << std::endl;
   
