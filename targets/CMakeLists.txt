@@ -16,6 +16,9 @@ target_link_libraries(hpc4 PRIVATE divfree)
 add_executable(voronoi_mixed_elas voronoi_mixed_elas.cpp)
 target_link_libraries(voronoi_mixed_elas PRIVATE divfree)
 
+add_executable(steep-wave steep-wave.cpp)
+target_link_libraries(steep-wave PRIVATE divfree)
+
 # Need refactor
 # add_executable(SHIterative SHIterative.cpp)
 # target_link_libraries(SHIterative PRIVATE divfree)
