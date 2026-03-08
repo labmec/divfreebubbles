@@ -84,11 +84,11 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -2.*y;
     // // gradU(2,0) = -1;
 
-    // REAL aux = 1./sinh(sqrt(2)*M_PI);
-    // u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
-    // gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
+    REAL aux = 1./sinh(sqrt(2)*M_PI);
+    u[0] = sin(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x)*sinh(sqrt(2)*M_PI*z)*aux;
+    gradU(2,0) = sqrt(2)*M_PI*cosh(sqrt(2)*M_PI*z)*sin(M_PI*x)*sin(M_PI*y)*aux;
 
     // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
     // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
@@ -120,9 +120,9 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     // gradU(1,0) = -y;//(x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
     // gradU(2,0) = 2.*z;//(x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
 
-    u[0] = exp(M_PI*x)*sin(M_PI*y)*x;
-    gradU(0,0) = x*M_PI*exp(M_PI*x)*sin(M_PI*y)+exp(M_PI*x)*sin(M_PI*y);
-    gradU(1,0) = x*M_PI*exp(M_PI*x)*cos(M_PI*y);
+    // u[0] = exp(M_PI*x)*sin(M_PI*y)*x;
+    // gradU(0,0) = x*M_PI*exp(M_PI*x)*sin(M_PI*y)+exp(M_PI*x)*sin(M_PI*y);
+    // gradU(1,0) = x*M_PI*exp(M_PI*x)*cos(M_PI*y);
 };
 auto forcefunction = [](const TPZVec<REAL> &loc,
     TPZVec<STATE>&u){
@@ -130,17 +130,19 @@ auto forcefunction = [](const TPZVec<REAL> &loc,
     const auto &y=loc[1];
     const auto &z=loc[2];
 
-    u[0] = -exp(M_PI*x)*sin(M_PI*y)*M_PI*2.;
+    // u[0] = -exp(M_PI*x)*sin(M_PI*y)*M_PI*2.;
+    REAL aux = 1./sinh(sqrt(2)*M_PI);
+    u[0] = -2.*sqrt(2)*M_PI*M_PI*cos(M_PI*x)*sin(M_PI*y)*cosh(sqrt(2)*M_PI*x)*aux;
 };
 
 int main(int argc, char* argv[])
 {
     
-    const int xdiv = 200;
+    const int xdiv = 2;
     const int pOrder = 1;
     const HDivFamily hdivfamily = HDivFamily::EHDivConstant;
     // const HDivFamily hdivfamily = HDivFamily::EHDivStandard;
-    int DIM = 2;
+    int DIM = 3;
 
 #ifdef PZ_LOG
     TPZLogger::InitializePZLOG();
@@ -155,8 +157,21 @@ int main(int argc, char* argv[])
     if (DIM == 2) nDivs = {xdiv,xdiv};
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
-    // Creates/import a geometric mesh  
-    auto gmesh = CreateGeoMesh<pzshape::TPZShapeQuad>(nDivs, EDomain, EBoundary);
+    
+    for (int iorder = 1; iorder < 6; iorder++) {
+        std::cout << "Running with pOrder = " << iorder << "\n";
+        rprint << "pOrder = " << iorder << " " ;
+        
+    // Creates/import a geometric mesh 
+    TPZGeoMesh *gmesh = nullptr; 
+    if (DIM == 2) {
+        // gmesh = CreateGeoMesh<pzshape::TPZShapeTriang>(nDivs, EDomain, EBoundary);
+        gmesh = CreateGeoMesh<pzshape::TPZShapeQuad>(nDivs, EDomain, EBoundary);
+    }
+    if (DIM == 3) {
+        gmesh = CreateGeoMesh<pzshape::TPZShapeCube>(nDivs, EDomain, EBoundary);
+    }
+    
 
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
@@ -165,7 +180,7 @@ int main(int argc, char* argv[])
     hdivCreator.HdivFamily() = hdivfamily;
     hdivCreator.ProbType() = ProblemType::EDarcy;
     hdivCreator.IsRigidBodySpaces() = false;
-    hdivCreator.SetDefaultOrder(pOrder);
+    hdivCreator.SetDefaultOrder(iorder);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
     // hdivCreator.SetShouldCondense(false);
@@ -185,8 +200,8 @@ int main(int argc, char* argv[])
 
     hdivCreator.InsertMaterialObject(matdarcy);
 
-    TPZFMatrix<STATE> val1(1,1,0.);
-    TPZManVector<STATE> val2(1,0.);
+    TPZFMatrix<STATE> val1(3,3,0.);
+    TPZManVector<STATE> val2(3,0.);
     TPZBndCondT<STATE> *BCond1 = matdarcy->CreateBC(matdarcy, EBoundary, 0, val1, val2);
     BCond1->SetForcingFunctionBC(exactSol,4);
     hdivCreator.InsertMaterialObject(BCond1);
@@ -278,22 +293,22 @@ int main(int argc, char* argv[])
     //     TPZSimpleTimer postProc("Post processing1");
         // util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
     // }
-
+    }
     {
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{0};
+        // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+        // TPZSimpleTimer postProc("Post processing2");
+        // const std::string plotfile = "myfile";//sem o .vtk no final
+        // constexpr int vtkRes{0};
     
 
-        TPZVec<std::string> fields = {
-        "Pressure",
-        "ExactPressure",
-        "Flux",
-        "ExactFlux"};
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+        // TPZVec<std::string> fields = {
+        // "Pressure",
+        // "ExactPressure",
+        // "Flux",
+        // "ExactFlux"};
+        // auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-        vtk.Do();
+        // vtk.Do();
     }
     // std::string txt2 = "cmeshSol.txt";
     // std::ofstream myfile2(txt2);
