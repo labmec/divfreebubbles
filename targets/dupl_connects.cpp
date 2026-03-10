@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
     if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     
-    for (int iorder = 1; iorder < 6; iorder++) {
+    for (int iorder = 1; iorder < 16; iorder++) {
         std::cout << "Running with pOrder = " << iorder << "\n";
         rprint << "pOrder = " << iorder << " " ;
         
