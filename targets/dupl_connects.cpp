@@ -154,14 +154,19 @@ int main(int argc, char* argv[])
     
     TPZVec<int> nDivs;
 
-    if (DIM == 2) nDivs = {xdiv,xdiv};
-    if (DIM == 3) nDivs = {xdiv,xdiv,xdiv};
     
     
-    for (int iorder = 1; iorder < 16; iorder++) {
+    
+    for (int iorder = 1; iorder < 5; iorder++) {
         std::cout << "Running with pOrder = " << iorder << "\n";
         rprint << "pOrder = " << iorder << " " ;
         
+        for (int idivs = 2; idivs <=16 ; idivs++){
+    
+        if (DIM == 2) nDivs = {idivs,idivs};
+        if (DIM == 3) nDivs = {idivs,idivs,idivs};
+    
+    
     // Creates/import a geometric mesh 
     TPZGeoMesh *gmesh = nullptr; 
     if (DIM == 2) {
@@ -293,6 +298,7 @@ int main(int argc, char* argv[])
     //     TPZSimpleTimer postProc("Post processing1");
         // util.PrintResultsMultiphysics(cmesh->MeshVector(),an,cmesh);
     // }
+    }
     }
     {
         // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
