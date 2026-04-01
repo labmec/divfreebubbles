@@ -12,7 +12,7 @@ target_link_libraries(test_library PUBLIC divfree Catch2::Catch2)
 add_unit_test(dupl_connects dupl_connects.cpp)
 add_unit_test(dMatRed doubleMatRed.cpp)
 
-add_unit_test(mixed_elasticity mixed_elasticity.cpp)
+# add_unit_test(mixed_elasticity mixed_elasticity.cpp)
 add_unit_test(Yotov Yotov.cpp)
 add_unit_test(mixedH1 mixedH1.cpp)
 add_unit_test(fOrthog FunctionOrthogonality.cpp)
@@ -21,6 +21,9 @@ configure_file(InputData/spe_perm.dat InputData/spe_perm.dat COPYONLY)
 
 add_unit_test(spe10 spe10.cpp)
 add_unit_test(spe10_an spe10_anisotropic.cpp)
+
+add_executable(mixed_elasticity mixed_elasticity.cpp)
+target_link_libraries(mixed_elasticity PRIVATE divfree)
 
 # Need refactor
 

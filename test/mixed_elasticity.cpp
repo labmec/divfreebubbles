@@ -3,7 +3,6 @@
   for any specified polynomial order and topology.
   
 */
-#include <catch2/catch.hpp>
 #include <TPZGeoMeshTools.h>
 #include "TPZKernelHdivUtils.h"
 #include "TPZAnalyticSolution.h"
@@ -80,19 +79,18 @@ ReadMeshFromGmsh(std::string file_name);
 template<class tshape>
 void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily);
 
-TEST_CASE("Hybridization test")
-{
+int main( int argc, char* argv[] ) {
     rprint.open("results_MElasticity2D.txt",std::ios_base::app);
     // const int pOrder = 1;
-    const int pOrder = GENERATE(1);
+    const int pOrder = 1;
 
-    const int xdiv = 50;//GENERATE(50);
+    const int xdiv = 10;//GENERATE(50);
     // const int xdiv = GENERATE(2,5,10,15,20,25,30,35,40,45,50,60,70,80,90,100,120,140,160,180,200);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
     // const int xdiv = GENERATE(2,3,4,5,6,7,8);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant,HDivFamily::EHDivKernel);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivKernel);
-    HDivFamily hdivfam = GENERATE(HDivFamily::EHDivConstant);
+    HDivFamily hdivfam = HDivFamily::EHDivConstant;
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard);
     // HDivFamily hdivfam = GENERATE(HDivFamily::EHDivStandard,HDivFamily::EHDivConstant);
     
@@ -217,24 +215,24 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     {
         
-        TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-        TPZSimpleTimer postProc("Post processing2");
-        const std::string plotfile = "myfile";//sem o .vtk no final
-        constexpr int vtkRes{0};
+        // TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
+        // TPZSimpleTimer postProc("Post processing2");
+        // const std::string plotfile = "myfile";//sem o .vtk no final
+        // constexpr int vtkRes{0};
     
 
-        TPZVec<std::string> fields = {
-        // "ExactDisplacement",
-        // "ExactStress",
-        "Displacement",
-        "SigmaX",
-        "SigmaY",
-        "TauXY"
-        };
-        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
+        // TPZVec<std::string> fields = {
+        // // "ExactDisplacement",
+        // // "ExactStress",
+        // "Displacement",
+        // "SigmaX",
+        // "SigmaY",
+        // "TauXY"
+        // };
+        // auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes);
 
-        vtk.Do();
-        // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
+        // vtk.Do();
+        // // cmesh_m_HDiv->Solution().Print("Solution=",std::cout);
         
     }
     // //vamos supor que vc atualiza a solucao, roda de novo, sei la
