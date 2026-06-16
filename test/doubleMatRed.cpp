@@ -30,7 +30,7 @@
 #include <pzstepsolver.h> //for TPZStepSolver
 #include "pzblockdiag.h"
 #include "pzbdstrmatrix.h"
-#include <valgrind/callgrind.h>
+//#include <valgrind/callgrind.h>
 #include "pzelementgroup.h"
 #include "pzcondensedcompel.h"
 

@@ -96,7 +96,7 @@ int main(int argc, char* argv[]){
 //    cmesh->Print(outmult);
     
     //Solve Multiphysics
-    TPZLinearAnalysis an(cmesh,true);
+    TPZLinearAnalysis an(cmesh);
     SolveProblemDirect(an,cmesh);
     
 //    cmesh->UpdatePreviousState(-1.); NS: When do I need this??????
@@ -110,7 +110,7 @@ int main(int argc, char* argv[]){
     TPZCompMesh * cmeshH1 = CMeshH1(dim,pOrder,gmesh);
     
     // // //Solve H1
-    TPZLinearAnalysis anH1(cmeshH1,false);
+    TPZLinearAnalysis anH1(cmeshH1);
     SolveProblemDirect(anH1,cmeshH1);
     
     // // //Print results

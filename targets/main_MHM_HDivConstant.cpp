@@ -165,7 +165,7 @@ void RunMHM(const int &xdiv, const int &pOrder)
 
     bool mustOptimizeBandwidth = true;
     TPZCompMesh *SBFem = multiCmesh;
-    TPZLinearAnalysis * Analysis = new TPZLinearAnalysis(SBFem,mustOptimizeBandwidth);
+    TPZLinearAnalysis * Analysis = new TPZLinearAnalysis(SBFem);
 
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> strmat(multiCmesh);
     strmat.SetNumThreads(10);

@@ -132,7 +132,7 @@ int main() {
     std::cout << "Number of equations = " << cmesh->Solution().Rows() << std::endl;
 
     //Create analysis environment and solve
-    TPZLinearAnalysis an(cmesh,true);
+    TPZLinearAnalysis an(cmesh,RenumType::EDefault);
     bool filter = false;bool domainhybr=false;
     const int nthreads = 64;
     util.SolveProblemCholesky(an,cmesh,filter,domainhybr,nthreads);

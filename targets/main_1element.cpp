@@ -179,7 +179,7 @@ TPZLogger::InitializePZLOG();
 
 
         //Solve Multiphysics
-        TPZLinearAnalysis an(cmesh,true);
+        TPZLinearAnalysis an(cmesh);
         SolveProblemDirect(an,cmesh);
         
         //Print results
@@ -959,11 +959,13 @@ void SolveProblem(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
   ///Setting an iterative solver
   // TPZMatrixSolver<STATE> * precond = an.BuildPreconditioner(TPZAnalysis::EBlockJacobi , true);
   // TPZCopySolve<STATE> * precond = new TPZCopySolve<STATE>( matskl.Create() );  step.ShareMatrix( *precond );
-  TPZStepSolver<STATE> * precond = new TPZStepSolver<STATE>( matskl.Create() ); step.ShareMatrix( *precond ); precond->SetJacobi(1, 0.0, 0);
+  TPZStepSolver<STATE> * precond = new TPZStepSolver<STATE>( matskl.Create() ); 
+  step.SetReferenceMatrix( precond->Matrix() ); 
+  precond->SetJacobi(1, 0.0, 0);
   TPZStepSolver<STATE> jac;
   REAL tol = 1.e-30;
   jac.SetSSOR(1,1.1,0.,0);
-  jac.ShareMatrix(step);
+  jac.SetReferenceMatrix(step.Matrix());
   step.SetGMRES(2000,2000, *precond, tol, 0);
   // step.SetCG(2000, *precond, tol, 0);
   an.SetSolver(step);
