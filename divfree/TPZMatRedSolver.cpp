@@ -11,6 +11,7 @@
 #include "pzintel.h"
 #include "TPZMultiphysicsCompMesh.h"
 #include "TPZDoubleMatRed.h"
+#include "TPZGuiInterface.h"
 #ifdef PZ_USING_MKL
 #include "TPZSYSMPPardiso.h"
 #endif
@@ -64,7 +65,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
   fAnalysis->Mesh()->Print(myfile3);
   
   nEqHigh = nEqFull-nEqLinr;
-  out << nEqHigh << " " << nEqLinr << " ";
+  // out << nEqHigh << " " << nEqLinr << " ";
   
   std::cout << "NUMBER OF EQUATIONS:\n " <<
   "Full problem = " << nEqFull <<
@@ -72,7 +73,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
   ", Linear Flux = " << nEqLinr << std::endl;
   
   //Sets number of threads to be used by the solver
-  constexpr int nThreads{12};
+  constexpr int nThreads{100};
   
   // Create the RHS vectors
   TPZFMatrix<STATE> rhsFull(nEqLinr+nEqHigh,1,0.);
@@ -170,7 +171,7 @@ void TPZMatRedSolver<TVar>::SolveProblemDefault(std::ostream &out){
   
   REAL norm = 0.;
   std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
-  out << nMaxIter << "\n";
+  // out << nMaxIter << "\n";
   TPZFMatrix<STATE> result(nEqLinr+nEqHigh,1,0.);
   matRed->UGlobal(solution,result);
   
@@ -218,7 +219,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   int dimension = cmesh->Dimension();
   //Primeiro cria a matriz auxiliar K00 - que será decomposta
   //    TPZSYsmpMatrix<REAL> K00;
-  TPZSYsmpMatrix<REAL> K00;
+  TPZSYsmpMatrixPardiso<REAL> K00;
   
   TPZStepSolver<STATE> step;
   K00.SetSymmetry(SymProp::Sym);
@@ -237,7 +238,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   auto start_time_allocating = std::chrono::steady_clock::now();
   //Transfere as submatrizes da matriz auxiliar para a matriz correta.
   matRed->SetSolver(&step);
-  K00.Resize(matRed->Dim0(),matRed->Dim0());
+  K00 = TPZSYsmpMatrixPardiso<REAL>(matRed->Dim0(),matRed->Dim0());
+  // K00.Resize(matRed->Dim0(),matRed->Dim0());
   matRed->AllocateSubMatrices(cmesh);
   auto total_time_allocating = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_allocating).count()/1000.;
   std::cout << "Time Allocating Sub Matrices = " << total_time_allocating << " seconds" << std::endl;
@@ -247,7 +249,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   int64_t nEqLinr = matRed->Dim0();
   int64_t nEqHigh = matRed->Dim1();
   
-  out << nEqHigh << " " << nEqLinr << " ";
+  // out << nEqHigh << " " << nEqLinr << " ";
   
   std::cout << "NUMBER OF EQUATIONS:\n " <<
   "Full problem = " << nEqFull <<
@@ -255,7 +257,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   ", Linear Flux = " << nEqLinr << std::endl;
   
   //Sets number of threads to be used by the solver
-     constexpr int nThreads{50};
+     constexpr int nThreads{100};
 //   constexpr int nThreads{0};
   
   // Create the RHS vectors
@@ -277,7 +279,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   //Monta a matriz
   rhsFull.Zero();
   auto start_time_assemble = std::chrono::steady_clock::now();
-  Stiffness.Assemble(*matRed,rhsFull);
+  Stiffness.Assemble(*matRed,rhsFull,guiInterface);
   auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
   std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " seconds" << std::endl;
   
@@ -342,10 +344,12 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   
   auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count()/1000.;
   std::cout << "Time CG " << total_time_solve << std::endl;
+
+  out << "time CG = " << durationassembly.count() << " " << total_time_decomp + total_time_bd + total_time_solve << "\n";
   
   REAL norm = 0.;
   std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
-  out << nMaxIter << "\n";
+  // out << nMaxIter << "\n";
   TPZFMatrix<STATE> result(nEqLinr+nEqHigh,1,0.);
   
   matRed->UGlobal(solution,result);
@@ -413,7 +417,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   int64_t nEqLinr = matRed->Dim0();
   int64_t nEqHigh = matRed->Dim1();
   
-  out << nEqHigh << " " << nEqLinr << " ";
+  // out << nEqHigh << " " << nEqLinr << " ";
   
   std::cout << "NUMBER OF EQUATIONS:\n " <<
   "Full problem = " << nEqFull <<
@@ -421,7 +425,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   ", Linear Flux = " << nEqLinr << std::endl;
   
   //Sets number of threads to be used by the solver
-  constexpr int nThreads{10};
+  constexpr int nThreads{100};
   
   // Create the RHS vectors
   TPZFMatrix<STATE> rhsFull(nEqFull,1,0.);
@@ -509,7 +513,7 @@ void TPZMatRedSolver<TVar>::SolveProblemMHMSparse(std::ostream &out){
   
   REAL norm = 0.;
   std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
-  out << nMaxIter << "\n";
+  // out << nMaxIter << "\n";
   TPZFMatrix<STATE> result(nEqLinr+nEqHigh,1,0.);
   
   matRed->UGlobal(solution,result);

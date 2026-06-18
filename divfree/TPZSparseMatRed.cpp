@@ -67,9 +67,9 @@ TPZRegisterClassId(&TPZSparseMatRed::ClassId), fMaxRigidBodyModes(0), fNumberRig
   int64_t dim, dim00;
   ReorderEquations(cmesh,LagLevels,dim,dim00);
   
-  fK11.Resize(dim-dim00,dim-dim00);
-  fK01.Resize(dim00,dim-dim00);
-  fK10.Resize(dim-dim00,dim00);
+  fK11 = TPZSYsmpMatrix<TVar>(dim-dim00,dim-dim00);
+  fK01 = TPZFYsmpMatrix<TVar>(dim00,dim-dim00);
+  fK10 = TPZFYsmpMatrix<TVar>(dim-dim00,dim00);
   fF0.Resize(dim00,1);
   fF0.Zero();
   fF1.Resize(dim-dim00,1);
