@@ -170,10 +170,10 @@ int main(int argc, char* argv[])
     //              ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
     //              ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
     
-    std::vector<int> idivs = {2,8,12,16};
+    std::vector<int> idivs = {2};
     // std::vector<int> idivs = {10,50,100,200};
     
-    for (int iorder = 5; iorder < 6; iorder++) {
+    for (int iorder = 3; iorder < 4; iorder++) {
     for (auto idiv : idivs) {
         std::cout << "Running with pOrder = " << iorder << "\n";
         std::cout << "Running with idiv = " << idiv << "\n";
@@ -181,27 +181,11 @@ int main(int argc, char* argv[])
 
     TPZVec<int> nDivs;
 
-<<<<<<< HEAD
-    
-    
-    
-    for (int iorder = 1; iorder < 5; iorder++) {
-        std::cout << "Running with pOrder = " << iorder << "\n";
-        rprint << "pOrder = " << iorder << " " ;
-        
-        for (int idivs = 2; idivs <=16 ; idivs++){
-    
-        if (DIM == 2) nDivs = {idivs,idivs};
-        if (DIM == 3) nDivs = {idivs,idivs,idivs};
-    
-    
-=======
     if (DIM == 2) nDivs = {idiv,idiv};
     if (DIM == 3) nDivs = {idiv,idiv,idiv};
     
     
 
->>>>>>> 92189bd (update do current NeoPZ version)
     // Creates/import a geometric mesh 
     TPZGeoMesh *gmesh = nullptr; 
     if (DIM == 2) {
@@ -224,7 +208,7 @@ int main(int argc, char* argv[])
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
     // hdivCreator.SetShouldCondense(false);
-    hdivCreator.SetHybridType(HybridizationType::ENone);
+    hdivCreator.SetHybridType(HybridizationType::EStandard);
 
     //Prints gmesh mesh properties
     // std::string vtk_name = "geoMesh.vtk";
@@ -270,7 +254,7 @@ int main(int argc, char* argv[])
     int nEquationsCondensed = cmesh->NEquations();
     std::cout << "Number of equations condensed = " << nEquationsCondensed << std::endl;
     //Create analysis environment
-    TPZLinearAnalysis an(cmesh);
+    TPZLinearAnalysis an(cmesh,RenumType::EMetis);
     an.SetExact(exactSol,solOrder);
 
     std::set<int> matBCAll = {EBoundary};
@@ -316,6 +300,11 @@ int main(int argc, char* argv[])
         auto endassembly = std::chrono::high_resolution_clock::now();
         auto durationassembly = std::chrono::duration_cast<std::chrono::milliseconds>(endassembly - startassembly);
         std::cout << "Time assembling: " << durationassembly.count() << " ms\n";
+        auto mat = an.MatrixSolver<REAL>().Matrix();
+        mat->operator*=(-1.0);
+        mat->SetDefPositive(true);
+        TPZFMatrix<REAL>& rhs = an.Rhs();
+        rhs*= -1.0;
         
         auto startsolver = std::chrono::high_resolution_clock::now();
         an.Solve();

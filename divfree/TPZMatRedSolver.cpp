@@ -279,7 +279,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   //Monta a matriz
   rhsFull.Zero();
   auto start_time_assemble = std::chrono::steady_clock::now();
-  Stiffness.Assemble(*matRed,rhsFull,guiInterface);
+  Stiffness.Assemble(*matRed,rhsFull);
   auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
   std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " seconds" << std::endl;
   
@@ -345,7 +345,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count()/1000.;
   std::cout << "Time CG " << total_time_solve << std::endl;
 
-  out << "time CG = " << durationassembly.count() << " " << total_time_decomp + total_time_bd + total_time_solve << "\n";
+  // out << "time CG = " << durationassembly.count() << " " << total_time_decomp + total_time_bd + total_time_solve << "\n";
   
   REAL norm = 0.;
   std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
