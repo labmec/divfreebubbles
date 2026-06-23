@@ -160,7 +160,8 @@ int main(int argc, char* argv[])
     const int pOrder = 1;
     const HDivFamily hdivfamily = HDivFamily::EHDivConstant;
     // const HDivFamily hdivfamily = HDivFamily::EHDivStandard;
-    int DIM = 3;
+
+    int DIM = (argc > 1) ? std::atoi(argv[1]) : 3;
 
 #ifdef PZ_LOG
     TPZLogger::InitializePZLOG();
@@ -170,10 +171,10 @@ int main(int argc, char* argv[])
     //              ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
     //              ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
     
-    std::vector<int> idivs = {2};
+    std::vector<int> idivs = {2,8};
     // std::vector<int> idivs = {10,50,100,200};
     
-    for (int iorder = 3; iorder < 4; iorder++) {
+    for (int iorder = 1; iorder < 6; iorder++) {
     for (auto idiv : idivs) {
         std::cout << "Running with pOrder = " << iorder << "\n";
         std::cout << "Running with idiv = " << idiv << "\n";
@@ -208,7 +209,7 @@ int main(int argc, char* argv[])
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
     // hdivCreator.SetShouldCondense(false);
-    hdivCreator.SetHybridType(HybridizationType::EStandard);
+    hdivCreator.SetHybridType(HybridizationType::ESemi);
 
     //Prints gmesh mesh properties
     // std::string vtk_name = "geoMesh.vtk";
@@ -268,13 +269,13 @@ int main(int argc, char* argv[])
         // CALLGRIND_START_INSTRUMENTATION;
         // CALLGRIND_TOGGLE_COLLECT;
         TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse);
-        
+        printmemoryTime << "iterative " << iorder << " " << idiv << " ";
         solver.Solve(printmemoryTime);
         
 
     } else {
         TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
-        matskl.SetNumThreads(100);
+        matskl.SetNumThreads(32);
         an.SetStructuralMatrix(matskl);
 
         // TPZBlockDiagonalStructMatrix<STATE> BDFmatrix(cmesh);
@@ -300,18 +301,18 @@ int main(int argc, char* argv[])
         auto endassembly = std::chrono::high_resolution_clock::now();
         auto durationassembly = std::chrono::duration_cast<std::chrono::milliseconds>(endassembly - startassembly);
         std::cout << "Time assembling: " << durationassembly.count() << " ms\n";
-        auto mat = an.MatrixSolver<REAL>().Matrix();
-        mat->operator*=(-1.0);
-        mat->SetDefPositive(true);
-        TPZFMatrix<REAL>& rhs = an.Rhs();
-        rhs*= -1.0;
+        // auto mat = an.MatrixSolver<REAL>().Matrix();
+        // mat->operator*=(-1.0);
+        // mat->SetDefPositive(true);
+        // TPZFMatrix<REAL>& rhs = an.Rhs();
+        // rhs*= -1.0;
         
         auto startsolver = std::chrono::high_resolution_clock::now();
         an.Solve();
         auto endsolver = std::chrono::high_resolution_clock::now();
         auto durationsolver = std::chrono::duration_cast<std::chrono::milliseconds>(endsolver - startsolver);
         std::cout << "Time solving: " << durationsolver.count() << " ms\n";
-        printmemoryTime << iorder << " " << idiv << " " << durationassembly.count() << " " << durationsolver.count() << " " << getPeakMemoryMB() << "\n";
+        printmemoryTime << "direct " << iorder << " " << idiv << " " << durationassembly.count() << " " << durationsolver.count() << " ";
     }
 
     
@@ -334,7 +335,8 @@ int main(int argc, char* argv[])
               << " MB\n";
 
 
-    printmemoryTime << iorder << " " << idiv << " " << duration.count() << " " << getPeakMemoryMB() << "\n";
+    printmemoryTime << getPeakMemoryMB() << "\n";
+    printmemoryTime.flush();
     // //Print results
     // {
     //     TPZSimpleTimer postProc("Post processing1");

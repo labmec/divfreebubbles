@@ -257,7 +257,7 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   ", Linear Flux = " << nEqLinr << std::endl;
   
   //Sets number of threads to be used by the solver
-     constexpr int nThreads{100};
+     constexpr int nThreads{32};
 //   constexpr int nThreads{0};
   
   // Create the RHS vectors
@@ -280,8 +280,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   rhsFull.Zero();
   auto start_time_assemble = std::chrono::steady_clock::now();
   Stiffness.Assemble(*matRed,rhsFull);
-  auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count()/1000.;
-  std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " seconds" << std::endl;
+  auto total_time_assemble = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_assemble).count();
+  std::cout << "Time Assembling SparseMatRed " << total_time_assemble << " ms" << std::endl;
   
   //Block Diagonal
   auto start_time_bd = std::chrono::steady_clock::now();
@@ -301,8 +301,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   
 //   KBD.Print("KBD",std::cout,EMathematicaInput);
 
-  auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count()/1000.;
-  std::cout << "Time Assembling block diagonal " << total_time_bd << " seconds" << std::endl;
+  auto total_time_bd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_bd).count();
+  std::cout << "Time Assembling block diagonal " << total_time_bd << " ms" << std::endl;
   
   matRed->SetF(rhsFull);
   matRed->SetReduced();
@@ -310,8 +310,8 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   //Decomposes the reduced matrix
   auto start_time_decomp = std::chrono::steady_clock::now();
   matRed->F1Red(rhsHigh);
-  auto total_time_decomp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_decomp).count()/1000.;
-  std::cout << "Time decomposing k00 " << total_time_decomp << " seconds" << std::endl;
+  auto total_time_decomp = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_decomp).count();
+  std::cout << "Time decomposing k00 " << total_time_decomp << " ms" << std::endl;
       
   //Creates the preconditioner
   TPZStepSolver<STATE> *precond = new TPZStepSolver<STATE>( &KBD );
@@ -342,10 +342,10 @@ void TPZMatRedSolver<TVar>::SolveProblemSparse(std::ostream &out){
   matRed->SolveCG(nMaxIter,*precond,rhsHigh,solution,&residual,tol);
   // std::cout << "Finish CG ...\n";
   
-  auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count()/1000.;
+  auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count();
   std::cout << "Time CG " << total_time_solve << std::endl;
 
-  // out << "time CG = " << durationassembly.count() << " " << total_time_decomp + total_time_bd + total_time_solve << "\n";
+  out << total_time_assemble << " " << total_time_decomp + total_time_bd + total_time_solve << " ";
   
   REAL norm = 0.;
   std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;
