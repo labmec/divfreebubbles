@@ -38,7 +38,7 @@
 #include <catch2/catch.hpp>
 #endif
 
-std::ofstream rprint("results_Steep_Wave.txt", std::ios_base::app);
+std::ofstream rprint("results.txt", std::ios_base::app);
 std::ofstream printerrors("results_errors.txt", std::ios_base::app);
 
 /** @brief Returns the name of the HDiv Family approximation space. */
@@ -82,8 +82,8 @@ enum EMatid
     EPressureHyb
 };
 
-constexpr bool printVTK{false};
-constexpr bool computeError{true};
+constexpr bool printVTK{true};
+constexpr bool computeError{false};
 
 /**
    @brief Creates a geometric mesh with elements of a given type on a unit square or cube (depending on the mesh dimension).
@@ -108,12 +108,20 @@ ReadMeshFromGmsh(std::string file_name);
 template <class tshape>
 void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamily);
 
-int main()
+int main(int argc, char *argv[])
 {
-    const int xdiv = 2;
-    const int pOrder = 5;
+    int xdiv = 2;
+    if (argc > 1)
+    {
+        xdiv = std::stoi(argv[1]);
+    }
+    int pOrder = 1;
+    if (argc > 2)
+    {
+        pOrder = std::stoi(argv[2]);
+    }
     HDivFamily hdivfam = HDivFamily::EHDivOptimized;
-    TestHybridization<pzshape::TPZShapeQuad>(xdiv, pOrder, hdivfam);
+    TestHybridization<pzshape::TPZShapeCube>(xdiv, pOrder, hdivfam);
     return 0;
 }
 
@@ -127,25 +135,38 @@ auto exactSol = [](const TPZVec<REAL> &loc,
     const auto &y = loc[1];
     const auto &z = loc[2];
 
-    // Steep wave solution
-    u[0] = 0.4*(-1. + pow(x,2))*(-1. + pow(y,2))*(M_PI/2. - atan(100.*(-0.25 + pow(x,2) + pow(y,2))));
-    gradU(0, 0) = (-80.*x*(-1. + pow(x,2))*(-1. + pow(y,2)))/(1. + 10000.*pow(-0.25 + pow(x,2) + pow(y,2),2)) + 0.8*x*(-1. + pow(y,2))*(M_PI/2. - atan(100.*(-0.25 + pow(x,2) + pow(y,2))));
-    gradU(1, 0) = (-80.*(-1. + pow(x,2))*y*(-1. + pow(y,2)))/(1. + 10000.*pow(-0.25 + pow(x,2) + pow(y,2),2)) + 0.8*y*(-1. + pow(x,2))*(M_PI/2. - atan(100.*(-0.25 + pow(x,2) + pow(y,2))));
+    // 3D arctan problem from Sonia's paper. Available at https://onlinelibrary.wiley.com/doi/10.1002/nme.6337
+    REAL a = sqrt(pow(-1.25 + x, 2) + pow(0.25 + y, 2) + pow(0.25 + z, 2));
+    u[0] = M_PI / 2.0 - atan(5.0 * (-M_PI / 3.0 + a));
+    gradU(0, 0) = (-5.0 * (-1.25 + x)) / (a * (1.0 + 25.0 * pow(-M_PI / 3.0 + a, 2)));
+    gradU(1, 0) = (-5.0 * (0.25 + y)) / (a * (1.0 + 25.0 * pow(-M_PI / 3.0 + a, 2)));
+    gradU(2, 0) = (-5.0 * (0.25 + z)) / (a * (1.0 + 25.0 * pow(-M_PI / 3.0 + a, 2)));
 };
 
 auto forcingFunc = [](const TPZVec<REAL> &loc,
-                   TPZVec<STATE> &force)
+                      TPZVec<STATE> &force)
 {
     const auto &x = loc[0];
     const auto &y = loc[1];
     const auto &z = loc[2];
 
     // Steep wave solution
-    force[0] = (-3.2e6 * pow(x, 2) * (-1. + pow(x, 2)) * (-1. + pow(y, 2)) * (-0.25 + pow(x, 2) + pow(y, 2))) / pow(1. + 10000. * pow(-0.25 + pow(x, 2) + pow(y, 2), 2), 2) -
-               (3.2e6 * (-1. + pow(x, 2)) * pow(y, 2) * (-1. + pow(y, 2)) * (-0.25 + pow(x, 2) + pow(y, 2))) / pow(1. + 10000. * pow(-0.25 + pow(x, 2) + pow(y, 2), 2), 2) +
-               (320. * (-1. + pow(x, 2)) * pow(y, 2)) / (1. + 10000 * pow(-0.25 + pow(x, 2) + pow(y, 2), 2)) + (320. * pow(x, 2) * (-1. + pow(y, 2))) / (1. + 10000. * pow(-0.25 + pow(x, 2) + pow(y, 2), 2)) +
-               (160. * (-1. + pow(x, 2)) * (-1. + pow(y, 2))) / (1. + 10000. * pow(-0.25 + pow(x, 2) + pow(y, 2), 2)) - 0.8 * (-1. + pow(x, 2)) * (M_PI / 2. - atan(100. * (-0.25 + pow(x, 2) + pow(y, 2)))) -
-               0.8 * (-1. + pow(y, 2)) * (M_PI / 2. - atan(100. * (-0.25 + pow(x, 2) + pow(y, 2))));
+    REAL b = pow(-1.25 + x, 2) + pow(0.25 + y, 2) + pow(0.25 + z, 2);
+    REAL a = sqrt(b);
+    force[0] = (250 * pow(-1.25 + x, 2) * (-0.3333333333333333 * M_PI + a)) /
+                   (b * pow(1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2), 2)) +
+               (250 * pow(0.25 + y, 2) * (-0.3333333333333333 * M_PI + a)) /
+                   (b * pow(1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2), 2)) +
+               (250 * pow(0.25 + z, 2) * (-0.3333333333333333 * M_PI + a)) /
+                   (b * pow(1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2), 2)) +
+               (5 * pow(-1.25 + x, 2)) / (pow(b, 1.5) *
+                                          (1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2))) +
+               (5 * pow(0.25 + y, 2)) / (pow(b, 1.5) *
+                                         (1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2))) +
+               (5 * pow(0.25 + z, 2)) / (pow(b, 1.5) *
+                                         (1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2))) -
+               15 / (a * (1 + 25 * pow(-0.3333333333333333 * M_PI + a, 2)));
+    force[0] *= -1; // because flux is defined as -K*gradU, and K=1 in this case
 };
 
 template <class tshape>
@@ -233,15 +254,15 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
     // hdivCreator.HybridType() = HybridizationType::EStandard;
 
     // Prints gmesh mesh properties
-    std::string vtk_name = "geoMesh.vtk";
-    std::ofstream vtkfile(vtk_name.c_str());
-    //TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
+    // std::string vtk_name = "geoMesh.vtk";
+    // std::ofstream vtkfile(vtk_name.c_str());
+    // TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
 
     // Insert Materials
     TPZMixedDarcyFlow *matdarcy = new TPZMixedDarcyFlow(EDomain, DIM);
     matdarcy->SetConstantPermeability(1.);
     matdarcy->SetExactSol(exactSol, 4);
-    matdarcy->SetForcingFunction(forcingFunc,4);
+    matdarcy->SetForcingFunction(forcingFunc, 4);
 
     hdivCreator.InsertMaterialObject(matdarcy);
 
@@ -253,22 +274,40 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     // Multiphysics mesh
     TPZMultiphysicsCompMesh *cmesh = hdivCreator.CreateApproximationSpace();
-    std::string txt = "cmesh.txt";
-    std::ofstream myfile(txt);
-    //cmesh->Print(myfile);
+    // std::string txt = "cmesh.txt";
+    // std::ofstream myfile(txt);
+    // cmesh->Print(myfile);
+
+    if (printVTK)
+    {
+        TPZSimpleTimer postProc("Post processing2");
+        const std::string plotfile = "myfile"; // sem o .vtk no final
+        constexpr int vtkRes{5};
+
+        TPZVec<std::string> fields = {
+            "ExactPressure",
+            "ExactFlux",
+            "ExactDivSigma"};
+        auto vtk = TPZVTKGenerator(cmesh, fields, plotfile, vtkRes, cmesh->Dimension());
+
+        vtk.Do();
+        return;
+    }
 
     // Number of equations without condense elements
     int64_t nEquationsFull = 0;
-	int64_t ncon = cmesh->NConnects();
-	for(int64_t i=0; i<ncon; i++) {
-		TPZConnect &df = cmesh->ConnectVec()[i];
-        if(df.HasDependency() || !df.NElConnected() || df.SequenceNumber() == -1){
+    int64_t ncon = cmesh->NConnects();
+    for (int64_t i = 0; i < ncon; i++)
+    {
+        TPZConnect &df = cmesh->ConnectVec()[i];
+        if (df.HasDependency() || !df.NElConnected() || df.SequenceNumber() == -1)
+        {
             continue;
         }
-        
-        int dofsize = df.NShape()*df.NState();
+
+        int dofsize = df.NShape() * df.NState();
         nEquationsFull += dofsize;
-	}
+    }
 
     std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
@@ -319,7 +358,7 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
     if (printVTK || computeError)
         TPZBuildMultiphysicsMesh::TransferFromMultiPhysics(cmesh->MeshVector(), cmesh);
-    
+
     if (printVTK)
     {
         TPZSimpleTimer postProc("Post processing2");
@@ -336,18 +375,18 @@ void TestHybridization(const int &xdiv, const int &pOrder, HDivFamily &hdivfamil
 
         vtk.Do();
     }
-    
-    //Compute error
+
+    // Compute error
     if (computeError)
     {
-        std::ofstream anPostProcessFile("postprocess.txt");
         TPZManVector<REAL, 5> error;
         error.Resize(5);
         int64_t nelem = cmesh->NElements();
         cmesh->LoadSolution(cmesh->Solution());
         cmesh->ExpandSolution();
         cmesh->ElementSolution().Redim(nelem, 5);
-        an.PostProcessError(error, false, anPostProcessFile);
+        // an.SetThreadsForError(12);
+        an.PostProcessError(error, false);
 
         printerrors << xdiv << std::scientific << std::setprecision(8) << " " << error[0] << " "
                     << error[1] << " " << error[2] << " " << error[3] << " " << error[4] << std::endl;
@@ -392,8 +431,8 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
         DebugStop();
     }
 
-    TPZManVector<REAL, 3> minX = {-1, -1, 0};
-    TPZManVector<REAL, 3> maxX = {1, 1, 0};
+    TPZManVector<REAL, 3> minX = {0, 0, 0};
+    TPZManVector<REAL, 3> maxX = {1, 1, 1};
     int nMats = 2 * dim + 1;
 
     // all bcs share the same id

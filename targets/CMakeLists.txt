@@ -19,6 +19,9 @@ target_link_libraries(voronoi_mixed_elas PRIVATE divfree)
 add_executable(steep-wave steep-wave.cpp)
 target_link_libraries(steep-wave PRIVATE divfree)
 
+add_executable(3D-arctan 3D-arctan.cpp)
+target_link_libraries(3D-arctan PRIVATE divfree)
+
 # Need refactor
 # add_executable(SHIterative SHIterative.cpp)
 # target_link_libraries(SHIterative PRIVATE divfree)
