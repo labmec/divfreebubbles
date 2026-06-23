@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
     auto start = std::chrono::high_resolution_clock::now();
 
     const int xdiv = 20;
-    const int pOrder = 1;
+    const int pOrder = (argc > 2) ? std::atoi(argv[2]) : 1;
     const HDivFamily hdivfamily = HDivFamily::EHDivConstant;
     // const HDivFamily hdivfamily = HDivFamily::EHDivStandard;
 
@@ -171,10 +171,9 @@ int main(int argc, char* argv[])
     //              ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
     //              ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
     
-    std::vector<int> idivs = {2,8};
-    // std::vector<int> idivs = {10,50,100,200};
+    std::vector<int> idivs = DIM == 3 ? std::vector<int>{2,8,12,16,32} : std::vector<int>{50,100,200,300,400};
     
-    for (int iorder = 1; iorder < 6; iorder++) {
+    for (int iorder = pOrder; iorder < pOrder+1; iorder++) {
     for (auto idiv : idivs) {
         std::cout << "Running with pOrder = " << iorder << "\n";
         std::cout << "Running with idiv = " << idiv << "\n";
@@ -261,7 +260,7 @@ int main(int argc, char* argv[])
     std::set<int> matBCAll = {EBoundary};
     // Solve problem
     // bool sparse = true;
-    bool sparse = false;
+    bool sparse = (argc > 3) ? std::atoi(argv[3]) : true;
     
     if (sparse){
     // if (approxSpace == TPZHDivApproxSpaceCreator<STATE>::EDuplicatedConnects){
