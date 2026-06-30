@@ -28,7 +28,7 @@ public:
     typedef std::map<int64_t, int64_t> CtoMFCel;
     /// @brief Compute the constraints to orthogonalize the restraints
     // this function will compute restraints for all boundary flux connects
-    void ComputeOrthogonalizingRestraints(TPZMultiphysicsCompMesh &mfmesh, CtoMFCel &geltogel, TPZApproxCreator::HybridizationData hybridData);
+    static void ComputeOrthogonalizingRestraints(TPZMultiphysicsCompMesh &mfmesh, CtoMFCel &geltogel, TPZApproxCreator::HybridizationData hybridData);
 
     /// Put elements in element groups
     virtual void GroupElements(TPZMultiphysicsCompMesh *mcmesh) override;
@@ -49,22 +49,22 @@ protected:
     virtual void AddHybridSquareGeoElements() override;
 
     /// Compute projection directions for a geometric element
-    void ProjectionDirections(TPZGeoEl *gel, TPZFMatrix<REAL> &projdir);
+    static void ProjectionDirections(TPZGeoEl *gel, TPZFMatrix<REAL> &projdir);
 
     /// Compute projection values for a set of relative coordinates
-    void ProjectionValues(TPZVec<REAL> &xrelative, TPZFMatrix<REAL> &projdir, int ncorner, TPZFMatrix<REAL> &funcval);
+    static void ProjectionValues(TPZVec<REAL> &xrelative, TPZFMatrix<REAL> &projdir, int ncorner, TPZFMatrix<REAL> &funcval);
 
     /// Compute the projection matrix for an interpolation space
-    void ComputeProjectionMatrix(TPZInterpolationSpace *intel, TPZFMatrix<REAL> &projection);
+    static void ComputeProjectionMatrix(TPZInterpolationSpace *intel, TPZFMatrix<REAL> &projection);
 
   /// @brief compute the restraints of a connect for a geometric element
-  void RestraintConnect(TPZInterpolationSpace *intel, TPZMultiphysicsElement *mfcel, int64_t newind1, int64_t newind2);
+  static void RestraintConnect(TPZInterpolationSpace *intel, TPZMultiphysicsElement *mfcel, int64_t newind1, int64_t newind2);
 
   /// @brief compute an equivalent B matrix
-  void ComputeBMatrix(TPZInterpolationSpace *intel, TPZFMatrix<STATE> &B);
+  static void ComputeBMatrix(TPZInterpolationSpace *intel, TPZFMatrix<STATE> &B);
 
   /// @brief  compute orthogonalizing restraint
-  void ComputeOrthogonalizingR(TPZFMatrix<REAL> &B, TPZFMatrix<REAL> &Restraint);
+  static void ComputeOrthogonalizingR(TPZFMatrix<REAL> &B, TPZFMatrix<REAL> &Restraint);
 
   /// @brief boolean indicating if the low order fluxes have already been hybridized
   bool fLowOrderFluxHybridized = false;

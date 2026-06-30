@@ -254,8 +254,8 @@ void TPZH1HybridApproxCreator::ComputeOrthogonalizingRestraints(TPZMultiphysicsC
     int64_t newind2 = mfmesh.AllocateNewConnect(cleft);
     TPZConnect &cnew2 = mfmesh.ConnectVec()[newind2];
 
-    std::cout << "cleftindex " << cleftindex <<
-    " crightindex " << crightindex << " newind1 " << newind1 << " newind2 " << newind2 << std::endl;
+    // std::cout << "cleftindex " << cleftindex <<
+    // " crightindex " << crightindex << " newind1 " << newind1 << " newind2 " << newind2 << std::endl;
     cnew1.SetNState(1);
     cnew1.SetNShape(3);
     int64_t seq1 = cnew1.SequenceNumber();
@@ -264,7 +264,7 @@ void TPZH1HybridApproxCreator::ComputeOrthogonalizingRestraints(TPZMultiphysicsC
     cnew2.SetNShape(cleft.NDof() - 3);
     int64_t seq2 = cnew2.SequenceNumber();
     mfmesh.Block().Set(seq2, cleft.NDof() - 3);
-    mfmesh.Block().Resequence();
+    // mfmesh.Block().Resequence();
     TPZMultiphysicsElement *mfel = dynamic_cast<TPZMultiphysicsElement *>(celleft);
     if (!mfel)
       DebugStop();
@@ -297,6 +297,7 @@ void TPZH1HybridApproxCreator::ComputeOrthogonalizingRestraints(TPZMultiphysicsC
       cright.AddDependency(crightindex, dep->fDepConnectIndex, dep->fDepMatrix, 0,0,nr,nc);
     }
   }
+  mfmesh.Block().Resequence();
   mfmesh.ExpandSolution();
   mfmesh.ComputeNodElCon();
   mfmesh.CleanUpUnconnectedNodes();
@@ -435,6 +436,7 @@ void TPZH1HybridApproxCreator::RestraintConnect(TPZInterpolationSpace *intel, TP
   TPZConnect &c = mfcel->Connect(0);
   TPZCompMesh *mfmesh = mfcel->Mesh();
   TPZConnect &cnew1 = mfmesh->ConnectVec()[newind1];
+  cnew1.SetLagrangeMultiplier(1);
   TPZConnect &cnew2 = mfmesh->ConnectVec()[newind2];
   TPZFNMatrix<36, STATE> projection(4, 4);
   ComputeProjectionMatrix(intel, projection);
@@ -638,12 +640,14 @@ void TPZH1HybridApproxCreator::GroupElements(TPZMultiphysicsCompMesh *mcmesh) {
     return;
   }
   // put the lagrange elements in the group to which they belong
+  std::set<int> lagrangeids = this->GetBCMatIds();
+  lagrangeids.insert(fHybridizationData.fLagrangeMatId);
   for(int64_t el = 0; el<nel; el++) {
     TPZCompEl *cel = mcmesh->Element(el);
     if(!cel) continue;
     TPZGeoEl *gel = cel->Reference();
     if(!gel) continue;
-    if(gel->MaterialId() == fHybridizationData.fLagrangeMatId) {
+    if(lagrangeids.find(gel->MaterialId()) != lagrangeids.end()) {
       int nc = cel->NConnects();
       int64_t groupindex = -1;
       for(int i = 0; i < nc; i++) {
@@ -669,6 +673,7 @@ void TPZH1HybridApproxCreator::GroupElements(TPZMultiphysicsCompMesh *mcmesh) {
       group->AddElement(cel);
     }
   }
+  if(0)
   {
     mcmesh->ComputeNodElCon();
     std::ofstream out("cmesh_before_algebraic_group.txt");
@@ -710,6 +715,7 @@ void TPZH1HybridApproxCreator::GroupElements(TPZMultiphysicsCompMesh *mcmesh) {
     }
   }
   mcmesh->ComputeNodElCon();
+  if(0)
    {
     std::ofstream out("cmesh_after_group.txt");
     mcmesh->Print(out);

@@ -15,6 +15,9 @@ using namespace std;
 #include "tpzverysparsematrix.h"
 #include "pzcmesh.h"
 #include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
+#ifdef PZ_USING_MUMPS
+#include "TPZSSpStructMatrixMumps.h"
+#endif
 
 #include "TPZPersistenceManager.h"
 #include "TPZTimer.h"
@@ -36,7 +39,7 @@ static int logger;
 template<class TVar>
 TPZSparseMatRed<TVar>::TPZSparseMatRed () : 
 TPZRegisterClassId(&TPZSparseMatRed::ClassId),
-TPZMatrix<TVar>( 0, 0 ), fK11(0,0),fK01(0,0),fK10(0,0),fF0(0,0),fF1(0,0), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
+TPZMatrix<TVar>( 0, 0 ), fK11(0,0),fK01(0,0),fK10(0,0),fF0(0,0),fF1(0,0)
 {
   fDim0=0;
   fDim1=0;
@@ -49,7 +52,7 @@ template<class TVar>
 TPZSparseMatRed<TVar>::TPZSparseMatRed( int64_t dim, int64_t dim00 ):
 TPZRegisterClassId(&TPZSparseMatRed::ClassId),
 TPZMatrix<TVar>( dim,dim ), fK11(dim-dim00,dim-dim00), fK01(dim00,dim-dim00),
-fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
+fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.)
 {
   if(dim<dim00) TPZMatrix<TVar>::Error(__PRETTY_FUNCTION__,"dim k00> dim");
   fDim0=dim00;
@@ -62,7 +65,7 @@ fK10(dim-dim00,dim00), fF0(dim00,1,0.),fF1(dim-dim00,1,0.), fMaxRigidBodyModes(0
 
 template<class TVar>
 TPZSparseMatRed<TVar>::TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels):
-TPZRegisterClassId(&TPZSparseMatRed::ClassId), fMaxRigidBodyModes(0), fNumberRigidBodyModes(0)
+TPZRegisterClassId(&TPZSparseMatRed::ClassId)
 {
   int64_t dim, dim00;
   ReorderEquations(cmesh,LagLevels,dim,dim00);
@@ -92,10 +95,10 @@ void TPZSparseMatRed<TVar>::SimetrizeMatRed() {
   // this method simetrizes the matrix object
 
 #ifdef PZDEBUG
-  SymProp symprop = this->fK00->VerifySymmetry();
-  if(symprop == SymProp::NonSym){
-    DebugStop();
-  };
+  // SymProp symprop = this->fK00->VerifySymmetry();
+  // if(symprop == SymProp::NonSym){
+  //   DebugStop();
+  // };
 #endif
   if(!fK00) DebugStop(); 
   //  if(!fK00 || !this->fK00->IsSymmetric()) return;
@@ -524,7 +527,6 @@ void TPZSparseMatRed<TVar>::Print(const char *name , std::ostream &out ,const Ma
     out << "fIsReduced " << this->fIsReduced << std::endl;
     out << "fF0IsComputed " << this->fF0IsComputed << std::endl;
     out << "fK01IsComputed " << this->fK01IsComputed << std::endl;
-    out << "fNumberRigidBodyModes " << this->fNumberRigidBodyModes << std::endl;
     out << std::endl;
     fK00->Print("K00 =",out,form);
     fK01.Print("K01 = ",out,form);
@@ -673,8 +675,9 @@ void TPZSparseMatRed<TVar>::DecomposeK00()
   {
     return;
   }
-  if (fK00NegativeDefinite){
+  if (fK00NegativeDefinite && ! fK00IsUpdated) {
     fK00->MultiplyByScalar(-1.,fK00);
+    fK00IsUpdated = true;
   }
   fK00->SetDefPositive(true);
   TPZStepSolver<TVar> *stepsolve = dynamic_cast<TPZStepSolver<TVar> *>(fSolver.operator->());
@@ -686,54 +689,10 @@ void TPZSparseMatRed<TVar>::DecomposeK00()
   if(stepsolve->Solver() == TPZMatrixSolver<TVar>::EDirect)
   {
     directsolve = stepsolve;
-  }
-  if(!directsolve)
-  {
-    TPZMatrixSolver<TVar> *presolve = stepsolve->PreConditioner();
-    TPZStepSolver<TVar> *prestep = dynamic_cast<TPZStepSolver<TVar> *>(presolve);
-    if(prestep->Solver() == TPZMatrixSolver<TVar>::EDirect)
-    {
-      prestep->UpdateFrom(stepsolve->Matrix());
-      directsolve = prestep;
-    }
-  }
-  if (directsolve)
-  {
-    directsolve->Decompose();
-    std::list<int64_t> &singular = directsolve->Singular();
-    std::list<int64_t>::iterator it;
-    int nsing = singular.size();
-    if(nsing > fMaxRigidBodyModes-fNumberRigidBodyModes)
-    {
-      std::cout << "Number of rigid body modes larger than provision\n";
-      std::cout << "Number of singular modes " << nsing << std::endl;
-      std::cout << "Number of rigid body modes reserved " << fMaxRigidBodyModes << std::endl;
-      std::cout << "Rigid body modes ";
-      for (it=singular.begin(); it != singular.end(); it++) {
-        std::cout << " " << *it;
-      }
-      std::cout << std::endl;
-      //DebugStop();
-    }
-    for (it=singular.begin(); it != singular.end(); it++) {
-      if(fNumberRigidBodyModes < fMaxRigidBodyModes)
-      {
-        fK01(*it,fDim1-fMaxRigidBodyModes+fNumberRigidBodyModes) = -1.;
-        fK10(fDim1-fMaxRigidBodyModes+fNumberRigidBodyModes,*it) = -1.;
-        fK11(fDim1-fMaxRigidBodyModes+fNumberRigidBodyModes,fDim1-fMaxRigidBodyModes+fNumberRigidBodyModes) = 1.;
-        if(stepsolve != directsolve)
-        {
-          TVar diag = stepsolve->Matrix()->GetVal(*it, *it)+ (TVar)1.;
-          stepsolve->Matrix()->PutVal(*it, *it, diag);
-        }
-      }
-      fNumberRigidBodyModes++;
-    }
-  }
-  else
-  {
+  } else  {
     DebugStop();
   }
+  directsolve->Decompose();
 }
 
 template<class TVar>
@@ -746,8 +705,6 @@ void TPZSparseMatRed<TVar>::Write(TPZStream &buf, int withclassid) const {
   {//chars
     buf.Write(this->fIsReduced);
     buf.Write(this->fK01IsComputed);
-    buf.Write(&this->fMaxRigidBodyModes, 1);
-    buf.Write(&this->fNumberRigidBodyModes, 1);
   }
   {//Aggregates
     this->fF0.Write(buf, 0);
@@ -783,8 +740,6 @@ void TPZSparseMatRed<TVar>::Read(TPZStream &buf, void *context) {
   {//chars
     buf.Read(this->fIsReduced);
     buf.Read(this->fK01IsComputed);
-    buf.Read(&this->fMaxRigidBodyModes, 1);
-    buf.Read(&this->fNumberRigidBodyModes, 1);
   }
   {//Aggregates
     this->fF0.Read(buf, 0);
@@ -823,15 +778,15 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
   // loop over the connects and create two std::sets one to the "pressure" ones, representing the
   // degrees of freedom to be condensed. The second set contains the "flux" connects, which will not be condensed
   // This can change depending on the problem.
-  for (auto gel:gmesh->ElementVec()){
+  for (auto cel:cmesh->ElementVec()){
     
-    if (!gel) continue;
-    
-    int nConnects = gel->Reference()->NConnects();
+    if (!cel) continue;
+    int nConnects = cel->NConnects();
     for (int i = 0; i < nConnects; i++)
     {
-      auto con = gel->Reference()->Connect(i);
-      auto cIndex = gel->Reference()->ConnectIndex(i);
+      auto &con = cel->Connect(i);
+      if(con.IsCondensed() || con.HasDependency()) continue;
+      auto cIndex = cel->ConnectIndex(i);
       int conLag = con.LagrangeMultiplier();
       
       if (LagLevels.find(conLag) != LagLevels.end()) {
@@ -845,13 +800,11 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
   int64_t seqNumP = 0;
   cmesh->Block().Resequence();
   
-  for (int icon = 0; icon < cmesh->NConnects(); icon++){
+  for (auto icon : auxConnects00){
     
     TPZConnect &con = cmesh->ConnectVec()[icon];
-    if (auxConnects00.find(icon) != auxConnects00.end()) {
       int64_t seqNum = con.SequenceNumber();
-      if (con.IsCondensed()) continue;
-      if (seqNum < 0) continue;
+      if (seqNum < 0) DebugStop();
       
       con.SetSequenceNumber(seqNumP);
       
@@ -862,18 +815,15 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
       seqNum=con.SequenceNumber();
       cmesh->Block().Set(seqNum,neq);
     }
-  }
   
   int64_t seqNumF = seqNumP;
   
   //Second - Set the sequence number to the flux variables - which will not be condensed
-  for (int icon = 0; icon < cmesh->NConnects(); icon++){
+  for (auto icon : auxConnects11){
     
     TPZConnect &con = cmesh->ConnectVec()[icon];
-    if (auxConnects11.find(icon) != auxConnects11.end()) {
       int64_t seqNum = con.SequenceNumber();
-      if (con.IsCondensed()) continue;
-      if (seqNum < 0) continue;
+      if (seqNum < 0) DebugStop();
       
       con.SetSequenceNumber(seqNumF);
       
@@ -883,7 +833,6 @@ void TPZSparseMatRed<TVar>::ReorderEquations(TPZCompMesh *cmesh, std::set<int> &
       dim11 += neq;
       seqNum=con.SequenceNumber();
       cmesh->Block().Set(seqNum,neq);
-    }
   }
   cmesh->ExpandSolution();
   
@@ -897,7 +846,12 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh) {
   int64_t dim00 = fDim0;
   
   //Aloca as submatrizes no formato esparso.
+  #ifdef PZ_USE_MKL
   TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
+  #endif
+  #ifdef PZ_USING_MUMPS
+  TPZSSpStructMatrixMumps<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
+  #endif
   Stiffness.EquationFilter().Reset();
   TPZSYsmpMatrix<REAL> *StiffK11 = dynamic_cast<TPZSYsmpMatrix<REAL> *>(Stiffness.Create());
   
@@ -965,6 +919,25 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh) {
   fK11.SetData(IA_K11,auxK11,A_K11);
   
 }
+
+  /**
+	 * @brief It mutiplies itself by a scalar alpha putting the result in res
+	 * @param alpha scalar to be multiplied with
+	 * @param res TPZFMatrix<TVar>containing the result
+	 */
+template<class TVar>
+void TPZSparseMatRed<TVar>::MultiplyByScalar(const TVar alpha) {
+  
+
+  if (fK00) fK00->MultiplyByScalar(alpha,*fK00.operator->());
+  fK01.MultiplyByScalar(alpha,fK01);
+  fK10.MultiplyByScalar(alpha,fK10);
+  fK11.MultiplyByScalar(alpha,fK11);
+  fF0.MultiplyByScalar(alpha,fF0);
+  fF1.MultiplyByScalar(alpha,fF1);
+}
+
+
 
 template class TPZSparseMatRed<double>;
 template class TPZSparseMatRed<float>;

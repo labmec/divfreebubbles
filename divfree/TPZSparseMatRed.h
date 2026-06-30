@@ -55,7 +55,7 @@ public:
   TPZSparseMatRed(TPZCompMesh *cmesh, std::set<int> &LagLevels);
   
   template<class TSideCopy>
-  TPZSparseMatRed<TVar>(const TPZSparseMatRed<TVar> &cp): TPZMatrix<TVar>(cp), fK11(cp.fK11), fK01(cp.fK01), fK10(cp.fK10), fF0(cp.fF0), fF1(cp.fF1),fMaxRigidBodyModes(cp.fMaxRigidBodyModes),fNumberRigidBodyModes(cp.fNumberRigidBodyModes), fF0IsComputed(cp.fF0IsComputed)
+  TPZSparseMatRed<TVar>(const TPZSparseMatRed<TVar> &cp): TPZMatrix<TVar>(cp), fK11(cp.fK11), fK01(cp.fK01), fK10(cp.fK10), fF0(cp.fF0), fF1(cp.fF1), fF0IsComputed(cp.fF0IsComputed)
   {
     fDim0=cp.fDim0;
     fDim1=cp.fDim1;
@@ -178,18 +178,6 @@ public:
    */
   void SetF(const TPZFMatrix<TVar> & F);
   
-  /** @brief indicate how many degrees of freedom are reserved for rigid body modes */
-  void SetMaxNumberRigidBodyModes(int maxrigid)
-  {
-    fMaxRigidBodyModes = maxrigid;
-  }
-  
-  /** @brief return the number of rigid body modes detected during decomposition */
-  int NumberRigidBodyModes()
-  {
-    return fNumberRigidBodyModes;
-  }
-  
 	
 	/** @brief Computes the reduced version of the right hand side \f$ [F1]=[F1]-[K10][A00^-1][F0] \f$ */
 	void F1Red(TPZFMatrix<TVar> &F1);
@@ -231,6 +219,13 @@ public:
 	void MultAdd(const TPZFMatrix<TVar> &x, const TPZFMatrix<TVar> &y, TPZFMatrix<TVar> &z,
 				 const TVar alpha, const TVar beta, const int opt = 0) const override;
 	
+  /**
+	 * @brief It mutiplies itself by a scalar alpha putting the result in res
+	 * @param alpha scalar to be multiplied with
+	 * @param res TPZFMatrix<TVar>containing the result
+	 */
+  virtual void MultiplyByScalar(const TVar alpha);
+
 	/** @brief If fK00 is simetric, only part of the matrix is accessible to external objects. */
   /** Simetrizes copies the data of the matrix to make its data simetric */
   void SimetrizeMatRed();
@@ -247,6 +242,13 @@ public:
     return fK00NegativeDefinite;
   }
   
+  bool K00IsUpdated() const {
+    return fK00IsUpdated;
+  }
+
+  void SetK00IsUpdated(bool value) {
+    fK00IsUpdated = value;
+  }
   
   /** @brief decompose the system of equations acording to the decomposition
    * scheme */
@@ -318,14 +320,11 @@ private:
     /** @brief Is true if \f$ [(K00)^-1][F0] \f$ has been computed and overwritten \f$ [F0] \f$ */
     bool fF0IsComputed = false;
     
-    /** @brief Number of rigid body modes foreseen in the computational mesh */
-    int fMaxRigidBodyModes;
-    
-    /** @brief Number of rigid body modes identified during the decomposition of fK00 */
-    int fNumberRigidBodyModes;
-
     // False if K00 is positive definite, true if negative definite. Used to multiply matrix by -1 when decomposing int
     bool fK00NegativeDefinite = false;
+
+    // True is K00 has been multiplied by -1, false otherwise. Used to avoid multiplying K00 by -1 multiple times.
+    bool fK00IsUpdated = false;
 
 };
 

@@ -12,46 +12,27 @@
 template <class TVar>
 class TPZMatRedSolver {
 public:
-    enum SolverType{EDefault, ESparse, EMHMSparse}; 
+    enum ProblemOrigin {EDarcyHDiv, EElasticityHDiv, EDarcyH1Hybrid, EElasticityH1Hybrid};
 
     TPZMatRedSolver() = default;
 
-    TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType = EDefault, std::function<STATE(const TPZVec<REAL> &coord)> permFunction = nullptr){
+    TPZMatRedSolver(TPZLinearAnalysis &an, ProblemOrigin pOrigin){
         fAnalysis = &an;
-        fBCMaterialID = &matIdBC;
-        fSolverType = sType;
-        fPermFunction = permFunction;
-    };
+        fProblemOrigin = pOrigin;
+    }
 
-    TPZMatRedSolver(TPZLinearAnalysis &an, std::set<int> &matIdBC, SolverType sType, std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> permFunction){
-        fAnalysis = &an;
-        fBCMaterialID = &matIdBC;
-        fSolverType = sType;
-        fPermFunctionAniso = permFunction;
-    };
 
     void Solve(std::ostream &out = std::cout);
 
-    void SolveProblemDefault(std::ostream &out);
-
-    void SolveProblemSparse(std::ostream &out); 
-    void SolveProblemMHMSparse(std::ostream &out); 
-    
     void ComputeConditionNumber(TPZSparseMatRed<STATE> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
     void ComputeConditionNumber(TPZMatRed<STATE,TPZFMatrix<STATE>> &matRed, TPZAutoPointer<TPZMatrix<REAL>> precond);
-    void ThresholdPermeability(REAL threshold);
 
 protected:
-    SolverType fSolverType;
+    ProblemOrigin fProblemOrigin;
 
     TPZLinearAnalysis *fAnalysis;
 
-    std::set<int> *fBCMaterialID;
 
-    TPZVec<int64_t> fActiveEquations;
-
-    std::function<TPZManVector<STATE,3>(const TPZVec<REAL> &coord)> fPermFunctionAniso;
-    std::function<STATE (const TPZVec<REAL> &coord)> fPermFunction;
 };
 
 #endif

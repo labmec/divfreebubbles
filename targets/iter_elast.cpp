@@ -23,7 +23,11 @@
 #include "TPZRefPatternDataBase.h"
 #include "pzbuildmultiphysicsmesh.h"
 #include "TPZHDivApproxCreator.h"
+#include "TPZH1HybridApproxCreator.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
+#include <TPZNullMaterial.h>
+#include <TPZNullMaterialCS.h>
+#include <Elasticity/TPZHybridElasticity2D.h>
 #include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
 #ifdef PZ_USING_MUMPS
 #include "TPZSSpStructMatrixMumps.h"
@@ -46,9 +50,9 @@ double getPeakMemoryMB() {
 }
 
 
-std::ofstream rprint("results_Harmonic2D.txt",std::ofstream::out);
-std::ofstream printerrors("results_errors.txt",std::ofstream::out);
-std::ofstream printmemoryTime("results_memory_time.txt",std::ofstream::app);
+std::ofstream rprint("results_Elastic2D.txt",std::ofstream::out);
+std::ofstream printerrors("results_Elastic2D_errors.txt",std::ofstream::out);
+std::ofstream printmemoryTime("results_Elastic2D_memory_time.txt",std::ofstream::app);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _     
@@ -58,6 +62,13 @@ std::ofstream printmemoryTime("results_memory_time.txt",std::ofstream::app);
 //  |_|  |_| /_/   \_\ |_| |_| \_|
 //-------------------------------------------------------------------------------------------------
 using namespace std;
+
+TElasticity2DAnalytic gElast2d;
+
+/// @param mfmesh the input multiphysics mesh
+void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create);
+
+
 
 enum EMatid  {ENone, EDomain, EBoundary, EPont, EWrap, EIntface, EPressureHyb};
 
@@ -160,11 +171,11 @@ int main(int argc, char* argv[])
     auto start = std::chrono::high_resolution_clock::now();
 
     const int xdiv = 20;
-    const int pOrder = (argc > 2) ? std::atoi(argv[2]) : 1;
+    const int pOrder = (argc > 2) ? std::atoi(argv[2]) : 2;
     const HDivFamily hdivfamily = HDivFamily::EHDivConstant;
     // const HDivFamily hdivfamily = HDivFamily::EHDivStandard;
 
-    int DIM = (argc > 1) ? std::atoi(argv[1]) : 3;
+    const int DIM = 2;
 
 #ifdef PZ_LOG
     TPZLogger::InitializePZLOG();
@@ -174,8 +185,9 @@ int main(int argc, char* argv[])
     //              ", xdiv = " << xdiv << ", pOrder = " << pOrder << 
     //              ", Approximation space = " << MHDivFamily_Name(hdivfamily) << "\n\n "; 
     
+    // std::vector<int> idivs = DIM == 3 ? std::vector<int>{2,8,12,16,32} : std::vector<int>{2,50,100,200,300,400};
     std::vector<int> idivs = DIM == 3 ? std::vector<int>{2,8,12,16,32} : std::vector<int>{50,100,200,300,400};
-    
+    std::cout << "****************** DIM ************** " << DIM << std::endl;
     for (int iorder = pOrder; iorder < pOrder+1; iorder++) {
     for (auto idiv : idivs) {
         std::cout << "Running with pOrder = " << iorder << "\n";
@@ -203,15 +215,32 @@ int main(int argc, char* argv[])
     // Util for HDivKernel printing and solving
     TPZKernelHdivUtils<STATE> util;
 
-    TPZHDivApproxCreator hdivCreator(gmesh);
-    hdivCreator.HdivFamily() = hdivfamily;
-    hdivCreator.SetProbType(ProblemType::EDarcy);
+    TPZH1HybridApproxCreator hdivCreator(gmesh);
+    // hdivCreator.HdivFamily() = hdivfamily;
+    hdivCreator.SetProbType(ProblemType::EElastic);
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(iorder);
-    hdivCreator.SetExtraInternalOrder(0);
-    hdivCreator.SetShouldCondense(true);
+    hdivCreator.SetExtraInternalOrder(2);
+    hdivCreator.SetShouldCondense(false);
     // hdivCreator.SetShouldCondense(false);
-    hdivCreator.SetHybridType(HybridizationType::ESemi);
+    hdivCreator.SetHybridType(HybridizationType::EStandardSquared);
+    InsertMultiphysicsMaterials(hdivCreator);
+    //Multiphysics mesh
+    TPZMultiphysicsCompMesh *cmesh = hdivCreator.CreateApproximationSpace();
+    TPZH1HybridApproxCreator::CtoMFCel geltogel;
+    hdivCreator.ComputeOrthogonalizingRestraints(*cmesh, geltogel, hdivCreator.HybridData());
+    hdivCreator.HybridizeLowOrderFluxes(*cmesh, geltogel);
+    hdivCreator.GroupAndCondenseElements(cmesh);
+    if(0)
+    {
+      std::ofstream out("cmesh.txt");
+      cmesh->Print(out);
+      std::cout << "number of low order connects " << geltogel.size() << std::endl;
+      for(auto &iter : geltogel) {
+        out << "gel left " << iter.first << " gel right " << iter.second << std::endl;
+      }
+      hdivCreator.HybridData().Print(out);
+    }
 
     //Prints gmesh mesh properties
     // std::string vtk_name = "geoMesh.vtk";
@@ -219,29 +248,13 @@ int main(int argc, char* argv[])
 
     // TPZVTKGeoMesh::PrintGMeshVTK(gmesh, vtkfile, true);
 
-    //Insert Materials
-    TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,DIM);
-    matdarcy->SetConstantPermeability(1.);
-    matdarcy->SetExactSol(exactSol,4);
-    matdarcy->SetForcingFunction(forcefunction,4);
-
-    hdivCreator.InsertMaterialObject(matdarcy);
-
-    TPZFMatrix<STATE> val1(3,3,0.);
-    TPZManVector<STATE> val2(3,0.);
-    TPZBndCondT<STATE> *BCond1 = matdarcy->CreateBC(matdarcy, EBoundary, 0, val1, val2);
-    BCond1->SetForcingFunctionBC(exactSol,4);
-    hdivCreator.InsertMaterialObject(BCond1);
-
-    //Multiphysics mesh
-    TPZMultiphysicsCompMesh *cmesh = hdivCreator.CreateApproximationSpace();
     // std::string txt = "cmesh.txt";
     // std::ofstream myfile(txt);
     // cmesh->Print(myfile);
 
   
     // Number of equations without condense elements
-    const int nEquationsFull = cmesh->NEquations();
+    const int nEquationsFull = cmesh->Solution().Rows();
     std::cout << "Number of equations = " << nEquationsFull << std::endl;
 
     rprint << nEquationsFull << " " ;
@@ -256,6 +269,7 @@ int main(int argc, char* argv[])
     //Number of condensed problem.
     int nEquationsCondensed = cmesh->NEquations();
     std::cout << "Number of equations condensed = " << nEquationsCondensed << std::endl;
+    rprint << " Number of equations condensed " << nEquationsCondensed;
     //Create analysis environment
     TPZLinearAnalysis an(cmesh,RenumType::ENone);
     an.SetExact(exactSol,solOrder);
@@ -270,7 +284,7 @@ int main(int argc, char* argv[])
         // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
         // CALLGRIND_START_INSTRUMENTATION;
         // CALLGRIND_TOGGLE_COLLECT;
-        TPZMatRedSolver<STATE> solver(an,TPZMatRedSolver<STATE>::EDarcyHDiv);
+        TPZMatRedSolver<STATE> solver(an,TPZMatRedSolver<STATE>::EDarcyH1Hybrid);
         printmemoryTime << "iterative " << iorder << " " << idiv << " ";
         solver.Solve(printmemoryTime);
         
@@ -450,3 +464,32 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId)
     return gmesh;
     
 }
+
+/// @brief Insert the hybrid elastic material and boundary material
+/// @param mfmesh the input multiphysics mesh
+void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create)
+{
+  gElast2d.fProblemType = TElasticity2DAnalytic::EHomogeneous;
+
+  REAL E = 1.;
+  REAL nu = 0.;
+  gElast2d.gE = E;
+  gElast2d.gPoisson = nu;
+  int volmatid = EDomain;
+  auto *mat = new TPZHybridElasticity2D(volmatid, E, nu, 1., 1.);
+  mat->SetForcingFunction(gElast2d.ForceFunc(), 2);
+  mat->SetExactSol(gElast2d.ExactSolution(), 2);
+
+int bcmatidl = -1;
+int bcmatidr = -2;
+int bcmatidbt = -3;
+
+  create.InsertMaterialObject(mat);
+  TPZFNMatrix<4, REAL> val1(2, 2, 0.);
+  TPZManVector<REAL, 2> val2(2, 1.);
+  auto *bndbt = mat->CreateBC(mat, EBoundary, 0, val1, val2);
+  bndbt->SetForcingFunctionBC(gElast2d.ExactSolution(), 2);
+
+  create.InsertMaterialObject(bndbt);
+}
+

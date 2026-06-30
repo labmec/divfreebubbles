@@ -75,8 +75,10 @@ TPZGeoMesh *GenerateGMesh();
 
 /// @param mfmesh the input multiphysics mesh
 void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create);
-
-
+//#define CHECK_CONSTRAINTS 1
+#ifdef CHECK_CONSTRAINTS
+void VerifyConstraintConsistency(TPZMultiphysicsCompMesh *mfmesh, TPZH1HybridApproxCreator &create);
+#endif
 int volmatid = 1;
 int bcmatidl = -1;
 int bcmatidr = -2;
@@ -84,7 +86,7 @@ int bcmatidbt = -3;
 int skelmatid = 2;
 int interfacematid = 3;
 
-int fluxorder = 2;
+int fluxorder = 3;
 
 TElasticity2DAnalytic gElast2d;
 
@@ -99,18 +101,24 @@ int main(int argc, char *argv[])
   H1create.SetHybridType(HybridizationType::EStandardSquared);
   // H1create.HybridType() = HybridizationType::ENone;
   H1create.SetProbType(ProblemType::EElastic);
-  H1create.IsRigidBodySpaces() = true;
   H1create.SetDefaultOrder(fluxorder);
   H1create.SetHybridizeBoundary();
   H1create.SetExtraInternalOrder(2);
   H1create.SetShouldCondense(false);
   int fluxmatid = H1create.HybridData().fLagrangeMatId;
   InsertMultiphysicsMaterials(H1create);
+  #ifdef CHECK_CONSTRAINTS
+  H1create.IsRigidBodySpaces() = true;
+  #else
+  H1create.IsRigidBodySpaces() = false;
+  #endif
   TPZMultiphysicsCompMesh *mfmesh = H1create.CreateApproximationSpace();
   if(1) {
     TPZH1HybridApproxCreator::CtoMFCel geltogel;
     H1create.ComputeOrthogonalizingRestraints(*mfmesh, geltogel, H1create.HybridData());
+    #ifndef CHECK_CONSTRAINTS
     H1create.HybridizeLowOrderFluxes(*mfmesh, geltogel);
+    #endif
     H1create.GroupAndCondenseElements(mfmesh);
     {
       std::ofstream out("cmesh.txt");
@@ -123,6 +131,10 @@ int main(int argc, char *argv[])
     }
     // H1create.GroupAndCondenseElements(mfmesh);
   }
+  #ifdef CHECK_CONSTRAINTS
+  VerifyConstraintConsistency(mfmesh, H1create);
+  return 0;
+  #endif
   TPZLinearAnalysis an(mfmesh, RenumType::ENone);
   TPZFStructMatrix<> strmat(mfmesh);
   an.SetStructuralMatrix(strmat);
@@ -187,3 +199,55 @@ void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create)
   create.InsertMaterialObject(bndr);
 }
 
+#ifdef CHECK_CONSTRAINTS
+#include "TPZElementMatrixT.h"
+void VerifyConstraintConsistency(TPZMultiphysicsCompMesh *mfmesh, TPZH1HybridApproxCreator &create) {
+  // compute the number of connects before semi hybridizing the mesh
+  auto &meshvec = mfmesh->MeshVector();
+  int64_t original_connect_count = 0;
+  for(auto mesh : meshvec) {
+    original_connect_count += mesh->NConnects();
+  }
+  int64_t nel = mfmesh->NElements();
+  for(int64_t el = 0; el < nel; el++) {
+    TPZCompEl *cel = mfmesh->Element(el);
+    if(!cel) continue;
+    TPZCondensedCompElT<STATE> *cond = dynamic_cast<TPZCondensedCompElT<STATE> *>(cel);
+    if(!cond) continue;
+    TPZElementMatrixT<STATE> ek,ef;
+    cond->CalcStiff(ek,ef);
+    // find the connect corresponding to the rigid body space
+    int firstrgb = 0;
+    int nrgb = 0;
+    int rgbcondindex = -1;
+    int64_t ncon = cond->NConnects();
+    for(int64_t icon = 0; icon < ncon; icon++) {
+      TPZConnect &c = cond->Connect(icon);
+      if(c.LagrangeMultiplier() == 4) {
+        rgbcondindex = icon;
+        nrgb = c.NShape()*c.NState();
+        break;
+      } else {
+        firstrgb += c.NShape()*c.NState();
+      }
+    }
+    std::cout << "element el " << el << " rgb index " << rgbcondindex << " rgb eq " << firstrgb << std::endl;
+    // look for the submatrices for connects with zero lagrange multiplier
+    int eq_count = 0;
+    for(int64_t icon = 0; icon < ncon; icon++) {
+      int64_t conindex = cel->ConnectIndex(icon);
+      TPZConnect &c = cel->Connect(icon);
+      if(c.LagrangeMultiplier() == 1 || conindex < original_connect_count) {
+        eq_count += c.NShape()*c.NState();
+        continue;
+      }
+      int sizeblock = c.NShape()*c.NState();
+      TPZFMatrix<STATE> submat;
+      ek.fMat.GetSub(firstrgb,eq_count,nrgb,sizeblock,submat);
+      REAL submatnorm = Norm(submat);
+      std::cout << "element el " << el << " connect " << icon << " eq count " << eq_count << " submat norm " << submatnorm << std::endl;
+      eq_count += c.NShape()*c.NState();
+    }
+  }
+}
+#endif
