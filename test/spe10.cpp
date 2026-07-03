@@ -34,12 +34,12 @@ constexpr int dim{2};
 constexpr int n_cells = nx * ny * nz;
 TPZManVector<REAL, n_cells> perm_vec(n_cells, 1);
 #else
-// constexpr int nx = 60;
-// constexpr int ny = 220;
-// constexpr int nz = 85;
-constexpr int nx = 15;
-constexpr int ny = 50;
-constexpr int nz = 20;
+constexpr int nx = 60;
+constexpr int ny = 220;
+constexpr int nz = 85;
+// constexpr int nx = 15;
+// constexpr int ny = 50;
+// constexpr int nz = 20;
 constexpr int dim{3};
 constexpr int n_cells = 60 * 220 * 85;
 TPZManVector<REAL, n_cells> perm_vec(n_cells * 3, 1);
@@ -108,13 +108,13 @@ int main(){
     TPZHDivApproxCreator hdivCreator(gmesh);
     hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
     // hdivCreator.HdivFamily() = HDivFamily::EHDivStandard;
-    hdivCreator.ProbType() = ProblemType::EDarcy;
+    hdivCreator.SetProbType(ProblemType::EDarcy);
     hdivCreator.IsRigidBodySpaces() = false;
-    int pOrder = 2;
+    int pOrder = 3;
     hdivCreator.SetDefaultOrder(pOrder);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::ESemi;
+    hdivCreator.SetHybridType(HybridizationType::ESemi);
 
     //Insert Materials
     TPZMixedDarcyFlow* matdarcy = new TPZMixedDarcyFlow(EDomain,dim);
@@ -171,7 +171,7 @@ int main(){
     // TPZLinearAnalysis an(mpmesh,RenumType::ESloan);
     // TPZLinearAnalysis an(mpmesh,RenumType::ECutHillMcKee);
     // TPZLinearAnalysis an(mpmesh,RenumType::ECutHillMcKeeFast);
-    TPZLinearAnalysis an(mpmesh,RenumType::EMetis);
+    TPZLinearAnalysis an(mpmesh);
     auto total_time_anal = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_anal).count()/1000.;
     cout << "\nTotal time opt band = " << total_time_anal << " seconds" << endl;
         
@@ -248,7 +248,7 @@ void ReadSPE10CellPermeabilities3D(TPZVec<REAL> *perm_vec) {
     // Fuction copied from ErrorEstimation/Projects/SPE10
     std::cout << "Reading permeability data...\n";
 
-    std::ifstream perm_file("test/InputData/spe_perm.dat", std::ios::in);
+    std::ifstream perm_file("../test/InputData/spe_perm.dat", std::ios::in);
     if (!perm_file) {
         std::cerr << "Unable to open input file\n";
         DebugStop();
@@ -387,7 +387,7 @@ void SolveProblemDirect(TPZLinearAnalysis &an, TPZCompMesh *cmesh)
     constexpr int nThreads{50};
     //    TPZFStructMatrix<STATE> matskl(cmesh); // slowest - good for debugging
     //    TPZSkylineStructMatrix<STATE> matskl(cmesh); // medium speed - pz only
-    TPZSSpStructMatrix<STATE> matskl(cmesh); // fast - works great with mkl
+    TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh); // fast - works great with mkl
 
     matskl.SetNumThreads(nThreads);
     an.SetStructuralMatrix(matskl);

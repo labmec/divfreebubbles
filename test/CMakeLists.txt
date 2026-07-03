@@ -19,11 +19,15 @@ add_unit_test(fOrthog FunctionOrthogonality.cpp)
 
 configure_file(InputData/spe_perm.dat InputData/spe_perm.dat COPYONLY)
 
-add_unit_test(spe10 spe10.cpp)
+# add_unit_test(spe10 spe10.cpp)
 add_unit_test(spe10_an spe10_anisotropic.cpp)
 
 add_executable(mixed_elasticity mixed_elasticity.cpp)
 target_link_libraries(mixed_elasticity PRIVATE divfree)
+
+
+add_executable(spe10 spe10.cpp)
+target_link_libraries(spe10 PRIVATE divfree)
 
 # Need refactor
 
