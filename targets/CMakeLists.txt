@@ -24,8 +24,8 @@ target_link_libraries(voronoi_mixed_elas PRIVATE divfree)
 add_executable(semiHybrid_elas semiHybrid_elas.cpp)
 target_link_libraries(semiHybrid_elas PRIVATE divfree)
 
-add_executable(elasticity elasticity.cpp)
-target_link_libraries(elasticity PRIVATE divfree)
+# add_executable(elasticity elasticity.cpp)
+# target_link_libraries(elasticity PRIVATE divfree)
 
 # Need refactor
 # add_executable(SHIterative SHIterative.cpp)
