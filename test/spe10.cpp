@@ -178,7 +178,7 @@ int main(){
     cout << "\n--------------------- Solving system ---------------------\n" << endl;
     if (hdivCreator.HybridType() == HybridizationType::ESemi){
         std::set<int> matBCAll={ENoFlux,EPressureLeft,EPressureRight};
-        TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::ESparse,func);
+        TPZMatRedSolver<STATE> solver(an,TPZMatRedSolver<STATE>::EDarcyHDiv);
         solver.Solve(std::cout);
     } else {
         SolveProblemDirect(an, mpmesh);

@@ -846,9 +846,9 @@ void TPZSparseMatRed<TVar>::AllocateSubMatrices(TPZCompMesh *cmesh) {
   int64_t dim00 = fDim0;
   
   //Aloca as submatrizes no formato esparso.
-  #ifdef PZ_USE_MKL
+  // #ifdef PZ_USE_MKL
   TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
-  #endif
+  // #endif
   #ifdef PZ_USING_MUMPS
   TPZSSpStructMatrixMumps<STATE,TPZStructMatrixOR<STATE>> Stiffness(cmesh);
   #endif
