@@ -30,6 +30,7 @@ set(MESH_HEADERS
     TPZMHMGeoMeshCreator.h
     TPZMHMHDivApproxCreator.h
     TPZH1HybridApproxCreator.h
+    TPZHDivSHybridApproxCreator.h
     TPZAlgebraicInterface.h
   )
 
@@ -39,6 +40,7 @@ set(MESH_SRCS
     TPZMHMGeoMeshCreator.cpp
     TPZMHMHDivApproxCreator.cpp
     TPZH1HybridApproxCreator.cpp
+    TPZHDivSHybridApproxCreator.cpp
     TPZAlgebraicInterface.cpp
   )
 

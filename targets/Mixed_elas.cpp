@@ -22,6 +22,7 @@
 #include <TPZNullMaterial.h>
 #include <TPZNullMaterialCS.h>
 #include <Elasticity/TPZHybridElasticity2D.h>
+#include <Elasticity/TPZMixedElasticityND.h>
 #include "DarcyFlow/TPZMixedDarcyFlow.h" // for Hdiv problem
 #include <TPZBndCond.h>                  //for TPZBndCond
 #include "TPZLinearAnalysis.h"
@@ -52,6 +53,7 @@
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
 #include "TPZHDivApproxCreator.h"
+#include "TPZHDivSHybridApproxCreator.h"
 #include "TPZAnalyticSolution.h"
 
 #include "TPZAlgebraicInterface.h"
@@ -74,7 +76,7 @@ using namespace std;
 TPZGeoMesh *GenerateGMesh();
 
 /// @param mfmesh the input multiphysics mesh
-void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create);
+void InsertMultiphysicsMaterials(TPZHDivSHybridApproxCreator &create);
 //#define CHECK_CONSTRAINTS 1
 #ifdef CHECK_CONSTRAINTS
 void VerifyConstraintConsistency(TPZMultiphysicsCompMesh *mfmesh, TPZH1HybridApproxCreator &create);
@@ -97,44 +99,22 @@ int main(int argc, char *argv[])
   TPZLogger::InitializePZLOG();
 #endif
   TPZGeoMesh *gmesh = GenerateGMesh();
-  TPZH1HybridApproxCreator H1create(gmesh);
-  H1create.SetHybridType(HybridizationType::EStandardSquared);
+  TPZHDivSHybridApproxCreator H1create(gmesh);
+  H1create.SetHybridType(HybridizationType::EStandard);
   // H1create.HybridType() = HybridizationType::ENone;
   H1create.SetProbType(ProblemType::EElastic);
   H1create.SetDefaultOrder(fluxorder);
-  H1create.SetHybridizeBoundary();
-  H1create.SetExtraInternalOrder(2);
+  // H1create.SetHybridizeBoundary();
+  H1create.SetExtraInternalOrder(0);
   H1create.SetShouldCondense(false);
   int fluxmatid = H1create.HybridData().fLagrangeMatId;
   InsertMultiphysicsMaterials(H1create);
   #ifdef CHECK_CONSTRAINTS
   H1create.IsRigidBodySpaces() = true;
   #else
-  H1create.IsRigidBodySpaces() = false;
+  H1create.IsRigidBodySpaces() = true;
   #endif
   TPZMultiphysicsCompMesh *mfmesh = H1create.CreateApproximationSpace();
-  if(1) {
-    TPZH1HybridApproxCreator::CtoMFCel geltogel;
-    H1create.ComputeOrthogonalizingRestraints(*mfmesh, geltogel, H1create.HybridData());
-    #ifndef CHECK_CONSTRAINTS
-    H1create.HybridizeLowOrderFluxes(*mfmesh, geltogel);
-    #endif
-    H1create.GroupAndCondenseElements(mfmesh);
-    {
-      std::ofstream out("cmesh.txt");
-      mfmesh->Print(out);
-      std::cout << "number of low order connects " << geltogel.size() << std::endl;
-      for(auto &iter : geltogel) {
-        out << "gel left " << iter.first << " gel right " << iter.second << std::endl;
-      }
-      H1create.HybridData().Print(out);
-    }
-    // H1create.GroupAndCondenseElements(mfmesh);
-  }
-  #ifdef CHECK_CONSTRAINTS
-  VerifyConstraintConsistency(mfmesh, H1create);
-  return 0;
-  #endif
   TPZLinearAnalysis an(mfmesh, RenumType::ENone);
   TPZFStructMatrix<> strmat(mfmesh);
   an.SetStructuralMatrix(strmat);
@@ -172,7 +152,7 @@ TPZGeoMesh *GenerateGMesh()
 
 /// @brief Insert the hybrid elastic material and boundary material
 /// @param mfmesh the input multiphysics mesh
-void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create)
+void InsertMultiphysicsMaterials(TPZHDivSHybridApproxCreator &create)
 {
   gElast2d.fProblemType = TElasticity2DAnalytic::EHomogeneous;
 
@@ -180,7 +160,8 @@ void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create)
   REAL nu = 0.;
   gElast2d.gE = E;
   gElast2d.gPoisson = nu;
-  auto *mat = new TPZHybridElasticity2D(volmatid, E, nu, 1., 1.);
+  int dim = create.GeoMesh()->Dimension();
+  auto *mat = new TPZMixedElasticityND(volmatid, E, nu, 1., 1.,gElast2d.fPlaneStress, dim);
   mat->SetForcingFunction(gElast2d.ForceFunc(), 2);
   mat->SetExactSol(gElast2d.ExactSolution(), 2);
 

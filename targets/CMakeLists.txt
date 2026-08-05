@@ -21,6 +21,9 @@ target_link_libraries(hpc4 PRIVATE divfree)
 add_executable(voronoi_mixed_elas voronoi_mixed_elas.cpp)
 target_link_libraries(voronoi_mixed_elas PRIVATE divfree)
 
+add_executable(Mixed_elas Mixed_elas.cpp)
+target_link_libraries(Mixed_elas PRIVATE divfree)
+
 add_executable(semiHybrid_elas semiHybrid_elas.cpp)
 target_link_libraries(semiHybrid_elas PRIVATE divfree)
 
