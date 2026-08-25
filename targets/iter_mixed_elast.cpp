@@ -9,9 +9,7 @@
 #include <TPZGeoMeshTools.h>
 #include <TPZGmshReader.h>
 
-#include "DarcyFlow/TPZMixedDarcyFlow.h"
-#include "TPZH1HybridApproxCreator.h"
-#include "TPZHDivApproxCreator.h"
+#include "TPZHDivSHybridApproxCreator.h"
 #include "TPZMatRedSolver.h"
 #include "TPZRefPattern.h"
 #include "TPZRefPatternDataBase.h"
@@ -25,9 +23,13 @@
 #include "pzshapetetra.h"
 #include "pzshapetriang.h"
 #include "tpzgeoelrefpattern.h"
+// #include "TPZH1HybridApproxCreator.h"
+#include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include <Elasticity/TPZHybridElasticity2D.h>
+#include <Elasticity/TPZMixedElasticityND.h>
 #include <TPZNullMaterial.h>
 #include <TPZNullMaterialCS.h>
+
 #include <TPZSSpStructMatrix.h> //symmetric sparse matrix storage
 #ifdef PZ_USING_MUMPS
 #include "TPZSSpStructMatrixMumps.h"
@@ -48,9 +50,9 @@ double getPeakMemoryMB() {
   return usage.ru_maxrss / 1024.0;
 }
 
-std::ofstream rprint("results_Elastic2D.txt", std::ofstream::out);
-std::ofstream printerrors("results_Elastic2D_errors.txt", std::ofstream::out);
-std::ofstream printmemoryTime("results_Hybrid_Elastic2D_memory_time.txt", std::ofstream::app);
+std::ofstream rprint("results_Mixed_Elastic2D.txt", std::ofstream::out);
+std::ofstream printerrors("results_Mixed_Elastic2D_errors.txt", std::ofstream::out);
+std::ofstream printmemoryTime("results_Mixed_Elastic2D_memory_time.txt", std::ofstream::app);
 
 //-------------------------------------------------------------------------------------------------
 //   __  __      _      _   _   _
@@ -62,9 +64,10 @@ std::ofstream printmemoryTime("results_Hybrid_Elastic2D_memory_time.txt", std::o
 using namespace std;
 
 TElasticity2DAnalytic gElast2d;
+int solOrder = 3;
 
 /// @param mfmesh the input multiphysics mesh
-void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create);
+void InsertMultiphysicsMaterials(TPZHDivSHybridApproxCreator &create);
 
 enum EMatid { ENone,
               EDomain,
@@ -84,86 +87,6 @@ enum EMatid { ENone,
 template <class tshape>
 TPZGeoMesh *
 CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId);
-
-// Analytical solution
-constexpr int solOrder{4};
-auto exactSol = [](const TPZVec<REAL> &loc,
-                   TPZVec<STATE> &u,
-                   TPZFMatrix<STATE> &gradU) {
-  const auto &x = loc[0];
-  const auto &y = loc[1];
-  const auto &z = loc[2];
-
-  // const auto &d = 1.; // distanc between injection and production wells
-  // u[0]= x*x-y*y ;
-  // gradU(0,0) = -2*x;
-  // gradU(1,0) = 2.*y;
-  // gradU(2,0) = 0.;
-
-  // u[0] =  5. + 3. * x + 2. * y + 4. * x * y;
-  // gradU(0,0) = 3. + 4. * y;
-  // gradU(1,0) = 2. + 4. * x;
-  // gradU(2,0) = 0.;
-
-  // u[0] = x*x*x*y - y*y*y*x;
-  // gradU(0,0) = (3.*x*x*y - y*y*y);
-  // gradU(1,0) = (x*x*x - 3.*y*y*x);
-
-  // u[0]= x*x - y*y;
-  // gradU(0,0) = 2.*x;
-  // gradU(1,0) = -2.*y;
-  // // gradU(2,0) = -1;
-
-  REAL aux = 1. / sinh(sqrt(2) * M_PI);
-  u[0] = sin(M_PI * x) * sin(M_PI * y) * sinh(sqrt(2) * M_PI * z) * aux;
-  gradU(0, 0) = M_PI * cos(M_PI * x) * sin(M_PI * y) * sinh(sqrt(2) * M_PI * z) * aux;
-  gradU(1, 0) = M_PI * cos(M_PI * y) * sin(M_PI * x) * sinh(sqrt(2) * M_PI * z) * aux;
-  gradU(2, 0) = sqrt(2) * M_PI * cosh(sqrt(2) * M_PI * z) * sin(M_PI * x) * sin(M_PI * y) * aux;
-
-  // u[0]= std::sin(M_PI*x)*std::sin(M_PI*y);
-  // gradU(0,0) = M_PI*cos(M_PI*x)*sin(M_PI*y);
-  // gradU(1,0) = M_PI*cos(M_PI*y)*sin(M_PI*x);
-
-  // u[0]=pow(2,2 - pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
-  //    pow(5,-pow(-2*M_PI + 15.*x,2) - pow(-2*M_PI + 15.*y,2))*
-  //    (-2*M_PI + 15.*x);
-  // gradU(0,0) = 0.;
-  // gradU(1,0) = 0.;
-
-  // u[0] = (x-1)*x*(y-1)*y*(z-1)*z;
-  // gradU(0,0) = (x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
-  // gradU(1,0) = (x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
-  // gradU(1,0) = (x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
-
-  // REAL a1 = 1./4;
-  // REAL alpha = M_PI/2;
-  // u[0] = x*a1*cos(x*alpha)*cosh(y*alpha) + y*a1*sin(x*alpha)*sinh(y*alpha) + x*x - y*y;
-  // gradU(0,0) = -a1*(cosh(alpha*y)*(cos(alpha*x) - alpha*x*sin(alpha*x)) + alpha*y*cos(alpha*x)*sinh(alpha*y));
-  // gradU(1,0) = -a1*(alpha*y*cosh(alpha*y)*sin(alpha*x) + (alpha*x*cos(alpha*x) + sin(alpha*x))*sinh(alpha*y));
-
-  // u[0] = exp(M_PI*x)*sin(M_PI*y);
-  // gradU(0,0) = M_PI*exp(M_PI*x)*sin(M_PI*y);
-  // gradU(1,0) = M_PI*exp(M_PI*x)*cos(M_PI*y);
-
-  // u[0] = 0.5*(x)*x+0.5*(y)*y-(z)*z;
-  // gradU(0,0) = -x;//(x-1)*(y-1)*y*(z-1)*z + x*(y-1)*y*(z-1)*z;
-  // gradU(1,0) = -y;//(x-1)*x*(y-1)*(z-1)*z + (x-1)*x*y*(z-1)*z;
-  // gradU(2,0) = 2.*z;//(x-1)*x*(y-1)*y*(z-1) + (x-1)*x*(y-1)*y*z;
-
-  // u[0] = exp(M_PI*x)*sin(M_PI*y)*x;
-  // gradU(0,0) = x*M_PI*exp(M_PI*x)*sin(M_PI*y)+exp(M_PI*x)*sin(M_PI*y);
-  // gradU(1,0) = x*M_PI*exp(M_PI*x)*cos(M_PI*y);
-};
-auto forcefunction = [](const TPZVec<REAL> &loc,
-                        TPZVec<STATE> &u) {
-  const auto &x = loc[0];
-  const auto &y = loc[1];
-  const auto &z = loc[2];
-
-  // u[0] = -exp(M_PI*x)*sin(M_PI*y)*M_PI*2.;
-  REAL aux = 1. / sinh(sqrt(2) * M_PI);
-  u[0] = -2. * sqrt(2) * M_PI * M_PI * cos(M_PI * x) * sin(M_PI * y) * cosh(sqrt(2) * M_PI * x) * aux;
-};
 
 int main(int argc, char *argv[]) {
 
@@ -191,8 +114,6 @@ int main(int argc, char *argv[]) {
   std::vector<int> pOrders = {1, 2, 3, 4};
   std::cout << "****************** DIM ************** " << DIM << std::endl;
   for (int iorder : pOrders) {
-    std::cout << "Running with pOrder = " << pOrder << "\n";
-    rprint << "pOrder = " << pOrder << " ";
     for (auto idiv : idivs) {
       std::cout << "Running with pOrder = " << iorder << "\n";
       std::cout << "Running with idiv = " << idiv << "\n";
@@ -216,31 +137,16 @@ int main(int argc, char *argv[]) {
       // Util for HDivKernel printing and solving
       TPZKernelHdivUtils<STATE> util;
 
-      TPZH1HybridApproxCreator hdivCreator(gmesh);
+      TPZHDivSHybridApproxCreator hdivCreator(gmesh);
       // hdivCreator.HdivFamily() = hdivfamily;
       hdivCreator.SetProbType(ProblemType::EElastic);
       hdivCreator.IsRigidBodySpaces() = false;
       hdivCreator.SetDefaultOrder(iorder);
-      hdivCreator.SetExtraInternalOrder(2);
-      hdivCreator.SetShouldCondense(false);
-      // hdivCreator.SetShouldCondense(false);
-      hdivCreator.SetHybridType(HybridizationType::EStandardSquared);
+      hdivCreator.SetShouldCondense(true);
+      hdivCreator.SetHybridType(HybridizationType::EStandard);
       InsertMultiphysicsMaterials(hdivCreator);
       // Multiphysics mesh
       TPZMultiphysicsCompMesh *cmesh = hdivCreator.CreateApproximationSpace();
-      TPZH1HybridApproxCreator::CtoMFCel geltogel;
-      hdivCreator.ComputeOrthogonalizingRestraints(*cmesh, geltogel, hdivCreator.HybridData());
-      hdivCreator.HybridizeLowOrderFluxes(*cmesh, geltogel);
-      hdivCreator.GroupAndCondenseElements(cmesh);
-      if (0) {
-        std::ofstream out("cmesh.txt");
-        cmesh->Print(out);
-        std::cout << "number of low order connects " << geltogel.size() << std::endl;
-        for (auto &iter : geltogel) {
-          out << "gel left " << iter.first << " gel right " << iter.second << std::endl;
-        }
-        hdivCreator.HybridData().Print(out);
-      }
 
       // Prints gmesh mesh properties
       //  std::string vtk_name = "geoMesh.vtk";
@@ -270,7 +176,7 @@ int main(int argc, char *argv[]) {
       rprint << " Number of equations condensed " << nEquationsCondensed;
       // Create analysis environment
       TPZLinearAnalysis an(cmesh, RenumType::ENone);
-      an.SetExact(exactSol, solOrder);
+      an.SetExact(gElast2d.ExactSolution(), solOrder);
 
       std::set<int> matBCAll = {EBoundary};
       // Solve problem
@@ -282,8 +188,8 @@ int main(int argc, char *argv[]) {
         // TPZMatRedSolver<STATE> solver(an,matBCAll,TPZMatRedSolver<STATE>::EDefault);
         // CALLGRIND_START_INSTRUMENTATION;
         // CALLGRIND_TOGGLE_COLLECT;
-        TPZMatRedSolver<STATE> solver(an, TPZMatRedSolver<STATE>::EDarcyH1Hybrid);
-        printmemoryTime << " iterative porder" << iorder << " div " << idiv << " neqFull " << nEquationsFull << " neqCondensed " << nEquationsCondensed << " ";
+        TPZMatRedSolver<STATE> solver(an, TPZMatRedSolver<STATE>::EElasticityHDiv);
+        printmemoryTime << "iterative porder " << iorder << " div " << idiv << " neqFull " << nEquationsFull << " neqCondensed " << nEquationsCondensed << " ";
         solver.Solve(printmemoryTime);
 
       } else {
@@ -454,7 +360,7 @@ CreateGeoMesh(TPZVec<int> &nDivs, EMatid volId, EMatid bcId) {
 
 /// @brief Insert the hybrid elastic material and boundary material
 /// @param mfmesh the input multiphysics mesh
-void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create) {
+void InsertMultiphysicsMaterials(TPZHDivSHybridApproxCreator &create) {
   gElast2d.fProblemType = TElasticity2DAnalytic::EHomogeneous;
 
   REAL E = 1.;
@@ -462,13 +368,10 @@ void InsertMultiphysicsMaterials(TPZH1ApproxCreator &create) {
   gElast2d.gE = E;
   gElast2d.gPoisson = nu;
   int volmatid = EDomain;
-  auto *mat = new TPZHybridElasticity2D(volmatid, E, nu, 1., 1.);
+  int dim = create.GeoMesh()->Dimension();
+  auto *mat = new TPZMixedElasticityND(volmatid, E, nu, 1., 1., gElast2d.fPlaneStress, dim);
   mat->SetForcingFunction(gElast2d.ForceFunc(), 2);
   mat->SetExactSol(gElast2d.ExactSolution(), 2);
-
-  int bcmatidl = -1;
-  int bcmatidr = -2;
-  int bcmatidbt = -3;
 
   create.InsertMaterialObject(mat);
   TPZFNMatrix<4, REAL> val1(2, 2, 0.);

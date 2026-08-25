@@ -49,7 +49,7 @@
 #include "TPZCompElKernelHDiv.h"
 #include "DarcyFlow/TPZMixedDarcyFlow.h"
 #include "TPZKernelHdivUtils.h"
-#include "TPZHDivApproxSpaceCreator.h"
+#include "TPZHDivApproxCreator.h"
 #include "TPZAnalyticSolution.h"
 
 //-------------------------------------------------------------------------------------------------
@@ -142,7 +142,7 @@ TPZLogger::InitializePZLOG();
     std::set_union(matIDNeumann.begin(),matIDNeumann.end(),matIDDirichlet.begin(),matIDDirichlet.end(),std::inserter(matBC, matBC.begin()));
 
     /// Creates the approximation space - Set the type of domain hybridization
-    TPZHDivApproxSpaceCreator<STATE> createSpace(gmesh,
+    TPZHDivApproxCreator<STATE> createSpace(gmesh,
                                                 TPZHDivApproxSpaceCreator<STATE>::ENone,
                                                 HDivFamily::EHDivConstant);
 

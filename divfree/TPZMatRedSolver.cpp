@@ -70,7 +70,7 @@ void TPZMatRedSolver<TVar>::Solve(std::ostream &out)
   int64_t nEqLinr = matRed->Dim0();
   int64_t nEqHigh = matRed->Dim1();
 
-  // out << nEqHigh << " " << nEqLinr << " ";
+  out << "TotalEq " << nEqHigh << " K00 " << nEqLinr << " ";
 
   std::cout << "NUMBER OF EQUATIONS:\n " << "Full problem = " << nEqFull << ", High Order Flux = " << nEqHigh << ", Linear Flux = " << nEqLinr << std::endl;
 
@@ -99,7 +99,7 @@ void TPZMatRedSolver<TVar>::Solve(std::ostream &out)
   rhsFull.Zero();
   auto start_time_assemble = std::chrono::steady_clock::now();
   Stiffness.Assemble(*matRed, rhsFull);
-  if (this->fProblemOrigin == ProblemOrigin::EElasticityH1Hybrid || this->fProblemOrigin == ProblemOrigin::EDarcyH1Hybrid)
+  if (this->fProblemOrigin == ProblemOrigin::EElasticityH1Hybrid || this->fProblemOrigin == ProblemOrigin::EDarcyH1Hybrid || this->fProblemOrigin == ProblemOrigin::EElasticityHDiv)
   {
     matRed->K11() *= (-1.);
     matRed->K10() *= (-1.);
@@ -196,7 +196,8 @@ void TPZMatRedSolver<TVar>::Solve(std::ostream &out)
   auto total_time_solve = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time_solve).count();
   std::cout << "Time CG " << total_time_solve << std::endl;
 
-  out << total_time_assemble << " " << total_time_decomp + total_time_bd + total_time_solve << " ";
+  out << "CGIter " << nMaxIter;
+  out << " ass " << total_time_assemble << " Tdecomp " << total_time_decomp << " TblockDiag " << total_time_bd << " Tsolve " << total_time_solve << " Ttotal " << total_time_decomp + total_time_bd + total_time_solve << " ";
 
   REAL norm = 0.;
   std::cout << "Number of CG iterations = " << nMaxIter << " , residual = " << tol << std::endl;

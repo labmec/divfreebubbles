@@ -106,12 +106,12 @@ int main() {
     // Set simulation parameters
     TPZHDivApproxCreator hdivCreator(gmesh);
     hdivCreator.HdivFamily() = HDivFamily::EHDivStandard;
-    hdivCreator.ProbType() = ProblemType::EElastic;
+    hdivCreator.SetProbType(ProblemType::EElastic);
     hdivCreator.IsRigidBodySpaces() = false;
     hdivCreator.SetDefaultOrder(1);
     hdivCreator.SetExtraInternalOrder(0);
     hdivCreator.SetShouldCondense(true);
-    hdivCreator.HybridType() = HybridizationType::EStandard;
+    hdivCreator.SetHybridType(HybridizationType::EStandard);
 
     // Prints gmesh
     std::string vtk_name = "geomesh.vtk";

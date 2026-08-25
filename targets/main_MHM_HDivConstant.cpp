@@ -135,12 +135,12 @@ void RunMHM(const int &xdiv, const int &pOrder)
     TPZMHMHDivApproxCreator mhm_ccreator(mhm_gcreator,gmesh);
 
     mhm_ccreator.HdivFamily() = HDivFamily::EHDivConstant;
-    mhm_ccreator.ProbType() = ProblemType::EDarcy;
+    mhm_ccreator.SetProbType(ProblemType::EDarcy);
     mhm_ccreator.IsRigidBodySpaces() = true;
     mhm_ccreator.SetDefaultOrder(pOrder);
     mhm_ccreator.SetExtraInternalOrder(0);
     mhm_ccreator.SetShouldCondense(true);
-    mhm_ccreator.HybridType() = HybridizationType::ENone;
+    mhm_ccreator.SetHybridType(HybridizationType::ENone);
     mhm_ccreator.SetPOrderSkeleton(pOrder);
 
     mhm_ccreator.InsertMaterialObjects(LaplaceExact);
@@ -181,7 +181,9 @@ void RunMHM(const int &xdiv, const int &pOrder)
     
     if (mhm_ccreator.HybridType() == HybridizationType::ESemi){
         std::set<int> matBCAll={Ebc1,Ebc2,Ebc3,Ebc4};
-        TPZMatRedSolver<STATE> solver(*Analysis,matBCAll,TPZMatRedSolver<STATE>::EMHMSparse);
+        // I am not sure if this constructor is right. Call debugstop to analyse this code
+        DebugStop();
+        TPZMatRedSolver<STATE> solver(*Analysis,TPZMatRedSolver<STATE>::EDarcyHDiv);
         solver.Solve(std::cout);
     } else {
         TPZStepSolver<STATE> step;

@@ -73,13 +73,14 @@ int main()
   
   TPZHDivApproxCreator hdivCreator(gmesh);
   hdivCreator.HdivFamily() = HDivFamily::EHDivConstant;
-  hdivCreator.ProbType() = ProblemType::EElastic;
+
+  hdivCreator.SetProbType(ProblemType::EElastic);
   hdivCreator.IsRigidBodySpaces() = false;
   hdivCreator.SetDefaultOrder(pord);
   hdivCreator.SetExtraInternalOrder(0);
   hdivCreator.SetShouldCondense(false);
 //  hdivCreator.HybridType() = HybridizationType::EStandard;
-  hdivCreator.HybridType() = HybridizationType::ENone;
+  hdivCreator.SetHybridType(HybridizationType::ENone);
   
   TPZAnalyticSolution *gAnalytic = 0;
   TPZMixedElasticityND* matelastic = 0;
@@ -88,7 +89,7 @@ int main()
     TElasticity2DAnalytic *elas = new TElasticity2DAnalytic;
     elas->gE = 1.e3;
     elas->gPoisson = 0.0;
-//    elas->fProblemType = TElasticity2DAnalytic::EThiago;
+    elas->fProblemType = TElasticity2DAnalytic::EDispx;
     elas->fPlaneStress = 0;
 //    gAnalytic = elas;
     matelastic = new TPZMixedElasticityND(EDomain, elas->gE, elas->gPoisson, 0, 0, elas->fPlaneStress, DIM);
@@ -99,8 +100,8 @@ int main()
     TElasticity3DAnalytic *elas = new TElasticity3DAnalytic;
     elas->fE = 1.;//206.8150271873455;
     elas->fPoisson = 0.0;//0.3040039545229857;
-//    elas->fProblemType = TElasticity3DAnalytic::EDispx;
-//    gAnalytic = elas;
+    elas->fProblemType = TElasticity3DAnalytic::EDispx;
+    gAnalytic = elas;
     matelastic = new TPZMixedElasticityND(EDomain, elas->fE, elas->fPoisson, 0, 0, 0 /*planestress*/, DIM);
   }
   
@@ -139,7 +140,7 @@ int main()
   std::cout << "Number of equations = " << nEquationsFull << std::endl;
   
   //Create analysis environment
-  TPZLinearAnalysis an(cmesh);
+  TPZLinearAnalysis an(cmesh,RenumType::ENone);
   an.SetExact(gAnalytic->ExactSolution());
   
   std::set<int> matBCAll = {EBoundary};
