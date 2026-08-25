@@ -22,6 +22,9 @@
 #include "pzmatred.h"
 #include "TPZSparseMatRed.h"
 #include "TPZSpStructMatrix.h"
+#ifdef PZ_USING_MUMPS
+#include "TPZSSpStructMatrixMumps.h"
+#endif
 #include "pzbdstrmatrix.h"
 #include "tpzverysparsematrix.h"
 #include "TPZPardisoSolver.h"
@@ -150,8 +153,13 @@ void TPZKernelHdivUtils<TVar>::SolveProblemDirect(TPZLinearAnalysis &an, TPZComp
     constexpr int nThreads{0};
     // TPZSkylineStructMatrix<REAL> matskl(cmesh);
     // TPZSSpStructMatrix<STATE> matskl(cmesh);
+    #ifdef USING_MKL
     TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
-    
+#elif USING_MUMPS
+    TPZSSpStructMatrixMumps<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);   
+#else
+    DebugStop();
+#endif    
     // 
     // TPZSSpStructMatrix<STATE,TPZStructMatrixOR<STATE>> matskl(cmesh);
     // TPZSSpStructMatrix<STATE,TPZStructMatrixOT<STATE>> matskl(cmesh);

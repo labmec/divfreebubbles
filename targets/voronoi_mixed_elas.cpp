@@ -168,6 +168,7 @@ int main()
     
     vtk.Do();
   }
+  return 0;
 }
 
 //Create 

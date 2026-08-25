@@ -90,7 +90,7 @@ void RunMHM(const int &xdiv, const int &pOrder)
     
     // Creates/import a geometric mesh
     std::string filename;
-    filename = "polygon00.txt";
+    filename = "../../Mesh/polygon00.txt";
     TPZVec<int64_t> elpartition;
     TPZVec<int64_t> scalingcenterindices;
     TPZAutoPointer<TPZGeoMesh> gmesh = ReadUNSWQuadtreeMesh(filename, mhm_gcreator.fElementPartition, scalingcenterindices);

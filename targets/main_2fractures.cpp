@@ -52,7 +52,7 @@ enum EMatid  {ENone, EDomain, EInlet, EOutlet, ENoflux, EIntersection};
 int main(int argc, char* argv[]){
 
 #ifdef PZ_LOG
-    TPZLogger::InitializePZLOG("log4cxx.cfg");
+    TPZLogger::InitializePZLOG();
 #endif
     
     int dim = 2;
@@ -65,12 +65,12 @@ int main(int argc, char* argv[]){
     if (is2fracCase) {
         // This case has two rectangular intersection fractures
         // And hybridize the intersection
-        filename + "Case2FracSimple.msh";
+        filename += "Case2FracSimple.msh";
     }
     else{
         // This case has just two elements and we only
         // hybridize the interface between them
-        filename = "Case1FracSimple.msh";
+        filename += "Case1FracSimple.msh";
     }
     readGeoMesh(filename,gmesh);
     
