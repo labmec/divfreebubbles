@@ -16,7 +16,7 @@ public:
   explicit TPZHDivSHybridApproxCreator(TPZGeoMesh *gmesh);
 
   /// Destructor
-  ~TPZHDivSHybridApproxCreator() override = default;
+  ~TPZHDivSHybridApproxCreator() = default;
 
   /// Add a hybrid geometric configuration
   virtual void AddHybridizationGeoElements() override;
@@ -25,7 +25,7 @@ public:
   virtual TPZCompMesh *CreateHDivSpace() override;
 
   /// Insert interface periferal material objects related to geometric objects created during hybridization
-  virtual void InsertInterfaceMaterialObjects(TPZMultiphysicsCompMesh *mphys) override;
+  virtual void InsertInterfaceMaterialObjects(TPZMultiphysicsCompMesh *mphys);
 
   /// Create interface elements on hybridizes spaces
   /// @param mphys multiphysics compmesh
